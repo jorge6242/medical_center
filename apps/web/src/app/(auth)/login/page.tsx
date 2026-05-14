@@ -59,6 +59,15 @@ export default function LoginPage() {
             Iniciar sesión
           </Button>
         </form>
+
+        <div className="mt-6 border-t border-outline-variant pt-4 text-center">
+          <a
+            href="/catalogo"
+            className="text-sm font-medium text-primary hover:text-primary-variant"
+          >
+            Ver catálogo de servicios y precios
+          </a>
+        </div>
       </div>
     </div>
   );

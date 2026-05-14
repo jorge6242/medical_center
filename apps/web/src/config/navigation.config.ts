@@ -6,6 +6,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Pacientes', path: '/pacientes', icon: 'Users', permission: { resource: 'patients', action: 'read' } },
   { label: 'Pagos', path: '/pagos', icon: 'CreditCard', permission: { resource: 'payments', action: 'read' } },
   { label: 'Egresos', path: '/egresos', icon: 'Receipt', permission: { resource: 'expenses', action: 'read' } },
+  { label: 'Catálogo', path: '/catalogo', icon: 'BookOpen', permission: { resource: 'payments', action: 'read' } },
   { label: 'Colas', path: '/admin/queues', icon: 'Boxes', permission: { resource: 'roles', action: 'read' } },
   { label: 'Doctores', path: '/admin/doctores', icon: 'Stethoscope', permission: { resource: 'doctors', action: 'read' } },
   { label: 'Laboratorios', path: '/admin/laboratorios', icon: 'FlaskConical', permission: { resource: 'laboratories', action: 'read' } },
