@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Card } from '@/shared/components/ui/card';
 import { formatUsd } from '@/shared/utils/format';
@@ -40,10 +40,29 @@ async function getLaboratories(): Promise<LaboratoryTest[]> {
 export default function CatalogoPage() {
   const [view, setView] = useState<CatalogView>('specialties');
   const [filter, setFilter] = useState('');
+  const [specialties, setSpecialties] = useState<SpecialtyCatalog[]>([]);
+  const [laboratories, setLaboratories] = useState<LaboratoryTest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Simple loading state for demo - in production use React Query
-  const [specialties] = useState<SpecialtyCatalog[]>([]);
-  const [laboratories] = useState<LaboratoryTest[]>([]);
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        const [servicesData, labsData] = await Promise.all([
+          getServices(),
+          getLaboratories(),
+        ]);
+        setSpecialties(servicesData);
+        setLaboratories(labsData);
+      } catch {
+        setError('Error cargando el catálogo');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   const filteredSpecialties = specialties.filter((s) =>
     s.specialtyName.toLowerCase().includes(filter.toLowerCase()),
@@ -95,8 +114,22 @@ export default function CatalogoPage() {
         />
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="space-y-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-20 animate-pulse rounded-lg bg-surface-variant" />
+          ))}
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <p className="py-12 text-center text-error">{error}</p>
+      )}
+
       {/* Specialties View */}
-      {view === 'specialties' && (
+      {!loading && !error && view === 'specialties' && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredSpecialties.map((specialty) => (
             <Card key={specialty.specialtyId} className="flex flex-col">
@@ -120,7 +153,7 @@ export default function CatalogoPage() {
       )}
 
       {/* Laboratories View */}
-      {view === 'laboratories' && (
+      {!loading && !error && view === 'laboratories' && (
         <Card>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -143,7 +176,7 @@ export default function CatalogoPage() {
         </Card>
       )}
 
-      {((view === 'specialties' && filteredSpecialties.length === 0) ||
+      {!loading && !error && ((view === 'specialties' && filteredSpecialties.length === 0) ||
         (view === 'laboratories' && filteredLaboratories.length === 0)) && (
         <p className="py-12 text-center text-on-surface-variant">
           No se encontraron resultados
