@@ -1,0 +1,6 @@
+npx lint-staged
+
+if git diff --cached --name-only | grep -E '(^|/)(package\.json|pnpm-workspace\.yaml)$' >/dev/null; then
+  make deps-sync
+  git add pnpm-lock.yaml
+fi

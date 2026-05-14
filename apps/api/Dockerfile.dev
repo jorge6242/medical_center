@@ -1,0 +1,35 @@
+FROM node:20-alpine
+
+RUN npm install -g pnpm
+
+WORKDIR /app
+
+# Copy workspace config + lockfile first (cache layer)
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/worker/package.json ./apps/worker/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/ ./packages/
+COPY tsconfig.base.json ./
+COPY apps/worker/ ./apps/worker/
+
+# Install all workspace deps
+RUN pnpm install --frozen-lockfile
+
+# Build shared package so workspace imports resolve at runtime
+RUN pnpm --filter @centro-medico/shared build
+
+# Copy prisma schema before generate (volume mount overrides src later, not prisma at build time)
+COPY apps/api/prisma/ ./apps/api/prisma/
+
+# Generate Prisma client from schema
+RUN cd apps/api && npx prisma generate --config prisma/prisma.config.ts
+
+# Copy remaining source (overridden by volume mount in dev)
+COPY apps/api/ ./apps/api/
+
+WORKDIR /app/apps/api
+
+EXPOSE 3001
+
+CMD ["tail", "-f", "/dev/null"]

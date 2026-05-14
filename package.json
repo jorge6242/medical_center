@@ -1,0 +1,40 @@
+{
+  "name": "centro-medico",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "lint": "pnpm -r run lint",
+    "lint:fix": "pnpm -r run lint:fix",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,json,md,css}\"",
+    "typecheck": "pnpm -r run typecheck",
+    "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "apps/api/**/*.ts": [
+      "eslint --fix --max-warnings 0",
+      "prettier --write"
+    ],
+    "apps/web/**/*.{ts,tsx}": [
+      "eslint --fix --max-warnings 0",
+      "prettier --write"
+    ],
+    "packages/shared/**/*.ts": [
+      "prettier --write"
+    ],
+    "*.{json,md,css}": [
+      "prettier --write"
+    ]
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["prisma", "sharp", "unrs-resolver", "@prisma/client"]
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "prettier": "^3.0.0"
+  }
+}

@@ -1,0 +1,64 @@
+schema: spec-driven
+
+context: |
+  Tech stack: NestJS (backend) + Next.js App Router (frontend) + PostgreSQL + Prisma + pnpm monorepo
+  Architecture: Modular NestJS (payments, patients, doctors, receipts, stats), Feature-Sliced Next.js
+  Testing: Jest (backend), no test runner (frontend - only typecheck)
+  Style: ESLint + Prettier, TypeScript strict, Clean Code / SOLID conventions
+  Docker: docker-compose dev/prod, all commands run inside containers
+
+strict_tdd: true
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Identify affected modules/packages
+    - Must specify Gentle AI chained PR strategy when >400 lines
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include schema changes for Prisma
+    - Document architecture decisions with rationale
+    - Specify DTO contracts explicitly
+  tasks:
+    - Group tasks by phase (infrastructure, implementation, testing)
+    - Use hierarchical numbering (1.1, 1.2, etc.)
+    - Keep PR slices under 400 changed lines
+    - Use Stacked PRs or Feature Branch Chain for >400 line changes
+  apply:
+    - Follow existing code patterns and conventions from AGENTS.md
+    - Load relevant coding skills for the project stack (@nestjs-best-practices, @nextjs-best-practices)
+    - All TypeScript checks run inside Docker containers only
+  verify:
+    - Run pnpm run typecheck && pnpm run lint in affected workspaces
+    - Compare implementation against every spec scenario
+    - Manual regression testing for payment flows
+  archive:
+    - Warn before merging destructive deltas (large removals)
+    - Update .atl/ artifacts if they diverge from openspec/
+
+testing:
+  strict_tdd_mode: true
+  runner:
+    command: "jest"
+    framework: "jest"
+    workspaces:
+      - "apps/api"
+  layers:
+    unit:
+      available: true
+      tool: "jest (backend)"
+    integration:
+      available: true
+      tool: "jest + supertest (backend)"
+    e2e:
+      available: true
+      tool: "jest e2e (backend)"
+  coverage:
+    available: true
+    command: "jest --coverage"
+  quality:
+    linter: "eslint"
+    type_checker: "tsc --noEmit"
+    formatter: "prettier"

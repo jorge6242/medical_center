@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:galac.com)",
+      "WebFetch(domain:naymaconsultores.com)",
+      "Bash(pnpm --version)",
+      "Bash(npm --version)",
+      "Bash(/usr/local/bin/node --version)",
+      "Bash(/usr/local/bin/npm --version)",
+      "Bash(npm list *)",
+      "Read(//usr/local/lib/node_modules/**)",
+      "Bash(sed -n '340,350p' /Users/jorgegomez/Documents/projects/centro_medico/PLAN.md)",
+      "Bash(sed -n '615,640p' /Users/jorgegomez/Documents/projects/centro_medico/PLAN.md)"
+    ]
+  }
+}

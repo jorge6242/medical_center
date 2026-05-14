@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme inline {
+  /* MD3 Semantic Tokens — primary */
+  --color-primary: #1a56db;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #dbeafe;
+  --color-on-primary-container: #1e3a5f;
+
+  /* secondary */
+  --color-secondary: #6366f1;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #e0e7ff;
+  --color-on-secondary-container: #312e81;
+
+  /* surface */
+  --color-surface: #f8fafc;
+  --color-on-surface: #0f172a;
+  --color-surface-variant: #f1f5f9;
+  --color-on-surface-variant: #475569;
+
+  /* outline */
+  --color-outline: #cbd5e1;
+  --color-outline-variant: #e2e8f0;
+
+  /* error */
+  --color-error: #dc2626;
+  --color-on-error: #ffffff;
+  --color-error-container: #fee2e2;
+  --color-on-error-container: #7f1d1d;
+
+  /* background */
+  --color-background: #ffffff;
+  --color-on-background: #0f172a;
+
+  /* elevation shadows */
+  --shadow-elevation-1: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-elevation-2: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-elevation-3: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-on-background);
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    sans-serif;
+}

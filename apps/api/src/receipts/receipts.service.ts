@@ -1,0 +1,139 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+
+import { PrismaService } from '../database/prisma.service';
+
+import type { ReceiptResponseDto } from './dto/receipt-response.dto';
+import type { Prisma } from '@prisma/client';
+
+@Injectable()
+export class ReceiptsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async findByPayment(
+    tenantId: string,
+    paymentId: string,
+  ): Promise<ReceiptResponseDto> {
+    const receipt = await this.prisma.doctorReceipt.findFirst({
+      where: { paymentId, payment: { consultation: { tenantId } } },
+      include: { payment: { include: { details: true } } },
+    });
+    if (!receipt)
+      throw new NotFoundException(
+        `Recibo para pago ${paymentId} no encontrado`,
+      );
+    return this.toResponse(receipt, receipt.payment?.details ?? []);
+  }
+
+  async createForPayment(
+    tenantId: string,
+    paymentId: string,
+    generatedById: string,
+  ): Promise<ReceiptResponseDto> {
+    const existing = await this.prisma.doctorReceipt.findUnique({
+      where: { paymentId },
+      include: { payment: { include: { details: true } } },
+    });
+    if (existing)
+      return this.toResponse(existing, existing.payment?.details ?? []);
+
+    const cp = await this.prisma.consultationPayment.findFirst({
+      where: { payment: { id: paymentId }, consultation: { tenantId } },
+      include: {
+        payment: { include: { details: true } },
+        consultation: {
+          include: {
+            doctor: {
+              include: { bankAccounts: { where: { isDefault: true } } },
+            },
+          },
+        },
+      },
+    });
+
+    if (!cp?.payment || !cp.consultation.doctor) {
+      throw new NotFoundException(`Pago ${paymentId} no encontrado`);
+    }
+
+    const doctor = cp.consultation.doctor;
+    const defaultAccount = doctor.bankAccounts[0];
+    const payment = cp.payment;
+
+    const currentYear = new Date().getFullYear();
+    const counter = await this.prisma.receiptCounter.upsert({
+      where: { year_tenantId: { year: currentYear, tenantId } },
+      update: { lastSeq: { increment: 1 } },
+      create: { year: currentYear, tenantId, lastSeq: 1 },
+    });
+
+    const receiptNumber = `CM-${currentYear}-${counter.lastSeq}`;
+
+    const receipt = await this.prisma.doctorReceipt.create({
+      data: {
+        receiptNumber,
+        paymentId,
+        generatedById,
+        doctorName: doctor.name,
+        doctorPhone: doctor.phone ?? '',
+        doctorDocument: `${doctor.documentType}-${doctor.documentId}`,
+        bankName: defaultAccount?.bankName ?? '',
+        accountNumber: defaultAccount?.accountNumber ?? '',
+        splitPercentage: doctor.splitPercentage, // Use doctor's split percentage directly
+        totalConsultation: payment.totalServiceUsd,
+        doctorShare: payment.doctorShareUsd,
+        centerShare: payment.centerShareUsd,
+      },
+    });
+
+    return this.toResponse(receipt, payment.details ?? []);
+  }
+
+  private toResponse(
+    r: {
+      id: string;
+      receiptNumber: string;
+      paymentId: string;
+      doctorName: string;
+      doctorPhone?: string | null;
+      doctorDocument: string;
+      bankName: string;
+      accountNumber: string;
+      splitPercentage: Prisma.Decimal;
+      totalConsultation: Prisma.Decimal;
+      doctorShare: Prisma.Decimal;
+      centerShare: Prisma.Decimal;
+      status: string;
+      generatedAt: Date;
+    },
+    details: Array<{
+      paymentMethod: string;
+      currency: string;
+      amount: Prisma.Decimal;
+      referenceNumber: string | null;
+      appliedIgtfAmount: Prisma.Decimal;
+    }> = [],
+  ): ReceiptResponseDto {
+    return {
+      id: r.id,
+      receiptNumber: r.receiptNumber,
+      paymentId: r.paymentId,
+      doctorName: r.doctorName,
+      doctorPhone: r.doctorPhone ?? null,
+      doctorDocument: r.doctorDocument,
+      bankName: r.bankName,
+      accountNumber: r.accountNumber,
+      splitPercentage: r.splitPercentage.toString(),
+      totalConsultation: r.totalConsultation.toString(),
+      doctorShare: r.doctorShare.toString(),
+      centerShare: r.centerShare.toString(),
+      status: r.status,
+      generatedAt: r.generatedAt,
+      details: details.map((d) => ({
+        paymentMethod: d.paymentMethod,
+        currency: d.currency,
+        amount: d.amount.toString(),
+        referenceNumber: d.referenceNumber,
+        appliedIgtfAmount: d.appliedIgtfAmount.toString(),
+      })),
+    };
+  }
+}

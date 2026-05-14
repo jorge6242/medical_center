@@ -1,0 +1,135 @@
+name: centro_medico
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: centro_medico_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: centro_medico
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d centro_medico"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: centro_medico_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.dev
+    container_name: centro_medico_api
+    restart: unless-stopped
+    env_file:
+      - .env.development
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/centro_medico?schema=public
+      - REDIS_URL=redis://redis:6379
+      - API_INTERNAL_SECRET=dev_internal_secret_minimo_32_caracteres
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml
+      - ./package.json:/app/package.json
+      - ./tsconfig.base.json:/app/tsconfig.base.json
+      - ./apps/api/package.json:/app/apps/api/package.json
+      # Hot reload: mount source only — node_modules stays in container
+      - ./apps/api/src:/app/apps/api/src
+      - ./apps/api/prisma:/app/apps/api/prisma
+      - ./packages/shared:/app/packages/shared
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend-net
+      - frontend-net
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.dev
+    container_name: centro_medico_worker
+    restart: unless-stopped
+    env_file:
+      - .env.development
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/centro_medico?schema=public
+      - REDIS_URL=redis://redis:6379
+      - API_INTERNAL_URL=http://api:3001
+      - API_INTERNAL_SECRET=dev_internal_secret_minimo_32_caracteres
+    working_dir: /app
+    command: ["pnpm", "--filter", "worker", "run", "start:dev"]
+    volumes:
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml
+      - ./package.json:/app/package.json
+      - ./tsconfig.base.json:/app/tsconfig.base.json
+      - ./apps/worker/package.json:/app/apps/worker/package.json
+      - ./apps/worker/src:/app/apps/worker/src
+      - ./apps/worker/tsconfig.json:/app/apps/worker/tsconfig.json
+      - ./apps/worker/nest-cli.json:/app/apps/worker/nest-cli.json
+      - ./packages/shared:/app/packages/shared
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend-net
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile.dev
+    container_name: centro_medico_web
+    restart: unless-stopped
+    environment:
+      # In browser, calls go through host — use localhost
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+    ports:
+      - "3000:3000"
+    volumes:
+      # Hot reload: mount source only — node_modules stays in container
+      - ./apps/web/package.json:/app/apps/web/package.json
+      - ./apps/web/src:/app/apps/web/src
+      - ./apps/web/public:/app/apps/web/public
+    depends_on:
+      api:
+        condition: service_started
+      worker:
+        condition: service_started
+    networks:
+      - frontend-net
+
+networks:
+  backend-net:
+  frontend-net:
+
+volumes:
+  postgres_data_dev:
