@@ -7,11 +7,19 @@
 ## Requirements
 
 ### REQ-1: Catálogo Público
-El sistema provee una API y página pública para ver servicios y precios sin autenticación.
+El sistema provee una API y página pública para ver servicios y precios sin autenticación. El catálogo permite alternar entre dos vistas: Especialidades y Laboratorios.
 
 **GIVEN** un visitante no autenticado
 **WHEN** accede `GET /catalog/services`
 **THEN** retorna lista de especialidades activas con sus servicios y precios
+
+**GIVEN** un visitante no autenticado
+**WHEN** accede `GET /catalog/laboratories`
+**THEN** retorna lista de tests de laboratorio activos con sus precios
+
+**GIVEN** el visitante está en la página del catálogo
+**WHEN** alterna entre la pestaña "Especialidades" y "Laboratorios"
+**THEN** muestra la lista correspondiente con precios
 
 **GIVEN** el visitante selecciona una especialidad en el filtro
 **WHEN** aplica el filtro

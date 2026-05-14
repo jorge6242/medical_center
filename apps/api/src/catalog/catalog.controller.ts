@@ -12,4 +12,10 @@ export class CatalogController {
   findServices() {
     return this.catalogService.findServices();
   }
+
+  @Get('laboratories')
+  @Public()
+  findLaboratoryTests() {
+    return this.catalogService.findLaboratoryTests();
+  }
 }

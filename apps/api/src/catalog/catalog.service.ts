@@ -28,4 +28,17 @@ export class CatalogService {
       })),
     }));
   }
+
+  async findLaboratoryTests() {
+    const tests = await this.prisma.labTestCatalog.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+    });
+
+    return tests.map((t) => ({
+      labTestId: t.id,
+      testName: t.name,
+      priceUsd: t.priceUsd.toString(),
+    }));
+  }
 }

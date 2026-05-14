@@ -177,8 +177,59 @@ PaymentsService.create():
   5. Crear PaymentItem { itemType: LAB, labOrderId, description, quantity, unitPriceUsd, totalPriceUsd }
   6. Crear PaymentDetails[]
   7. Actualizar LabOrder.status = PAID
-  8. NO generar DoctorReceipt
 ```
+
+### Catalog Module (Public)
+
+El catálogo público expone **dos vistas** que el usuario puede alternar:
+
+1. **Especialidades**: Lista de especialidades activas con sus servicios y precios
+2. **Laboratorios**: Lista de tests de laboratorio activos con sus precios
+
+```typescript
+// catalog.service.ts
+export class CatalogService {
+  async findSpecialtyServices() {
+    const specialties = await this.prisma.specialty.findMany({
+      where: { isActive: true },
+      include: {
+        services: {
+          where: { isActive: true },
+          include: { service: true },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return specialties.map((s) => ({
+      specialtyId: s.id,
+      specialtyName: s.name,
+      services: s.services.map((sp) => ({
+        serviceId: sp.serviceId,
+        serviceName: sp.service.name,
+        priceUsd: sp.priceUsd.toString(),
+      })),
+    }));
+  }
+
+  async findLaboratoryTests() {
+    const tests = await this.prisma.labTestCatalog.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+    });
+
+    return tests.map((t) => ({
+      labTestId: t.id,
+      testName: t.name,
+      priceUsd: t.priceUsd.toString(),
+    }));
+  }
+}
+```
+
+Endpoints públicos (`@Public()`):
+- `GET /catalog/services` → Especialidades con servicios
+- `GET /catalog/laboratories` → Tests de laboratorio
 
 ### Unified DTOs
 

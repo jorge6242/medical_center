@@ -25,6 +25,10 @@ const ROLES = [
       { resource: 'expenses', action: 'read' },
       { resource: 'expenses', action: 'delete' },
       { resource: 'reports', action: 'read' },
+      { resource: 'laboratories', action: 'create' },
+      { resource: 'laboratories', action: 'read' },
+      { resource: 'laboratories', action: 'update' },
+      { resource: 'laboratories', action: 'delete' },
     ],
   },
   {
@@ -39,6 +43,7 @@ const ROLES = [
       { resource: 'payments', action: 'read' },
       { resource: 'expenses', action: 'create' },
       { resource: 'expenses', action: 'read' },
+      { resource: 'laboratories', action: 'read' },
     ],
   },
 ];
