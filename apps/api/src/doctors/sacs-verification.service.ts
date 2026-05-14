@@ -110,9 +110,9 @@ export class SacsVerificationService {
       let specialty: string | undefined;
       let licenseNumber: string | undefined;
 
-      if (userMatch) {
+      if (userMatch && userMatch[1]) {
         try {
-          const userData = JSON.parse(userMatch[1]!);
+          const userData = JSON.parse(userMatch[1]);
           const nombre = userData.nombre1 || '';
           const apellido = userData.apellido1 || '';
           if (nombre || apellido) {
@@ -123,9 +123,9 @@ export class SacsVerificationService {
         }
       }
 
-      if (profMatch) {
+      if (profMatch && profMatch[1]) {
         try {
-          const profData = JSON.parse(profMatch[1]!);
+          const profData = JSON.parse(profMatch[1]);
           if (Array.isArray(profData) && profData.length > 0) {
             const prof = profData[0];
             specialty = prof.profesion || undefined;

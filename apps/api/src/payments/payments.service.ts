@@ -19,7 +19,6 @@ import type { CreatePaymentAdjustmentDto } from './dto/create-payment-adjustment
 import type { CreatePaymentDto } from './dto/create-payment.dto';
 import type { PaymentResponseDto } from './dto/payment-response.dto';
 import type {
-  ConsultationPaymentStatus,
   Currency,
   ItemType,
   PaymentMethod,

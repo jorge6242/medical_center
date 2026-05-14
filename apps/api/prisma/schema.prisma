@@ -288,6 +288,7 @@ model Consultation {
 
   services            ConsultationService[]
   consultationPayment ConsultationPayment?
+  paymentItem         PaymentItem?
 
   @@index([tenantId])
   @@index([tenantId, patientId])
