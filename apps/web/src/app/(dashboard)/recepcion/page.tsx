@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Trash2 } from 'lucide-react';
+import { FlaskConical, Plus, Trash2 } from 'lucide-react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { z } from 'zod/v4';
 
@@ -125,7 +125,13 @@ export default function RecepcionPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold text-on-surface">Recepción</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-on-surface">Recepción</h1>
+        <Button variant="outline" onClick={() => window.location.href = '/laboratorio/nueva-orden'}>
+          <FlaskConical className="mr-2 h-4 w-4" />
+          Orden de laboratorio
+        </Button>
+      </div>
 
       {success && (
         <div className="rounded-lg bg-primary-container px-4 py-3 text-sm font-medium text-on-primary-container">

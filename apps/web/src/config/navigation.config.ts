@@ -9,5 +9,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Colas', path: '/admin/queues', icon: 'Boxes', permission: { resource: 'roles', action: 'read' } },
   { label: 'Doctores', path: '/admin/doctores', icon: 'Stethoscope', permission: { resource: 'doctors', action: 'read' } },
   { label: 'Laboratorios', path: '/admin/laboratorios', icon: 'FlaskConical', permission: { resource: 'laboratories', action: 'read' } },
+  { label: 'Órdenes Lab', path: '/laboratorio/ordenes', icon: 'ClipboardList', permission: { resource: 'laboratories', action: 'read' } },
   { label: 'Reportes', path: '/reportes', icon: 'BarChart3', permission: { resource: 'reports', action: 'read' } },
 ];
