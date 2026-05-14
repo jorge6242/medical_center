@@ -1,4 +1,9 @@
-import type { ConsultationPaymentStatus, Currency, PaymentMethod, PaymentStatus } from '@prisma/client';
+import type {
+  Currency,
+  ItemType,
+  PaymentMethod,
+  PaymentStatus,
+} from '@prisma/client';
 
 export class PaymentDetailResponseDto {
   declare id: string;
@@ -17,23 +22,43 @@ export class PaymentAdjustmentResponseDto {
   declare createdAt: Date;
 }
 
-export class ConsultationServiceResponseDto {
+export class ConsultationServiceSnapshotDto {
   declare serviceId: string;
   declare serviceName: string;
   declare specialtyName: string;
   declare priceUsd: string;
 }
 
+export class LabOrderTestSnapshotDto {
+  declare labTestId: string;
+  declare testName: string;
+  declare priceUsd: string;
+}
+
+export class PaymentItemResponseDto {
+  declare id: string;
+  declare itemType: ItemType;
+  declare description: string;
+  declare quantity: number;
+  declare unitPriceUsd: string;
+  declare totalPriceUsd: string;
+
+  // Type-specific optional fields
+  declare consultationId?: string;
+  declare labOrderId?: string;
+
+  // Embedded snapshot data
+  declare services?: ConsultationServiceSnapshotDto[];
+  declare labTests?: LabOrderTestSnapshotDto[];
+}
+
 export class PaymentResponseDto {
   declare id: string;
-  declare idempotencyKey: string;
+  declare idempotencyKey: string | null;
   declare status: PaymentStatus;
-  declare consultationPaymentStatus: ConsultationPaymentStatus;
+  declare tenantId: string;
 
-  declare consultationId: string;
-  declare patientId: string;
-  declare doctorId: string;
-  declare services: ConsultationServiceResponseDto[];
+  declare item: PaymentItemResponseDto;
 
   declare totalServiceUsd: string;
   declare bcvExchangeRate: string;

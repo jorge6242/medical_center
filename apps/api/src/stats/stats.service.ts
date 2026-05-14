@@ -24,8 +24,16 @@ export class StatsService {
         select: { doctorId: true },
       }),
       this.prisma.payment.findMany({
-        where: { status: 'COMPLETED', createdAt: { gte: monthStart }, consultation: { tenantId } },
-        select: { doctorShareUsd: true, consultation: { select: { doctorId: true } } },
+        where: {
+          status: 'COMPLETED',
+          createdAt: { gte: monthStart },
+          tenantId,
+          item: { itemType: 'CONSULTATION' },
+        },
+        select: {
+          doctorShareUsd: true,
+          item: { select: { consultation: { select: { doctorId: true } } } },
+        },
       }),
     ]);
 
@@ -34,7 +42,7 @@ export class StatsService {
     const cancelledDoctorIds = new Set(cancelledConsultations.map((consultation) => consultation.doctorId));
 
     const pendingPayoutDoctorIds = new Set(
-      pendingPayments.map((payment) => payment.consultation?.doctorId).filter((doctorId): doctorId is string => Boolean(doctorId)),
+      pendingPayments.map((payment) => payment.item?.consultation?.doctorId).filter((doctorId): doctorId is string => Boolean(doctorId)),
     );
     const pendingPayoutAmountUsd = pendingPayments.reduce(
       (sum, payment) => sum + Number(payment.doctorShareUsd),

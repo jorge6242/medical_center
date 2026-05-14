@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../database/prisma.service';
 
@@ -14,7 +14,7 @@ export class ReceiptsService {
     paymentId: string,
   ): Promise<ReceiptResponseDto> {
     const receipt = await this.prisma.doctorReceipt.findFirst({
-      where: { paymentId, payment: { consultation: { tenantId } } },
+      where: { paymentId, payment: { tenantId } },
       include: { payment: { include: { details: true } } },
     });
     if (!receipt)
@@ -36,27 +36,28 @@ export class ReceiptsService {
     if (existing)
       return this.toResponse(existing, existing.payment?.details ?? []);
 
-    const cp = await this.prisma.consultationPayment.findFirst({
-      where: { payment: { id: paymentId }, consultation: { tenantId } },
+    const payment = await this.prisma.payment.findFirst({
+      where: { id: paymentId, tenantId },
       include: {
-        payment: { include: { details: true } },
-        consultation: {
-          include: {
-            doctor: {
-              include: { bankAccounts: { where: { isDefault: true } } },
-            },
-          },
-        },
+        item: { include: { consultation: { include: { doctor: { include: { bankAccounts: { where: { isDefault: true } } } } } } } },
+        details: true,
       },
     });
 
-    if (!cp?.payment || !cp.consultation.doctor) {
+    if (!payment) {
       throw new NotFoundException(`Pago ${paymentId} no encontrado`);
     }
 
-    const doctor = cp.consultation.doctor;
+    if (payment.item?.itemType !== 'CONSULTATION') {
+      throw new BadRequestException('Los recibos de doctor solo aplican a pagos de consulta médica');
+    }
+
+    const doctor = payment.item.consultation?.doctor;
+    if (!doctor) {
+      throw new NotFoundException(`Doctor no encontrado para el pago ${paymentId}`);
+    }
+
     const defaultAccount = doctor.bankAccounts[0];
-    const payment = cp.payment;
 
     const currentYear = new Date().getFullYear();
     const counter = await this.prisma.receiptCounter.upsert({

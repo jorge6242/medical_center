@@ -10,11 +10,12 @@ export async function seedDemoConsultations(
   users: { admin: User; reception: User },
 ): Promise<Consultation[]> {
   await prisma.consultationService.deleteMany({ where: { consultation: { tenantId: DEMO_TENANT_ID } } });
-  await prisma.doctorReceipt.deleteMany({ where: { payment: { consultation: { tenantId: DEMO_TENANT_ID } } } });
-  await prisma.paymentAdjustment.deleteMany({ where: { payment: { consultation: { tenantId: DEMO_TENANT_ID } } } });
-  await prisma.paymentDetail.deleteMany({ where: { payment: { consultation: { tenantId: DEMO_TENANT_ID } } } });
+  await prisma.doctorReceipt.deleteMany({ where: { payment: { tenantId: DEMO_TENANT_ID } } });
+  await prisma.paymentAdjustment.deleteMany({ where: { payment: { tenantId: DEMO_TENANT_ID } } });
+  await prisma.paymentDetail.deleteMany({ where: { payment: { tenantId: DEMO_TENANT_ID } } });
+  await prisma.paymentItem.deleteMany({ where: { payment: { tenantId: DEMO_TENANT_ID } } });
   await prisma.consultationPayment.deleteMany({ where: { consultation: { tenantId: DEMO_TENANT_ID } } });
-  await prisma.payment.deleteMany({ where: { consultation: { tenantId: DEMO_TENANT_ID } } });
+  await prisma.payment.deleteMany({ where: { tenantId: DEMO_TENANT_ID } });
   await prisma.consultation.deleteMany({ where: { tenantId: DEMO_TENANT_ID } });
 
   const today = new Date();
@@ -93,8 +94,11 @@ export async function seedDemoConsultations(
       const doctorShare = round(total * Number(doctor.splitPercentage) / 100);
       const centerShare = round(total - doctorShare);
 
+      const idempotencyKey = `demo-${index}-${now.getTime()}`;
       const payment = await prisma.payment.create({
         data: {
+          tenantId: DEMO_TENANT_ID,
+          idempotencyKey,
           totalServiceUsd: total,
           bcvExchangeRate: 36.5,
           totalPaidUsd: total,
@@ -114,6 +118,18 @@ export async function seedDemoConsultations(
           },
         },
         include: { details: true },
+      });
+
+      await prisma.paymentItem.create({
+        data: {
+          paymentId: payment.id,
+          itemType: 'CONSULTATION',
+          description: `Consulta demo - ${servicePrice.service.name}`,
+          quantity: 1,
+          unitPriceUsd: total,
+          totalPriceUsd: total,
+          consultationId: consultation.id,
+        },
       });
 
       await prisma.consultationPayment.create({
