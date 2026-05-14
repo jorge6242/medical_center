@@ -106,7 +106,21 @@ export default function RecepcionPage() {
   };
 
   const onSubmit = (data: FormData) => {
-    mutate({ ...data, idempotencyKey: crypto.randomUUID() });
+    const selectedServices = servicePrices.filter((sp) => data.servicePriceIds.includes(sp.id));
+    const serviceNames = selectedServices.map((s) => s.serviceName).join(', ');
+
+    mutate({
+      patientId: data.patientId,
+      bcvExchangeRate: data.bcvExchangeRate,
+      idempotencyKey: crypto.randomUUID(),
+      item: {
+        itemType: 'CONSULTATION' as const,
+        description: `Consulta - ${serviceNames}`,
+        doctorId: data.doctorId,
+        servicePriceIds: data.servicePriceIds,
+      },
+      paymentLines: data.paymentLines,
+    });
   };
 
   return (

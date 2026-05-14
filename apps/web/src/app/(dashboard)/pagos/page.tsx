@@ -40,6 +40,14 @@ function statusLabel(status: string) {
   return map[status] ?? status;
 }
 
+function itemTypeLabel(itemType: string) {
+  return itemType === 'CONSULTATION' ? 'Consulta' : 'Laboratorio';
+}
+
+function itemTypeVariant(itemType: string) {
+  return itemType === 'CONSULTATION' ? 'success' : 'secondary';
+}
+
 const adjustmentSchema = z.object({
   description: z.string().min(3, 'Descripción requerida'),
   amountUsd: z.number().min(0, 'Monto requerido'),
@@ -111,6 +119,7 @@ export default function PagosPage() {
               <thead>
                 <tr className="border-b border-outline-variant text-left text-on-surface-variant">
                   <th className="pb-3 pr-4 font-medium">ID</th>
+                  <th className="pb-3 pr-4 font-medium">Tipo</th>
                   <th className="pb-3 pr-4 font-medium">Total servicio</th>
                   <th className="pb-3 pr-4 font-medium">Total pagado USD</th>
                   <th className="pb-3 pr-4 font-medium">IGTF</th>
@@ -124,6 +133,11 @@ export default function PagosPage() {
                   <tr key={p.id} className="border-b border-outline-variant last:border-0">
                     <td className="py-3 pr-4 font-mono text-xs text-on-surface-variant">
                       {p.id.slice(0, 8)}…
+                    </td>
+                    <td className="py-3 pr-4">
+                      <Badge variant={itemTypeVariant(p.item?.itemType ?? 'CONSULTATION')}>
+                        {itemTypeLabel(p.item?.itemType ?? 'CONSULTATION')}
+                      </Badge>
                     </td>
                     <td className="py-3 pr-4 font-medium text-on-surface">
                       {formatUsd(p.totalServiceUsd)}
@@ -139,7 +153,7 @@ export default function PagosPage() {
                       <Badge variant={statusVariant(p.status)}>{statusLabel(p.status)}</Badge>
                     </td>
                     <td className="flex items-center gap-1 py-3">
-                      {p.status === 'COMPLETED' && (
+                      {p.status === 'COMPLETED' && p.item?.itemType === 'CONSULTATION' && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -149,7 +163,7 @@ export default function PagosPage() {
                           <FileDown className="h-4 w-4" />
                         </Button>
                       )}
-                      {p.status === 'COMPLETED' && (
+                      {p.status === 'COMPLETED' && p.item?.itemType === 'CONSULTATION' && (
                         <Button
                           variant="ghost"
                           size="sm"

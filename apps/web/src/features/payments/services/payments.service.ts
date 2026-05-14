@@ -17,22 +17,38 @@ export interface PaymentAdjustmentResponse {
   createdAt: string;
 }
 
-export interface PaymentServiceResponse {
+export interface ConsultationServiceSnapshot {
   serviceId: string;
   serviceName: string;
   specialtyName: string;
   priceUsd: string;
 }
 
+export interface LabOrderTestSnapshot {
+  labTestId: string;
+  testName: string;
+  priceUsd: string;
+}
+
+export interface PaymentItemResponse {
+  id: string;
+  itemType: 'CONSULTATION' | 'LAB';
+  description: string;
+  quantity: number;
+  unitPriceUsd: string;
+  totalPriceUsd: string;
+  consultationId?: string;
+  labOrderId?: string;
+  services?: ConsultationServiceSnapshot[];
+  labTests?: LabOrderTestSnapshot[];
+}
+
 export interface PaymentResponse {
   id: string;
-  idempotencyKey: string;
+  idempotencyKey: string | null;
   status: string;
-  consultationPaymentStatus: string;
-  consultationId: string;
-  patientId: string;
-  doctorId: string;
-  services: PaymentServiceResponse[];
+  tenantId: string;
+  item: PaymentItemResponse;
   totalServiceUsd: string;
   bcvExchangeRate: string;
   totalPaidUsd: string;
@@ -52,12 +68,19 @@ export interface PaymentLineDto {
   referenceNumber?: string;
 }
 
+export interface PaymentItemDto {
+  itemType: 'CONSULTATION' | 'LAB';
+  description: string;
+  doctorId?: string;
+  servicePriceIds?: string[];
+  labOrderId?: string;
+}
+
 export interface CreatePaymentDto {
   idempotencyKey: string;
   patientId: string;
-  doctorId: string;
-  servicePriceIds: string[];
   bcvExchangeRate: number;
+  item: PaymentItemDto;
   paymentLines: PaymentLineDto[];
 }
 
