@@ -28,11 +28,14 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   return res;
 }
 
-export async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiJson<T>(path: string, init?: RequestInit & { responseType?: 'json' | 'blob' }): Promise<T> {
   const res = await apiFetch(path, init);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error((body as { message?: string }).message ?? `HTTP ${res.status}`);
+  }
+  if (init?.responseType === 'blob') {
+    return res.blob() as Promise<T>;
   }
   return res.json() as Promise<T>;
 }
