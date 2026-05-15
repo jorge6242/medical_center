@@ -33,7 +33,9 @@ export default function ReportesPage() {
   const addJob = useReportJobsStore((s) => s.addJob);
 
   const handleExportPDF = async () => {
-    if (!consolidated?.length && !detail?.length) return;
+    // Validar que hay datos para el tab activo
+    if (activeTab === 'consolidado' && !consolidated?.length) return;
+    if (activeTab === 'detalle' && !detail?.length) return;
     
     setIsExporting(true);
     const jobId = `local-${crypto.randomUUID()}`;
@@ -86,6 +88,17 @@ export default function ReportesPage() {
           filename: `reporte-detalle-${from}-al-${to}.pdf`,
           createdAt: new Date().toISOString(),
         });
+      } else {
+        // No hay datos para el tab activo
+        addJob({
+          jobId,
+          status: 'failed',
+          progress: 0,
+          format: 'pdf',
+          filename: '',
+          error: 'No hay datos para exportar',
+          createdAt: new Date().toISOString(),
+        });
       }
     } catch {
       addJob({
@@ -103,7 +116,9 @@ export default function ReportesPage() {
   };
 
   const handleExportExcel = async () => {
-    if (!consolidated?.length && !detail?.length) return;
+    // Validar que hay datos para el tab activo
+    if (activeTab === 'consolidado' && !consolidated?.length) return;
+    if (activeTab === 'detalle' && !detail?.length) return;
     
     setIsExporting(true);
     const jobId = `local-${crypto.randomUUID()}`;
@@ -154,6 +169,17 @@ export default function ReportesPage() {
           progress: 100,
           format: 'excel',
           filename: `reporte-detalle-${from}-al-${to}.xlsx`,
+          createdAt: new Date().toISOString(),
+        });
+      } else {
+        // No hay datos para el tab activo
+        addJob({
+          jobId,
+          status: 'failed',
+          progress: 0,
+          format: 'excel',
+          filename: '',
+          error: 'No hay datos para exportar',
           createdAt: new Date().toISOString(),
         });
       }

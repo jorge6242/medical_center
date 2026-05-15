@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Download, FileSpreadsheet, FileText, Loader2, Trash2 } from 'lucide-react';
 
 import { useReportJobsStore, type ReportJobItem } from '@/stores/report-jobs.store';
@@ -41,6 +42,11 @@ function JobItem({ job }: { readonly job: ReportJobItem }) {
 export function ReportExportSidebar() {
   const jobs = useReportJobsStore((s) => s.jobs);
   const clearCompleted = useReportJobsStore((s) => s.clearCompleted);
+  const cleanupStaleJobs = useReportJobsStore((s) => s.cleanupStaleJobs);
+
+  useEffect(() => {
+    cleanupStaleJobs();
+  }, [cleanupStaleJobs]);
 
   if (jobs.length === 0) return null;
 
