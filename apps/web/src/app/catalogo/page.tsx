@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
+import { apiJson } from '@/config/api';
 import { Card } from '@/shared/components/ui/card';
 import { formatUsd } from '@/shared/utils/format';
 
@@ -26,15 +27,11 @@ interface LaboratoryTest {
 type CatalogView = 'specialties' | 'laboratories';
 
 async function getServices(): Promise<SpecialtyCatalog[]> {
-  const res = await fetch('/api/catalog/services');
-  if (!res.ok) throw new Error('Error cargando servicios');
-  return res.json();
+  return apiJson('/catalog/services');
 }
 
 async function getLaboratories(): Promise<LaboratoryTest[]> {
-  const res = await fetch('/api/catalog/laboratories');
-  if (!res.ok) throw new Error('Error cargando laboratorios');
-  return res.json();
+  return apiJson('/catalog/laboratories');
 }
 
 export default function CatalogoPage() {
