@@ -36,7 +36,7 @@ export default function ReportesPage() {
     if (!consolidated?.length && !detail?.length) return;
     
     setIsExporting(true);
-    const jobId = `local-${Date.now()}`;
+    const jobId = `local-${crypto.randomUUID()}`;
     
     addJob({
       jobId,
@@ -106,7 +106,7 @@ export default function ReportesPage() {
     if (!consolidated?.length && !detail?.length) return;
     
     setIsExporting(true);
-    const jobId = `local-${Date.now()}`;
+    const jobId = `local-${crypto.randomUUID()}`;
     
     addJob({
       jobId,
