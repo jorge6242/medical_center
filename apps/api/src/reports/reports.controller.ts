@@ -13,7 +13,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
 import type { JwtPayload } from '../common/decorators/current-user.decorator';
 import { ReportsService } from './reports.service';
-import type { QueryReportsDto, GenerateReportDto } from './dto/query-reports.dto';
+import type { GenerateReportDto } from './dto/query-reports.dto';
 
 @Controller('reports')
 @RequirePermission('reports', 'read')
@@ -23,17 +23,23 @@ export class ReportsController {
   @Get('consolidated')
   async getConsolidated(
     @CurrentUser() user: JwtPayload,
-    @Query() dto: QueryReportsDto,
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Query('groupBy') groupBy?: string,
+    @Query('type') type?: string,
   ) {
-    return this.reportsService.getConsolidated(user.tenantId, dto);
+    return this.reportsService.getConsolidated(user.tenantId, { from, to, groupBy: groupBy as any, type: type as any });
   }
 
   @Get('detail')
   async getDetail(
     @CurrentUser() user: JwtPayload,
-    @Query() dto: QueryReportsDto,
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Query('groupBy') groupBy?: string,
+    @Query('type') type?: string,
   ) {
-    return this.reportsService.getDetail(user.tenantId, dto);
+    return this.reportsService.getDetail(user.tenantId, { from, to, groupBy: groupBy as any, type: type as any });
   }
 
   @Post('generate')

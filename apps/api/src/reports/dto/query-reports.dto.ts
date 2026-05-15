@@ -20,46 +20,46 @@ export enum ReportFormat {
 
 export class QueryReportsDto {
   @IsString()
-  declare from: string;
+  from: string = '';
 
   @IsString()
-  declare to: string;
+  to: string = '';
 
   @IsOptional()
   @IsEnum(ReportGroupBy)
-  declare groupBy?: ReportGroupBy;
+  groupBy?: ReportGroupBy = ReportGroupBy.DAY;
 
   @IsOptional()
   @IsEnum(ReportType)
-  declare type?: ReportType;
+  type?: ReportType = ReportType.ALL;
 }
 
 export class GenerateReportDto {
   @IsString()
-  declare from: string;
+  from: string = '';
 
   @IsString()
-  declare to: string;
+  to: string = '';
 
   @IsEnum(ReportType)
-  declare type: ReportType;
+  type: ReportType = ReportType.ALL;
 
   @IsEnum(ReportFormat)
-  declare format: ReportFormat;
+  format: ReportFormat = ReportFormat.PDF;
 
   @IsOptional()
   @IsEnum(ReportGroupBy)
-  declare groupBy?: ReportGroupBy;
+  groupBy?: ReportGroupBy = ReportGroupBy.DAY;
 }
 
 export class ReportJobResponseDto {
-  declare jobId: string;
-  declare status: 'pending' | 'processing' | 'completed' | 'failed';
-  declare progress: number;
-  declare format: string;
-  declare filename?: string;
-  declare sizeBytes?: number;
-  declare error?: string;
-  declare createdAt: Date;
-  declare completedAt?: Date;
+  jobId!: string;
+  status!: 'pending' | 'processing' | 'completed' | 'failed';
+  progress!: number;
+  format!: string;
+  filename?: string;
+  sizeBytes?: number;
+  error?: string;
+  createdAt!: Date;
+  completedAt?: Date;
 }
