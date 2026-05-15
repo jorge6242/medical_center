@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Plus } from 'lucide-react';
 
 import { Card } from '@/shared/components/ui/card';
 import { formatDate, formatUsd } from '@/shared/utils/format';
@@ -28,13 +30,20 @@ function statusLabel(status: string) {
 }
 
 export default function OrdenesLaboratorioPage() {
+  const router = useRouter();
   const { data: orders = [], isLoading } = useLabOrders();
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const { data: selectedOrder } = useLabOrder(selectedOrderId ?? '');
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold text-on-surface">Órdenes de Laboratorio</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-on-surface">Órdenes de Laboratorio</h1>
+        <Button onClick={() => router.push('/laboratorio/nueva-orden')}>
+          <Plus className="mr-2 h-4 w-4" />
+          Nueva orden
+        </Button>
+      </div>
 
       <Card>
         {isLoading ? (
