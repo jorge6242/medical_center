@@ -25,9 +25,20 @@ export const useReportJobsStore = create<ReportJobsState>()(
     (set) => ({
       jobs: [],
       addJob: (job) =>
-        set((state) => ({
-          jobs: [job, ...state.jobs].slice(0, 20), // Keep last 20
-        })),
+        set((state) => {
+          // Si el jobId ya existe, actualizar en lugar de insertar duplicado
+          const exists = state.jobs.some((j) => j.jobId === job.jobId);
+          if (exists) {
+            return {
+              jobs: state.jobs.map((j) =>
+                j.jobId === job.jobId ? { ...j, ...job } : j
+              ),
+            };
+          }
+          return {
+            jobs: [job, ...state.jobs].slice(0, 20), // Keep last 20
+          };
+        }),
       updateJob: (jobId, updates) =>
         set((state) => ({
           jobs: state.jobs.map((j) =>

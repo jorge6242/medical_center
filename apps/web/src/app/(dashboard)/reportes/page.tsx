@@ -31,6 +31,7 @@ export default function ReportesPage() {
   const { data: consolidated = [], isLoading: loadingConsolidated } = useConsolidatedReports(params);
   const { data: detail = [], isLoading: loadingDetail } = useDetailReports(params);
   const addJob = useReportJobsStore((s) => s.addJob);
+  const updateJob = useReportJobsStore((s) => s.updateJob);
 
   const handleExportPDF = async () => {
     // Validar que hay datos para el tab activo
@@ -61,13 +62,10 @@ export default function ReportesPage() {
         a.remove();
         window.URL.revokeObjectURL(url);
         
-        addJob({
-          jobId,
+        updateJob(jobId, {
           status: 'completed',
           progress: 100,
-          format: 'pdf',
           filename: `reporte-consolidado-${from}-al-${to}.pdf`,
-          createdAt: new Date().toISOString(),
         });
       } else if (activeTab === 'detalle' && detail.length > 0) {
         const blob = await pdf(<DetailReportPDF data={detail} periodStart={from} periodEnd={to} />).toBlob();
@@ -80,35 +78,26 @@ export default function ReportesPage() {
         a.remove();
         window.URL.revokeObjectURL(url);
         
-        addJob({
-          jobId,
+        updateJob(jobId, {
           status: 'completed',
           progress: 100,
-          format: 'pdf',
           filename: `reporte-detalle-${from}-al-${to}.pdf`,
-          createdAt: new Date().toISOString(),
         });
       } else {
         // No hay datos para el tab activo
-        addJob({
-          jobId,
+        updateJob(jobId, {
           status: 'failed',
           progress: 0,
-          format: 'pdf',
           filename: '',
           error: 'No hay datos para exportar',
-          createdAt: new Date().toISOString(),
         });
       }
     } catch {
-      addJob({
-        jobId,
+      updateJob(jobId, {
         status: 'failed',
         progress: 0,
-        format: 'pdf',
         filename: '',
         error: 'Error generando PDF',
-        createdAt: new Date().toISOString(),
       });
     } finally {
       setIsExporting(false);
@@ -144,13 +133,10 @@ export default function ReportesPage() {
         a.remove();
         window.URL.revokeObjectURL(url);
         
-        addJob({
-          jobId,
+        updateJob(jobId, {
           status: 'completed',
           progress: 100,
-          format: 'excel',
           filename: `reporte-consolidado-${from}-al-${to}.xlsx`,
-          createdAt: new Date().toISOString(),
         });
       } else if (activeTab === 'detalle' && detail.length > 0) {
         const blob = generateDetailExcel(detail, from, to);
@@ -163,35 +149,26 @@ export default function ReportesPage() {
         a.remove();
         window.URL.revokeObjectURL(url);
         
-        addJob({
-          jobId,
+        updateJob(jobId, {
           status: 'completed',
           progress: 100,
-          format: 'excel',
           filename: `reporte-detalle-${from}-al-${to}.xlsx`,
-          createdAt: new Date().toISOString(),
         });
       } else {
         // No hay datos para el tab activo
-        addJob({
-          jobId,
+        updateJob(jobId, {
           status: 'failed',
           progress: 0,
-          format: 'excel',
           filename: '',
           error: 'No hay datos para exportar',
-          createdAt: new Date().toISOString(),
         });
       }
     } catch {
-      addJob({
-        jobId,
+      updateJob(jobId, {
         status: 'failed',
         progress: 0,
-        format: 'excel',
         filename: '',
         error: 'Error generando Excel',
-        createdAt: new Date().toISOString(),
       });
     } finally {
       setIsExporting(false);
