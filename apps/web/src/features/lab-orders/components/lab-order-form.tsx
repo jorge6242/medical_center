@@ -82,7 +82,7 @@ export function LabOrderForm({ onSuccess, onCancel }: LabOrderFormProps) {
         {labTests.length === 0 ? (
           <p className="text-sm text-on-surface-variant">No hay tests disponibles</p>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="flex max-h-60 flex-col gap-2 overflow-y-auto pr-1">
             {labTests.map((test) => {
               const selected = selectedTestIds.includes(test.id);
               return (
