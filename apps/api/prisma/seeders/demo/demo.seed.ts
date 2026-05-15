@@ -2,6 +2,7 @@
 import { seedDemoConsultations } from './demo-consultations.seeder';
 import { seedDemoDoctors } from './demo-doctors.seeder';
 import { seedDemoExpenses } from './demo-expenses.seeder';
+import { seedDemoLabOrders } from './demo-lab-orders.seeder';
 import { seedDemoPatients } from './demo-patients.seeder';
 import { seedDemoPayments } from './demo-payments.seeder';
 import { seedDemoRoles } from './demo-roles.seeder';
@@ -19,6 +20,7 @@ export async function seedDemo(prisma: PrismaClient): Promise<void> {
   const doctors = await seedDemoDoctors(prisma);
   const patients = await seedDemoPatients(prisma);
   const consultations = await seedDemoConsultations(prisma, doctors, patients, users);
+  await seedDemoLabOrders(prisma, patients);
   await seedDemoPayments(prisma, consultations, users);
   await seedDemoExpenses(prisma, users);
   console.warn('✓ Demo seed completo');

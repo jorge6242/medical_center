@@ -5,6 +5,7 @@ import { seedDemo } from './seeders/demo/demo.seed';
 import { seedDoctors } from './seeders/doctors.seeder';
 import { seedExchangeRates } from './seeders/exchange-rates.seeder';
 import { seedExpenseCategories } from './seeders/expense-categories.seeder';
+import { seedLabTests } from './seeders/lab-tests.seeder';
 import { seedPatients } from './seeders/patients.seeder';
 import { seedRoles } from './seeders/roles.seeder';
 import { seedSpecialties } from './seeders/specialties.seeder';
@@ -24,6 +25,7 @@ async function main() {
   await seedSpecialties(prisma);
   await seedDoctors(prisma);
   await seedPatients(prisma);
+  await seedLabTests(prisma);
   await seedExpenseCategories(prisma);
   await seedSystemConfig(prisma);
   await seedExchangeRates(prisma);
