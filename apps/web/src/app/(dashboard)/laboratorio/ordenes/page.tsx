@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 
 import { Card } from '@/shared/components/ui/card';
@@ -11,6 +10,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Modal } from '@/shared/components/ui/modal';
 import { LabPaymentForm } from '@/features/lab-orders/components/lab-payment-form';
+import { LabOrderForm } from '@/features/lab-orders/components/lab-order-form';
 
 import type { LabOrderDetail } from '@/features/lab-orders/services/lab-orders.service';
 
@@ -30,16 +30,16 @@ function statusLabel(status: string) {
 }
 
 export default function OrdenesLaboratorioPage() {
-  const router = useRouter();
   const { data: orders = [], isLoading } = useLabOrders();
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [showLabOrderModal, setShowLabOrderModal] = useState(false);
   const { data: selectedOrder } = useLabOrder(selectedOrderId ?? '');
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-on-surface">Órdenes de Laboratorio</h1>
-        <Button onClick={() => router.push('/laboratorio/nueva-orden')}>
+        <Button onClick={() => setShowLabOrderModal(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Nueva orden
         </Button>
@@ -117,6 +117,18 @@ export default function OrdenesLaboratorioPage() {
         ) : (
           <div className="py-8 text-center text-on-surface-variant">Cargando...</div>
         )}
+      </Modal>
+
+      <Modal
+        open={showLabOrderModal}
+        onClose={() => setShowLabOrderModal(false)}
+        title="Nueva orden de laboratorio"
+        className="max-w-lg"
+      >
+        <LabOrderForm
+          onSuccess={() => setShowLabOrderModal(false)}
+          onCancel={() => setShowLabOrderModal(false)}
+        />
       </Modal>
     </div>
   );

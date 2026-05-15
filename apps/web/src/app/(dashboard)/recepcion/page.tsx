@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FlaskConical, Plus, Trash2 } from 'lucide-react';
+import { LabOrderForm } from '@/features/lab-orders/components/lab-order-form';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { z } from 'zod/v4';
 
@@ -56,6 +57,7 @@ export default function RecepcionPage() {
   const { data: patients = [] } = usePatients();
   const { data: doctors = [] } = useDoctors();
   const [showPatientModal, setShowPatientModal] = useState(false);
+  const [showLabOrderModal, setShowLabOrderModal] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const { mutate, isPending, error } = useCreatePayment(() => {
@@ -127,7 +129,7 @@ export default function RecepcionPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-on-surface">Recepción</h1>
-        <Button variant="outline" onClick={() => window.location.href = '/laboratorio/nueva-orden'}>
+        <Button variant="outline" onClick={() => setShowLabOrderModal(true)}>
           <FlaskConical className="mr-2 h-4 w-4" />
           Orden de laboratorio
         </Button>
@@ -284,6 +286,13 @@ export default function RecepcionPage() {
 
       <Modal open={showPatientModal} onClose={() => setShowPatientModal(false)} title="Nuevo paciente">
         <PatientForm onClose={() => setShowPatientModal(false)} />
+      </Modal>
+
+      <Modal open={showLabOrderModal} onClose={() => setShowLabOrderModal(false)} title="Nueva orden de laboratorio" className="max-w-lg">
+        <LabOrderForm
+          onSuccess={() => setShowLabOrderModal(false)}
+          onCancel={() => setShowLabOrderModal(false)}
+        />
       </Modal>
     </div>
   );
