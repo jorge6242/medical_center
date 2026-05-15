@@ -2,18 +2,22 @@
 
 import { useState } from 'react';
 
+import { pdf } from '@react-pdf/renderer';
 import { FileDown, Loader2 } from 'lucide-react';
 
-import { useConsolidatedReports, useDetailReports, useGenerateReport } from '@/features/reports/hooks/use-reports';
+import { ConsolidatedReportPDF, DetailReportPDF } from '@/features/reports/components/report-pdf';
+import { generateConsolidatedExcel, generateDetailExcel } from '@/features/reports/components/report-excel';
+import { useConsolidatedReports, useDetailReports } from '@/features/reports/hooks/use-reports';
 import { useReportJobsStore } from '@/stores/report-jobs.store';
 import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
 import { formatUsd, formatDate } from '@/shared/utils/format';
 
-import type { QueryReportsParams, GenerateReportParams } from '@/features/reports/services/reports.service';
+import type { QueryReportsParams } from '@/features/reports/services/reports.service';
 
 export default function ReportesPage() {
   const [activeTab, setActiveTab] = useState<'consolidado' | 'detalle'>('consolidado');
+  const [isExporting, setIsExporting] = useState(false);
   const today = new Date();
   const firstDayOfMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -26,30 +30,146 @@ export default function ReportesPage() {
   const params: QueryReportsParams = { from, to, groupBy, type };
   const { data: consolidated = [], isLoading: loadingConsolidated } = useConsolidatedReports(params);
   const { data: detail = [], isLoading: loadingDetail } = useDetailReports(params);
-  const { mutate: generate, isPending: generating } = useGenerateReport();
   const addJob = useReportJobsStore((s) => s.addJob);
 
-  const handleExport = (format: 'pdf' | 'excel') => {
-    const payload: GenerateReportParams = {
-      from,
-      to,
-      type: type === 'all' ? 'consultation' : type,
-      format,
-      groupBy,
-    };
-
-    generate(payload, {
-      onSuccess: (job) => {
-        addJob({
-          jobId: job.jobId,
-          status: job.status,
-          progress: job.progress,
-          format: job.format,
-          filename: job.filename,
-          createdAt: job.createdAt,
-        });
-      },
+  const handleExportPDF = async () => {
+    if (!consolidated?.length && !detail?.length) return;
+    
+    setIsExporting(true);
+    const jobId = `local-${Date.now()}`;
+    
+    addJob({
+      jobId,
+      status: 'processing',
+      progress: 50,
+      format: 'pdf',
+      filename: '',
+      createdAt: new Date().toISOString(),
     });
+
+    try {
+      if (activeTab === 'consolidado' && consolidated.length > 0) {
+        const blob = await pdf(<ConsolidatedReportPDF data={consolidated} periodStart={from} periodEnd={to} />).toBlob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `reporte-consolidado-${from}-al-${to}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        
+        addJob({
+          jobId,
+          status: 'completed',
+          progress: 100,
+          format: 'pdf',
+          filename: `reporte-consolidado-${from}-al-${to}.pdf`,
+          createdAt: new Date().toISOString(),
+        });
+      } else if (activeTab === 'detalle' && detail.length > 0) {
+        const blob = await pdf(<DetailReportPDF data={detail} periodStart={from} periodEnd={to} />).toBlob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `reporte-detalle-${from}-al-${to}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        
+        addJob({
+          jobId,
+          status: 'completed',
+          progress: 100,
+          format: 'pdf',
+          filename: `reporte-detalle-${from}-al-${to}.pdf`,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    } catch {
+      addJob({
+        jobId,
+        status: 'failed',
+        progress: 0,
+        format: 'pdf',
+        filename: '',
+        error: 'Error generando PDF',
+        createdAt: new Date().toISOString(),
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    if (!consolidated?.length && !detail?.length) return;
+    
+    setIsExporting(true);
+    const jobId = `local-${Date.now()}`;
+    
+    addJob({
+      jobId,
+      status: 'processing',
+      progress: 50,
+      format: 'excel',
+      filename: '',
+      createdAt: new Date().toISOString(),
+    });
+
+    try {
+      if (activeTab === 'consolidado' && consolidated.length > 0) {
+        const blob = generateConsolidatedExcel(consolidated, from, to);
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `reporte-consolidado-${from}-al-${to}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        
+        addJob({
+          jobId,
+          status: 'completed',
+          progress: 100,
+          format: 'excel',
+          filename: `reporte-consolidado-${from}-al-${to}.xlsx`,
+          createdAt: new Date().toISOString(),
+        });
+      } else if (activeTab === 'detalle' && detail.length > 0) {
+        const blob = generateDetailExcel(detail, from, to);
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `reporte-detalle-${from}-al-${to}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        
+        addJob({
+          jobId,
+          status: 'completed',
+          progress: 100,
+          format: 'excel',
+          filename: `reporte-detalle-${from}-al-${to}.xlsx`,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    } catch {
+      addJob({
+        jobId,
+        status: 'failed',
+        progress: 0,
+        format: 'excel',
+        filename: '',
+        error: 'Error generando Excel',
+        createdAt: new Date().toISOString(),
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -60,19 +180,19 @@ export default function ReportesPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleExport('pdf')}
-            disabled={generating}
+            onClick={handleExportPDF}
+            disabled={isExporting || (activeTab === 'consolidado' ? consolidated.length === 0 : detail.length === 0)}
           >
-            {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+            {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
             PDF
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleExport('excel')}
-            disabled={generating}
+            onClick={handleExportExcel}
+            disabled={isExporting || (activeTab === 'consolidado' ? consolidated.length === 0 : detail.length === 0)}
           >
-            {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+            {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
             Excel
           </Button>
         </div>

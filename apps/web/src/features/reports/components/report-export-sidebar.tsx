@@ -1,45 +1,12 @@
 'use client';
 
-import { Download, FileSpreadsheet, FileText, Loader2, Trash2, XCircle } from 'lucide-react';
-import { useEffect } from 'react';
+import { Download, FileSpreadsheet, FileText, Loader2, Trash2 } from 'lucide-react';
 
-import { useJobStatus } from '@/features/reports/hooks/use-reports';
 import { useReportJobsStore, type ReportJobItem } from '@/stores/report-jobs.store';
 import { Button } from '@/shared/components/ui/button';
-import { apiJson } from '@/config/api';
 
 function JobItem({ job }: { readonly job: ReportJobItem }) {
-  const { data: status } = useJobStatus(
-    (job.status === 'pending' || job.status === 'processing') ? job.jobId : null
-  );
-  const updateJob = useReportJobsStore((s) => s.updateJob);
   const removeJob = useReportJobsStore((s) => s.removeJob);
-
-  useEffect(() => {
-    if (status) {
-      updateJob(job.jobId, {
-        status: status.status,
-        progress: status.progress,
-        filename: status.filename,
-      });
-    }
-  }, [status, job.jobId, updateJob]);
-
-  const handleDownload = async () => {
-    try {
-      const blob = await apiJson<Blob>(`/reports/jobs/${job.jobId}/download`, { responseType: 'blob' } as RequestInit & { responseType?: 'json' | 'blob' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = job.filename || `reporte.${job.format === 'pdf' ? 'pdf' : 'xlsx'}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    } catch {
-      alert('Error descargando el reporte');
-    }
-  };
 
   const isPending = job.status === 'pending' || job.status === 'processing';
   const isFailed = job.status === 'failed';
@@ -60,15 +27,9 @@ function JobItem({ job }: { readonly job: ReportJobItem }) {
         <p className="text-[10px] text-on-surface-variant">
           {isPending && <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Generando...</span>}
           {isCompleted && 'Listo para descargar'}
-          {isFailed && 'Error al generar'}
+          {isFailed && `Error: ${job.error || 'Falló'}`}
         </p>
       </div>
-
-      {isCompleted && (
-        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleDownload}>
-          <Download className="h-4 w-4" />
-        </Button>
-      )}
 
       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => removeJob(job.jobId)}>
         <Trash2 className="h-3 w-3 text-on-surface-variant" />
