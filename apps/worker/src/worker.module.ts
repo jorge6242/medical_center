@@ -7,7 +7,9 @@ import { RECEIPT_GENERATION_QUEUE } from '@centro-medico/shared/queues';
 
 import { appConfig } from './config/app.config';
 import { envValidationSchema } from './config/env.validation';
+import { PrismaService } from './database/prisma.service';
 import { ReceiptGenerationProcessor } from './worker/receipt-generation.processor';
+import { ReportsExportProcessor } from './worker/reports-export.processor';
 
 @Module({
   imports: [
@@ -26,7 +28,8 @@ import { ReceiptGenerationProcessor } from './worker/receipt-generation.processo
       }),
     }),
     BullModule.registerQueue({ name: RECEIPT_GENERATION_QUEUE }),
+    BullModule.registerQueue({ name: 'reports-export' }),
   ],
-  providers: [ReceiptGenerationProcessor],
+  providers: [PrismaService, ReceiptGenerationProcessor, ReportsExportProcessor],
 })
 export class WorkerModule {}

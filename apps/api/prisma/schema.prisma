@@ -366,6 +366,7 @@ model Payment {
 
   @@index([tenantId])
   @@index([tenantId, status])
+  @@index([tenantId, createdAt, status])
   @@index([status])
   @@index([createdAt])
   @@map("payments")
@@ -587,6 +588,25 @@ model ReceiptCounter {
   @@map("receipt_counters")
 }
 
+model GeneratedReport {
+  id        String   @id @default(uuid())
+  jobId     String   @unique
+  tenantId  String
+  format    String   // 'pdf' | 'excel'
+  filename  String
+  mimeType  String
+  blob      Bytes
+  sizeBytes Int
+  status    String   // 'pending' | 'processing' | 'completed' | 'failed'
+  error     String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([tenantId, createdAt])
+  @@index([expiresAt])
+  @@map("generated_reports")
+}
+
 // ─── Laboratorios ─────────────────────────────────────────────────────────────
 
 enum LabOrderStatus {
@@ -630,6 +650,7 @@ model LabOrder {
   @@index([tenantId])
   @@index([tenantId, patientId])
   @@index([tenantId, status])
+  @@index([tenantId, createdAt, status])
   @@map("lab_orders")
 }
 

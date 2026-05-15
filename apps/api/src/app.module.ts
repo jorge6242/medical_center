@@ -23,6 +23,7 @@ import { PatientsModule } from './patients/patients.module';
 import { PaymentsModule } from './payments/payments.module';
 import { QueuesModule } from './queues/queues.module';
 import { ReceiptsModule } from './receipts/receipts.module';
+import { ReportsModule } from './reports/reports.module';
 import { RolesModule } from './roles/roles.module';
 import { SpecialtiesModule } from './specialties/specialties.module';
 import { StatsModule } from './stats/stats.module';
@@ -60,6 +61,7 @@ import { StatsModule } from './stats/stats.module';
     LabsModule,
     LabOrdersModule,
     CatalogModule,
+    ReportsModule,
   ],
   controllers: [HealthController],
 })
