@@ -5,8 +5,12 @@ import { usePathname } from 'next/navigation';
 
 import {
   BarChart3,
+  BookOpen,
+  Boxes,
   ClipboardList,
   CreditCard,
+  FlaskConical,
+  House,
   Receipt,
   Stethoscope,
   Users,
@@ -22,6 +26,10 @@ const ICON_MAP = {
   Stethoscope,
   BarChart3,
   ClipboardList,
+  House,
+  BookOpen,
+  Boxes,
+  FlaskConical,
 } as const;
 
 type IconName = keyof typeof ICON_MAP;
