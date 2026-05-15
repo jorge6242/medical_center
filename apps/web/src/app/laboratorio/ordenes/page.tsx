@@ -1,9 +1,16 @@
 'use client';
 
+import { useState } from 'react';
+
 import { Card } from '@/shared/components/ui/card';
 import { formatDate, formatUsd } from '@/shared/utils/format';
-import { useLabOrders } from '@/features/lab-orders/hooks/use-lab-orders';
+import { useLabOrders, useLabOrder } from '@/features/lab-orders/hooks/use-lab-orders';
 import { Badge } from '@/shared/components/ui/badge';
+import { Button } from '@/shared/components/ui/button';
+import { Modal } from '@/shared/components/ui/modal';
+import { LabPaymentForm } from '@/features/lab-orders/components/lab-payment-form';
+
+import type { LabOrderDetail } from '@/features/lab-orders/services/lab-orders.service';
 
 function statusVariant(status: string) {
   if (status === 'PAID') return 'success';
@@ -22,6 +29,8 @@ function statusLabel(status: string) {
 
 export default function OrdenesLaboratorioPage() {
   const { data: orders = [], isLoading } = useLabOrders();
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const { data: selectedOrder } = useLabOrder(selectedOrderId ?? '');
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
@@ -43,7 +52,8 @@ export default function OrdenesLaboratorioPage() {
                   <th className="pb-3 pr-4 font-medium">Paciente</th>
                   <th className="pb-3 pr-4 font-medium">Total</th>
                   <th className="pb-3 pr-4 font-medium">Estado</th>
-                  <th className="pb-3 font-medium">Fecha</th>
+                  <th className="pb-3 pr-4 font-medium">Fecha</th>
+                  <th className="pb-3 font-medium" />
                 </tr>
               </thead>
               <tbody>
@@ -57,12 +67,23 @@ export default function OrdenesLaboratorioPage() {
                     <td className="py-3 pr-4">
                       <Badge variant={statusVariant(order.status)}>{statusLabel(order.status)}</Badge>
                     </td>
-                    <td className="py-3 text-on-surface-variant">{formatDate(order.createdAt)}</td>
+                    <td className="py-3 pr-4 text-on-surface-variant">{formatDate(order.createdAt)}</td>
+                    <td className="py-3">
+                      {order.status === 'PENDING' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedOrderId(order.id)}
+                        >
+                          Pagar
+                        </Button>
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {orders.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-on-surface-variant">
+                    <td colSpan={6} className="py-8 text-center text-on-surface-variant">
                       No hay órdenes de laboratorio
                     </td>
                   </tr>
@@ -72,6 +93,22 @@ export default function OrdenesLaboratorioPage() {
           </div>
         )}
       </Card>
+
+      <Modal
+        open={!!selectedOrderId}
+        onClose={() => setSelectedOrderId(null)}
+        title="Pagar orden de laboratorio"
+        className="max-w-lg"
+      >
+        {selectedOrder ? (
+          <LabPaymentForm
+            order={selectedOrder}
+            onClose={() => setSelectedOrderId(null)}
+          />
+        ) : (
+          <div className="py-8 text-center text-on-surface-variant">Cargando...</div>
+        )}
+      </Modal>
     </div>
   );
 }
