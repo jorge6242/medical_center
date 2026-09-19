@@ -21,8 +21,12 @@ export interface ServicePriceResponse {
   priceUsd: string;
 }
 
+interface PaginatedResponse<T> {
+  data: T[];
+}
+
 export const getDoctors = (): Promise<DoctorResponse[]> =>
-  apiJson('/doctors');
+  apiJson<PaginatedResponse<DoctorResponse>>('/doctors').then((res) => res.data);
 
 export const getDoctorServicePrices = (doctorId: string): Promise<ServicePriceResponse[]> =>
   apiJson(`/doctors/${doctorId}/service-prices`);

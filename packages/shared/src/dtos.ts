@@ -105,6 +105,7 @@ export interface VoidExpenseDto {
 export interface LoginDto {
   email: string;
   password: string;
+  tenantSlug: string;
 }
 
 export interface AuthResponseDto {

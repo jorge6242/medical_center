@@ -4,39 +4,36 @@ import { useState } from 'react';
 import { Plus } from 'lucide-react';
 
 import { Card } from '@/shared/components/ui/card';
-import { formatDate, formatUsd } from '@/shared/utils/format';
 import { useLabOrders, useLabOrder } from '@/features/lab-orders/hooks/use-lab-orders';
-import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Modal } from '@/shared/components/ui/modal';
 import { LabPaymentForm } from '@/features/lab-orders/components/lab-payment-form';
 import { LabOrderForm } from '@/features/lab-orders/components/lab-order-form';
-
-import type { LabOrderDetail } from '@/features/lab-orders/services/lab-orders.service';
-
-function statusVariant(status: string) {
-  if (status === 'PAID') return 'success';
-  if (status === 'VOIDED') return 'error';
-  return 'warning';
-}
-
-function statusLabel(status: string) {
-  const map: Record<string, string> = {
-    PENDING: 'Pendiente',
-    PAID: 'Pagado',
-    VOIDED: 'Anulado',
-  };
-  return map[status] ?? status;
-}
+import { DataTable } from '@/shared/components/ui/data-table';
+import { LabOrdersToolbar } from '@/features/lab-orders/components/lab-orders-toolbar';
+import { getLabOrderColumns } from '@/features/lab-orders/components/lab-orders-columns';
+import type { LabOrderListItem } from '@/features/lab-orders/services/lab-orders.service';
 
 export default function OrdenesLaboratorioPage() {
-  const { data: orders = [], isLoading } = useLabOrders();
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [showLabOrderModal, setShowLabOrderModal] = useState(false);
   const { data: selectedOrder } = useLabOrder(selectedOrderId ?? '');
 
+  const { data, isLoading } = useLabOrders({
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize,
+    search,
+    status,
+  });
+
+  const orders = data?.data ?? [];
+  const meta = data?.meta;
+
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="flex flex-col gap-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-on-surface">Órdenes de Laboratorio</h1>
         <Button onClick={() => setShowLabOrderModal(true)}>
@@ -45,62 +42,35 @@ export default function OrdenesLaboratorioPage() {
         </Button>
       </div>
 
-      <Card>
-        {isLoading ? (
-          <div className="space-y-3 p-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-12 animate-pulse rounded-lg bg-surface-variant" />
-            ))}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-outline-variant text-left text-on-surface-variant">
-                  <th className="pb-3 pr-4 font-medium">ID</th>
-                  <th className="pb-3 pr-4 font-medium">Paciente</th>
-                  <th className="pb-3 pr-4 font-medium">Total</th>
-                  <th className="pb-3 pr-4 font-medium">Estado</th>
-                  <th className="pb-3 pr-4 font-medium">Fecha</th>
-                  <th className="pb-3 font-medium" />
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((order) => (
-                  <tr key={order.id} className="border-b border-outline-variant last:border-0">
-                    <td className="py-3 pr-4 font-mono text-xs text-on-surface-variant">
-                      {order.id.slice(0, 8)}…
-                    </td>
-                    <td className="py-3 pr-4 text-on-surface">{order.patientName}</td>
-                    <td className="py-3 pr-4 text-on-surface">{formatUsd(order.totalUsd)}</td>
-                    <td className="py-3 pr-4">
-                      <Badge variant={statusVariant(order.status)}>{statusLabel(order.status)}</Badge>
-                    </td>
-                    <td className="py-3 pr-4 text-on-surface-variant">{formatDate(order.createdAt)}</td>
-                    <td className="py-3">
-                      {order.status === 'PENDING' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedOrderId(order.id)}
-                        >
-                          Pagar
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {orders.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-on-surface-variant">
-                      No hay órdenes de laboratorio
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <Card className="p-4">
+        <DataTable<LabOrderListItem>
+          data={orders}
+          columns={getLabOrderColumns()}
+          toolbar={
+            <LabOrdersToolbar
+              search={search}
+              onSearchChange={(value) => {
+                setSearch(value);
+                setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+              }}
+              status={status}
+              onStatusChange={(value) => {
+                setStatus(value);
+                setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+              }}
+            />
+          }
+          isLoading={isLoading}
+          pagination={pagination}
+          onPaginationChange={setPagination}
+          pageCount={meta?.totalPages ?? 0}
+          rowCount={meta?.total ?? 0}
+          meta={{
+            onPay: (order: LabOrderListItem) => {
+              setSelectedOrderId(order.id);
+            },
+          }}
+        />
       </Card>
 
       <Modal

@@ -11,8 +11,9 @@ interface AuthState {
   userId: string | null;
   email: string | null;
   role: string | null;
+  doctorId: string | null;
   permissions: Permission[];
-  setAuth: (data: { userId: string; email: string; role: string; permissions: Permission[] }) => void;
+  setAuth: (data: { userId: string; email: string; role: string; doctorId: string | null; permissions: Permission[] }) => void;
   clearAuth: () => void;
   hasPermission: (resource: string, action: string) => boolean;
 }
@@ -21,6 +22,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   userId: null,
   email: null,
   role: null,
+  doctorId: null,
   permissions: [],
 
   setAuth: (data) =>
@@ -28,11 +30,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       userId: data.userId,
       email: data.email,
       role: data.role,
+      doctorId: data.doctorId,
       permissions: data.permissions,
     }),
 
   clearAuth: () =>
-    set({ userId: null, email: null, role: null, permissions: [] }),
+    set({ userId: null, email: null, role: null, doctorId: null, permissions: [] }),
 
   hasPermission: (resource, action) =>
     get().permissions.some((p) => p.resource === resource && p.action === action),

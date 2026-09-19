@@ -6,6 +6,7 @@ import type { PrismaClient } from '@prisma/client';
 const ROLES = [
   {
     name: 'admin',
+    version: 1,
     permissions: [
       { resource: 'patients', action: 'create' },
       { resource: 'patients', action: 'read' },
@@ -30,16 +31,14 @@ const ROLES = [
   },
   {
     name: 'recepcionista',
+    version: 3,
     permissions: [
       { resource: 'patients', action: 'create' },
       { resource: 'patients', action: 'read' },
-      { resource: 'patients', action: 'update' },
       { resource: 'doctors', action: 'read' },
-      { resource: 'specialties', action: 'read' },
       { resource: 'payments', action: 'create' },
-      { resource: 'payments', action: 'read' },
-      { resource: 'expenses', action: 'create' },
-      { resource: 'expenses', action: 'read' },
+      { resource: 'laboratories', action: 'create' },
+      { resource: 'laboratories', action: 'read' },
     ],
   },
 ];
@@ -57,8 +56,20 @@ export async function seedDemoRoles(prisma: PrismaClient): Promise<void> {
 
     await prisma.roleVersion.upsert({
       where: { roleId: role.id },
-      update: {},
-      create: { roleId: role.id, version: 1 },
+      update: { version: roleData.version },
+      create: { roleId: role.id, version: roleData.version },
+    });
+
+    await prisma.permission.deleteMany({
+      where: {
+        roleId: role.id,
+        NOT: {
+          OR: roleData.permissions.map((permission) => ({
+            resource: permission.resource,
+            action: permission.action,
+          })),
+        },
+      },
     });
 
     for (const perm of roleData.permissions) {

@@ -6,9 +6,9 @@ import { PrismaService } from '../database/prisma.service';
 export class CatalogService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findServices() {
+  async findServices(tenantId: string) {
     const specialties = await this.prisma.specialty.findMany({
-      where: { isActive: true },
+      where: { tenantId, isActive: true },
       include: {
         services: {
           where: { isActive: true },
@@ -29,9 +29,9 @@ export class CatalogService {
     }));
   }
 
-  async findLaboratoryTests() {
+  async findLaboratoryTests(tenantId: string) {
     const tests = await this.prisma.labTestCatalog.findMany({
-      where: { isActive: true },
+      where: { tenantId, isActive: true },
       orderBy: { name: 'asc' },
     });
 

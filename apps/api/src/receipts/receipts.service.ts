@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../database/prisma.service';
 
 import type { ReceiptResponseDto } from './dto/receipt-response.dto';
-import type { Prisma } from '@prisma/client';
 
 @Injectable()
 export class ReceiptsService {
@@ -12,16 +12,32 @@ export class ReceiptsService {
   async findByPayment(
     tenantId: string,
     paymentId: string,
+    generatedById?: string,
   ): Promise<ReceiptResponseDto> {
     const receipt = await this.prisma.doctorReceipt.findFirst({
       where: { paymentId, payment: { tenantId } },
-      include: { payment: { include: { details: true } } },
+      include: {
+        payment: {
+          include: {
+            details: true,
+            item: { include: { consultation: { include: { services: true } } } },
+          },
+        },
+      },
     });
-    if (!receipt)
+    if (receipt)
+      return this.toResponse(
+        receipt,
+        receipt.payment?.details ?? [],
+        this.extractServices(receipt.payment),
+      );
+
+    if (!generatedById)
       throw new NotFoundException(
         `Recibo para pago ${paymentId} no encontrado`,
       );
-    return this.toResponse(receipt, receipt.payment?.details ?? []);
+
+    return this.createForPayment(tenantId, paymentId, generatedById);
   }
 
   async createForPayment(
@@ -29,17 +45,37 @@ export class ReceiptsService {
     paymentId: string,
     generatedById: string,
   ): Promise<ReceiptResponseDto> {
-    const existing = await this.prisma.doctorReceipt.findUnique({
-      where: { paymentId },
-      include: { payment: { include: { details: true } } },
+    const existing = await this.prisma.doctorReceipt.findFirst({
+      where: { paymentId, payment: { tenantId } },
+      include: {
+        payment: {
+          include: {
+            details: true,
+            item: { include: { consultation: { include: { services: true } } } },
+          },
+        },
+      },
     });
     if (existing)
-      return this.toResponse(existing, existing.payment?.details ?? []);
+      return this.toResponse(
+        existing,
+        existing.payment?.details ?? [],
+        this.extractServices(existing.payment),
+      );
 
     const payment = await this.prisma.payment.findFirst({
       where: { id: paymentId, tenantId },
       include: {
-        item: { include: { consultation: { include: { doctor: { include: { bankAccounts: { where: { isDefault: true } } } } } } } },
+        item: {
+          include: {
+            consultation: {
+              include: {
+                services: true,
+                doctor: { include: { bankAccounts: { where: { isDefault: true } } } },
+              },
+            },
+          },
+        },
         details: true,
       },
     });
@@ -68,24 +104,50 @@ export class ReceiptsService {
 
     const receiptNumber = `CM-${currentYear}-${counter.lastSeq}`;
 
-    const receipt = await this.prisma.doctorReceipt.create({
-      data: {
-        receiptNumber,
-        paymentId,
-        generatedById,
-        doctorName: doctor.name,
-        doctorPhone: doctor.phone ?? '',
-        doctorDocument: `${doctor.documentType}-${doctor.documentId}`,
-        bankName: defaultAccount?.bankName ?? '',
-        accountNumber: defaultAccount?.accountNumber ?? '',
-        splitPercentage: doctor.splitPercentage, // Use doctor's split percentage directly
-        totalConsultation: payment.totalServiceUsd,
-        doctorShare: payment.doctorShareUsd,
-        centerShare: payment.centerShareUsd,
-      },
-    });
+    try {
+      const receipt = await this.prisma.doctorReceipt.create({
+        data: {
+          receiptNumber,
+          paymentId,
+          generatedById,
+          doctorName: doctor.name,
+          doctorPhone: doctor.phone ?? '',
+          doctorDocument: `${doctor.documentType}-${doctor.documentId}`,
+          bankName: defaultAccount?.bankName ?? '',
+          accountNumber: defaultAccount?.accountNumber ?? '',
+          splitPercentage: doctor.splitPercentage, // Use doctor's split percentage directly
+          totalConsultation: payment.totalServiceUsd,
+          doctorShare: payment.doctorShareUsd,
+          centerShare: payment.centerShareUsd,
+        },
+      });
 
-    return this.toResponse(receipt, payment.details ?? []);
+      return this.toResponse(receipt, payment.details ?? [], this.extractServices(payment));
+    } catch (error: unknown) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        const existingReceipt = await this.prisma.doctorReceipt.findFirst({
+          where: { paymentId, payment: { tenantId } },
+          include: {
+            payment: {
+              include: {
+                details: true,
+                item: { include: { consultation: { include: { services: true } } } },
+              },
+            },
+          },
+        });
+
+        if (existingReceipt) {
+          return this.toResponse(
+            existingReceipt,
+            existingReceipt.payment?.details ?? [],
+            this.extractServices(existingReceipt.payment),
+          );
+        }
+      }
+
+      throw error;
+    }
   }
 
   private toResponse(
@@ -112,6 +174,12 @@ export class ReceiptsService {
       referenceNumber: string | null;
       appliedIgtfAmount: Prisma.Decimal;
     }> = [],
+    services: Array<{
+      serviceId: string;
+      serviceName: string;
+      specialtyName: string;
+      priceUsd: Prisma.Decimal;
+    }> = [],
   ): ReceiptResponseDto {
     return {
       id: r.id,
@@ -128,6 +196,12 @@ export class ReceiptsService {
       centerShare: r.centerShare.toString(),
       status: r.status,
       generatedAt: r.generatedAt,
+      services: services.map((service) => ({
+        serviceId: service.serviceId,
+        serviceName: service.serviceName,
+        specialtyName: service.specialtyName,
+        priceUsd: service.priceUsd.toString(),
+      })),
       details: details.map((d) => ({
         paymentMethod: d.paymentMethod,
         currency: d.currency,
@@ -136,5 +210,25 @@ export class ReceiptsService {
         appliedIgtfAmount: d.appliedIgtfAmount.toString(),
       })),
     };
+  }
+
+  private extractServices(payment: {
+    item?: {
+      consultation?: {
+        services: Array<{
+          serviceId: string;
+          serviceName: string;
+          specialtyName: string;
+          priceUsd: Prisma.Decimal;
+        }>;
+      } | null;
+    } | null;
+  } | null): Array<{
+    serviceId: string;
+    serviceName: string;
+    specialtyName: string;
+    priceUsd: Prisma.Decimal;
+  }> {
+    return payment?.item?.consultation?.services ?? [];
   }
 }

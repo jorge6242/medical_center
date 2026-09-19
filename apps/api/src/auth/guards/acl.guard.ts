@@ -33,7 +33,11 @@ export class AclGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<{ user: JwtPayload }>();
     const user = request.user;
 
-    await this.rolesService.assertRoleVersionCurrent(user.role, user.roleVersion);
+    await this.rolesService.assertRoleVersionCurrent(
+      user.tenantId,
+      user.role,
+      user.roleVersion,
+    );
 
     const hasPermission = user.permissions.some(
       (p) => p.resource === required.resource && p.action === required.action,

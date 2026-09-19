@@ -6,10 +6,19 @@ import {
   createLabOrder,
   getLabOrder,
   getLabOrders,
+  getPaginatedLabOrders,
+  type LabOrderQuery,
 } from '../services/lab-orders.service';
 
-export function useLabOrders() {
-  return useQuery({ queryKey: ['lab-orders'], queryFn: getLabOrders });
+export function useLabOrders(query?: LabOrderQuery) {
+  return useQuery({
+    queryKey: ['lab-orders', query?.page, query?.limit, query?.search, query?.status],
+    queryFn: () => getPaginatedLabOrders(query),
+  });
+}
+
+export function useLabOrdersList() {
+  return useQuery({ queryKey: ['lab-orders-list'], queryFn: getLabOrders });
 }
 
 export function useLabOrder(id: string) {

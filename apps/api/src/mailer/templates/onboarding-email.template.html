@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activa tu cuenta - Centro Médico</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 40px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .header h1 {
+      color: #2563eb;
+      margin: 0;
+      font-size: 24px;
+    }
+    .content {
+      color: #333333;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+    .button-container {
+      text-align: center;
+      margin: 30px 0;
+    }
+    .button {
+      display: inline-block;
+      padding: 14px 32px;
+      background-color: #2563eb;
+      color: #ffffff;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 16px;
+    }
+    .footer {
+      text-align: center;
+      color: #666666;
+      font-size: 13px;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e5e5;
+    }
+    .warning {
+      background-color: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 12px;
+      margin: 20px 0;
+      font-size: 14px;
+      color: #92400e;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Bienvenido al Centro Médico</h1>
+    </div>
+    
+    <div class="content">
+      <p>Hola <strong>{{doctorName}}</strong>,</p>
+      
+      <p>Has sido invitado a unirte al sistema del Centro Médico. Para activar tu cuenta y comenzar a usar el sistema, haz clic en el botón de abajo:</p>
+      
+      <div class="button-container">
+        <a href="{{onboardingUrl}}" class="button">Activar mi cuenta</a>
+      </div>
+      
+      <div class="warning">
+        <strong>Importante:</strong> Este enlace expira en {{expiresIn}} y solo puede usarse una vez.
+      </div>
+      
+      <p>Si no puedes hacer clic en el botón, copia y pega el siguiente enlace en tu navegador:</p>
+      <p style="word-break: break-all; color: #2563eb;">{{onboardingUrl}}</p>
+    </div>
+    
+    <div class="footer">
+      <p>Si no solicitaste esta invitación, ignora este correo.</p>
+      <p>Centro Médico - Sistema de Gestión</p>
+    </div>
+  </div>
+</body>
+</html>

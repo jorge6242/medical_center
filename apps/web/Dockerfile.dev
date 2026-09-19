@@ -1,6 +1,6 @@
 FROM node:20-alpine
 
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.26.0
 
 WORKDIR /app
 
@@ -20,4 +20,4 @@ WORKDIR /app/apps/web
 
 EXPOSE 3000
 
-CMD ["tail", "-f", "/dev/null"]
+CMD ["pnpm", "dev", "--hostname", "0.0.0.0"]

@@ -44,6 +44,7 @@ export class PaymentItemResponseDto {
   declare totalPriceUsd: string;
 
   // Type-specific optional fields
+  declare patientId?: string;
   declare consultationId?: string;
   declare labOrderId?: string;
 
@@ -63,6 +64,7 @@ export class PaymentResponseDto {
   declare totalServiceUsd: string;
   declare bcvExchangeRate: string;
   declare totalPaidUsd: string;
+  declare totalPaidUsdEquivalent: string;
   declare totalPaidBs: string;
   declare totalIgtfUsd: string;
   declare doctorShareUsd: string;

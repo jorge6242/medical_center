@@ -1,10 +1,16 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { SacsVerificationService, type SacsQueryResult } from './sacs-verification.service';
+import { LookupQueryDto } from '../common/dto/lookup-query.dto';
+import { EntityLookupItemDto, LookupResponseDto } from '../common/dto/lookup-response.dto';
+import { createPaginatedResponse, type PaginatedResponseDto } from '../common/dto/paginated-response.dto';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { decodeNameCursor, encodeNameCursor } from '../common/utils/cursor-pagination.utils';
 import { PrismaService } from '../database/prisma.service';
 
 import type { CreateDoctorDto } from './dto/create-doctor.dto';
 import type { DoctorResponseDto } from './dto/doctor-response.dto';
+import type { UpdateDoctorProfileDto } from './dto/update-doctor-profile.dto';
 import type { UpdateDoctorDto } from './dto/update-doctor.dto';
 import type { AccountType, DocumentType, Prisma, VerificationStatus } from '@prisma/client';
 
@@ -15,16 +21,86 @@ export class DoctorsService {
     private readonly sacsVerification: SacsVerificationService,
   ) {}
 
-  async findAll(tenantId: string): Promise<DoctorResponseDto[]> {
+  async lookup(tenantId: string, query: LookupQueryDto): Promise<LookupResponseDto> {
+    const cursor = decodeNameCursor(query.cursor);
+    const search = query.q.trim();
+    const where = {
+      tenantId,
+      isActive: true,
+      OR: [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { documentId: { contains: search, mode: 'insensitive' as const } },
+      ],
+      ...(cursor
+        ? {
+            AND: [{ OR: [{ name: { gt: cursor.name } }, { name: cursor.name, id: { gt: cursor.id } }] }],
+          }
+        : {}),
+    };
     const doctors = await this.prisma.doctor.findMany({
-      where: { tenantId, isActive: true },
-      include: {
-        specialties: { include: { specialty: true } },
-        bankAccounts: { where: { isActive: true } },
-      },
-      orderBy: { name: 'asc' },
+      where,
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      take: query.limit + 1,
+      select: { id: true, name: true, documentType: true, documentId: true },
     });
-    return doctors.map((d) => this.toResponse(d));
+    const hasNextPage = doctors.length > query.limit;
+    const data = doctors.slice(0, query.limit).map((doctor) => {
+      const item = new EntityLookupItemDto();
+      Object.assign(item, doctor);
+      return item;
+    });
+    const last = data.at(-1);
+
+    return {
+      data,
+      hasNextPage,
+      nextCursor: hasNextPage && last ? encodeNameCursor({ name: last.name, id: last.id }) : null,
+    };
+  }
+
+  async findAll(
+    tenantId: string,
+    query: PaginationQueryDto,
+  ): Promise<PaginatedResponseDto<DoctorResponseDto>> {
+    const { page, limit, search } = query;
+    const skip = (page - 1) * limit;
+
+    const where = {
+      tenantId,
+      isActive: true,
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' as const } },
+              { documentId: { contains: search, mode: 'insensitive' as const } },
+              { medicalLicenseNumber: { contains: search, mode: 'insensitive' as const } },
+              {
+                specialties: {
+                  some: {
+                    specialty: { name: { contains: search, mode: 'insensitive' as const } },
+                  },
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const [total, doctors] = await this.prisma.$transaction([
+      this.prisma.doctor.count({ where }),
+      this.prisma.doctor.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          specialties: { include: { specialty: true } },
+          bankAccounts: { where: { isActive: true } },
+        },
+        orderBy: { name: 'asc' },
+      }),
+    ]);
+
+    return createPaginatedResponse(doctors.map((d) => this.toResponse(d)), total, page, limit);
   }
 
   async findOne(tenantId: string, id: string): Promise<DoctorResponseDto> {
@@ -139,6 +215,47 @@ export class DoctorsService {
 
     await this.sacsVerification.verifyDoctor(id);
     return this.findOne(tenantId, id);
+  }
+
+  async updateProfile(
+    tenantId: string,
+    id: string,
+    dto: UpdateDoctorProfileDto,
+  ): Promise<DoctorResponseDto> {
+    const existing = await this.prisma.doctor.findFirst({
+      where: { id, tenantId, isActive: true },
+    });
+    if (!existing) throw new NotFoundException(`Doctor ${id} no encontrado`);
+
+    await this.prisma.doctor.update({
+      where: { id },
+      data: {
+        name: dto.name,
+        email: dto.email,
+        phone: dto.phone,
+      },
+    });
+
+    return this.findOne(tenantId, id);
+  }
+
+  async getVerificationStatus(
+    tenantId: string,
+    id: string,
+  ): Promise<{ status: string; licenseNumber: string | null }> {
+    const doctor = await this.prisma.doctor.findFirst({
+      where: { id, tenantId, isActive: true },
+      select: {
+        verificationStatus: true,
+        medicalLicenseNumber: true,
+      },
+    });
+    if (!doctor) throw new NotFoundException(`Doctor ${id} no encontrado`);
+
+    return {
+      status: doctor.verificationStatus,
+      licenseNumber: doctor.medicalLicenseNumber,
+    };
   }
 
   async verifyDocument(documentType: string, documentId: string): Promise<SacsQueryResult> {

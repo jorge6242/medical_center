@@ -1,5 +1,7 @@
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+
 export enum ReportGroupBy {
   DAY = 'day',
   WEEK = 'week',
@@ -18,7 +20,7 @@ export enum ReportFormat {
   EXCEL = 'excel',
 }
 
-export class QueryReportsDto {
+abstract class ReportsQueryBaseDto extends PaginationQueryDto {
   @IsString()
   from: string = '';
 
@@ -33,6 +35,12 @@ export class QueryReportsDto {
   @IsEnum(ReportType)
   type?: ReportType = ReportType.ALL;
 }
+
+export class ConsolidatedReportsQueryDto extends ReportsQueryBaseDto {}
+
+export class DetailReportsQueryDto extends ReportsQueryBaseDto {}
+
+export type ReportsQueryDto = ReportsQueryBaseDto;
 
 export class GenerateReportDto {
   @IsString()

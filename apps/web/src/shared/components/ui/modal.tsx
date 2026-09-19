@@ -31,11 +31,11 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div
         className={cn(
-          'relative z-10 w-full max-w-lg rounded-2xl bg-surface p-6 shadow-elevation-3',
+          'relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-surface shadow-elevation-3',
           className,
         )}
       >
-        <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center justify-between px-6 pb-2 pt-6">
           <h2 className="text-lg font-semibold text-on-surface">{title}</h2>
           <button
             onClick={onClose}
@@ -44,7 +44,9 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
             <X className="h-5 w-5" />
           </button>
         </div>
-        {children}
+        <div className="max-h-[70vh] overflow-y-auto px-6 pb-6">
+          {children}
+        </div>
       </div>
     </div>
   );

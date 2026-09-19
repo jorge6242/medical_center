@@ -1,41 +1,43 @@
 import {
-  RECEIPT_EMAIL_QUEUE,
-  RECEIPT_GENERATION_QUEUE,
-  type ReceiptEmailJobData,
-  type ReceiptGenerationJobData,
-} from '@centro-medico/shared/queues';
-import { InjectQueue } from '@nestjs/bullmq';
-import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Queue } from 'bullmq';
+import { Prisma } from '@prisma/client';
 
+import {
+  assertPaymentMatchesService,
+  calculatePaymentTotals,
+} from './payment-calculations';
+import {
+  createPaginatedResponse,
+  type PaginatedResponseDto,
+} from '../common/dto/paginated-response.dto';
 import { PrismaService } from '../database/prisma.service';
+import { MailerService } from '../mailer/mailer.service';
+import { ReceiptsService } from '../receipts/receipts.service';
 
 import type { CreatePaymentAdjustmentDto } from './dto/create-payment-adjustment.dto';
 import type { CreatePaymentDto } from './dto/create-payment.dto';
+import type { PaymentQueryDto } from './dto/payment-query.dto';
 import type { PaymentResponseDto } from './dto/payment-response.dto';
 import type {
   Currency,
   ItemType,
   PaymentMethod,
   PaymentStatus,
-  Prisma,
 } from '@prisma/client';
-
-const IGTF_EXEMPT_METHODS = ['POS_USD_CARD'] as const;
 
 @Injectable()
 export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
-    @InjectQueue(RECEIPT_GENERATION_QUEUE)
-    private readonly receiptQueue: Queue<ReceiptGenerationJobData>,
-    @InjectQueue(RECEIPT_EMAIL_QUEUE)
-    private readonly receiptEmailQueue: Queue<ReceiptEmailJobData>,
+    private readonly receiptsService: ReceiptsService,
+    private readonly mailerService: MailerService,
   ) {}
 
   async create(
@@ -64,6 +66,7 @@ export class PaymentsService {
     const existing = await this.prisma.consultationPayment.findUnique({
       where: { idempotencyKey: dto.idempotencyKey },
       include: {
+        consultation: { select: { tenantId: true } },
         payment: {
           include: {
             item: {
@@ -78,21 +81,33 @@ export class PaymentsService {
       },
     });
 
+    if (existing && existing.consultation.tenantId !== tenantId) {
+      throw new ConflictException('Idempotency key already used');
+    }
+
     if (existing?.status === 'COMPLETED' && existing.payment) {
       return this.buildResponse(existing.payment);
     }
     if (existing?.status === 'PROCESSING') {
-      throw new ConflictException('Pago en proceso. Intente nuevamente en unos segundos.');
+      throw new ConflictException(
+        'Pago en proceso. Intente nuevamente en unos segundos.',
+      );
     }
 
     const servicePriceIds = dto.item.servicePriceIds ?? [];
     if (servicePriceIds.length === 0) {
-      throw new BadRequestException('Se requieren servicios para una consulta médica');
+      throw new BadRequestException(
+        'Se requieren servicios para una consulta médica',
+      );
     }
 
     const [servicePrices, patient, igtfConfig] = await Promise.all([
       this.prisma.servicePrice.findMany({
-        where: { id: { in: servicePriceIds }, isActive: true },
+        where: {
+          id: { in: servicePriceIds },
+          isActive: true,
+          specialty: { tenantId, isActive: true },
+        },
         include: { service: true, specialty: true },
       }),
       this.prisma.patient.findFirst({
@@ -104,9 +119,12 @@ export class PaymentsService {
     ]);
 
     if (servicePrices.length !== servicePriceIds.length) {
-      throw new BadRequestException('Uno o más servicios no son válidos o están inactivos');
+      throw new BadRequestException(
+        'Uno o más servicios no son válidos o están inactivos',
+      );
     }
-    if (!patient) throw new NotFoundException(`Paciente ${dto.patientId} no encontrado`);
+    if (!patient)
+      throw new NotFoundException(`Paciente ${dto.patientId} no encontrado`);
 
     const igtfRate = parseFloat(igtfConfig?.value ?? '0') / 100;
     const totalServiceUsd = servicePrices.reduce(
@@ -114,23 +132,22 @@ export class PaymentsService {
       0,
     );
 
-    const lines = dto.paymentLines.map((line) => {
-      const isIgtfExempt = (IGTF_EXEMPT_METHODS as readonly string[]).includes(line.paymentMethod);
-      const appliedIgtf = line.currency === 'USD' && !isIgtfExempt ? line.amount * igtfRate : 0;
-      return { ...line, appliedIgtfAmount: appliedIgtf };
-    });
-
-    const totalPaidUsd = lines
-      .filter((l) => l.currency === 'USD')
-      .reduce((s, l) => s + l.amount, 0);
-    const totalPaidBs = lines
-      .filter((l) => l.currency === 'VES')
-      .reduce((s, l) => s + l.amount, 0);
-    const totalIgtfUsd = lines.reduce((s, l) => s + l.appliedIgtfAmount, 0);
+    const totals = calculatePaymentTotals(
+      dto.paymentLines,
+      dto.bcvExchangeRate,
+      igtfRate,
+    );
+    assertPaymentMatchesService(
+      totals.totalPaidUsdEquivalent,
+      new Prisma.Decimal(totalServiceUsd),
+      totals.totalIgtfUsd,
+    );
 
     const doctorId = dto.item.doctorId;
     if (!doctorId) {
-      throw new BadRequestException('Se requiere doctorId para pagos de consulta médica');
+      throw new BadRequestException(
+        'Se requiere doctorId para pagos de consulta médica',
+      );
     }
 
     const doctorRecord = await this.prisma.doctor.findFirst({
@@ -138,10 +155,15 @@ export class PaymentsService {
       include: { specialties: true },
     });
 
-    if (!doctorRecord) throw new NotFoundException(`Doctor ${doctorId} no encontrado`);
+    if (!doctorRecord)
+      throw new NotFoundException(`Doctor ${doctorId} no encontrado`);
 
-    const doctorSpecialtyIds = new Set(doctorRecord.specialties.map((ds) => ds.specialtyId));
-    const invalidService = servicePrices.find((sp) => !doctorSpecialtyIds.has(sp.specialtyId));
+    const doctorSpecialtyIds = new Set(
+      doctorRecord.specialties.map((ds) => ds.specialtyId),
+    );
+    const invalidService = servicePrices.find(
+      (sp) => !doctorSpecialtyIds.has(sp.specialtyId),
+    );
     if (invalidService) {
       throw new BadRequestException(
         `Servicio "${invalidService.service.name}" no corresponde a especialidades del doctor`,
@@ -192,20 +214,22 @@ export class PaymentsService {
           idempotencyKey: dto.idempotencyKey,
           totalServiceUsd: round(totalServiceUsd),
           bcvExchangeRate: round(dto.bcvExchangeRate, 4),
-          totalPaidUsd: round(totalPaidUsd),
-          totalPaidBs: round(totalPaidBs),
-          totalIgtfUsd: round(totalIgtfUsd),
+          totalPaidUsd: totals.totalPaidUsd,
+          totalPaidUsdEquivalent:
+            totals.totalPaidUsdEquivalent.toDecimalPlaces(2),
+          totalPaidBs: totals.totalPaidBs,
+          totalIgtfUsd: totals.totalIgtfUsd.toDecimalPlaces(2),
           doctorShareUsd: round(doctorShareUsd),
           centerShareUsd: round(centerShareUsd),
           status: 'COMPLETED',
           details: {
             createMany: {
-              data: lines.map((l) => ({
+              data: totals.lines.map((l) => ({
                 paymentMethod: l.paymentMethod,
                 currency: l.currency,
                 amount: round(l.amount),
                 referenceNumber: l.referenceNumber,
-                appliedIgtfAmount: round(l.appliedIgtfAmount),
+                appliedIgtfAmount: l.appliedIgtfAmount.toDecimalPlaces(2),
               })),
             },
           },
@@ -217,7 +241,9 @@ export class PaymentsService {
         data: {
           paymentId: payment.id,
           itemType: 'CONSULTATION',
-          description: dto.item.description || `Consulta - ${servicePrices.map((s) => s.service.name).join(', ')}`,
+          description:
+            dto.item.description ||
+            `Consulta - ${servicePrices.map((s) => s.service.name).join(', ')}`,
           quantity: 1,
           unitPriceUsd: round(totalServiceUsd),
           totalPriceUsd: round(totalServiceUsd),
@@ -245,19 +271,12 @@ export class PaymentsService {
       },
     });
 
-    await this.receiptQueue.add('generate', {
+    await this.processReceiptSideEffects(
       tenantId,
-      paymentId: full.id,
+      full.id,
       generatedById,
-    });
-
-    if (doctorRecord?.email) {
-      await this.receiptEmailQueue.add('send', {
-        tenantId,
-        paymentId: full.id,
-        recipientEmail: doctorRecord.email,
-      });
-    }
+      doctorRecord?.email ?? undefined,
+    );
 
     return this.buildResponse(full);
   }
@@ -269,7 +288,9 @@ export class PaymentsService {
   ): Promise<PaymentResponseDto> {
     const labOrderId = dto.item.labOrderId;
     if (!labOrderId) {
-      throw new BadRequestException('Se requiere labOrderId para pagos de laboratorio');
+      throw new BadRequestException(
+        'Se requiere labOrderId para pagos de laboratorio',
+      );
     }
 
     const existing = await this.prisma.payment.findFirst({
@@ -298,25 +319,26 @@ export class PaymentsService {
       }),
     ]);
 
-    if (!labOrder) throw new NotFoundException(`Orden de laboratorio ${labOrderId} no encontrada o ya pagada`);
-    if (!patient) throw new NotFoundException(`Paciente ${dto.patientId} no encontrado`);
+    if (!labOrder)
+      throw new NotFoundException(
+        `Orden de laboratorio ${labOrderId} no encontrada o ya pagada`,
+      );
+    if (!patient)
+      throw new NotFoundException(`Paciente ${dto.patientId} no encontrado`);
 
     const igtfRate = parseFloat(igtfConfig?.value ?? '0') / 100;
     const totalServiceUsd = parseFloat(labOrder.totalUsd.toString());
 
-    const lines = dto.paymentLines.map((line) => {
-      const isIgtfExempt = (IGTF_EXEMPT_METHODS as readonly string[]).includes(line.paymentMethod);
-      const appliedIgtf = line.currency === 'USD' && !isIgtfExempt ? line.amount * igtfRate : 0;
-      return { ...line, appliedIgtfAmount: appliedIgtf };
-    });
-
-    const totalPaidUsd = lines
-      .filter((l) => l.currency === 'USD')
-      .reduce((s, l) => s + l.amount, 0);
-    const totalPaidBs = lines
-      .filter((l) => l.currency === 'VES')
-      .reduce((s, l) => s + l.amount, 0);
-    const totalIgtfUsd = lines.reduce((s, l) => s + l.appliedIgtfAmount, 0);
+    const totals = calculatePaymentTotals(
+      dto.paymentLines,
+      dto.bcvExchangeRate,
+      igtfRate,
+    );
+    assertPaymentMatchesService(
+      totals.totalPaidUsdEquivalent,
+      new Prisma.Decimal(totalServiceUsd),
+      totals.totalIgtfUsd,
+    );
 
     await this.prisma.$transaction(async (tx) => {
       const payment = await tx.payment.create({
@@ -325,20 +347,22 @@ export class PaymentsService {
           idempotencyKey: dto.idempotencyKey,
           totalServiceUsd: round(totalServiceUsd),
           bcvExchangeRate: round(dto.bcvExchangeRate, 4),
-          totalPaidUsd: round(totalPaidUsd),
-          totalPaidBs: round(totalPaidBs),
-          totalIgtfUsd: round(totalIgtfUsd),
+          totalPaidUsd: totals.totalPaidUsd,
+          totalPaidUsdEquivalent:
+            totals.totalPaidUsdEquivalent.toDecimalPlaces(2),
+          totalPaidBs: totals.totalPaidBs,
+          totalIgtfUsd: totals.totalIgtfUsd.toDecimalPlaces(2),
           doctorShareUsd: 0,
           centerShareUsd: round(totalServiceUsd),
           status: 'COMPLETED',
           details: {
             createMany: {
-              data: lines.map((l) => ({
+              data: totals.lines.map((l) => ({
                 paymentMethod: l.paymentMethod,
                 currency: l.currency,
                 amount: round(l.amount),
                 referenceNumber: l.referenceNumber,
-                appliedIgtfAmount: round(l.appliedIgtfAmount),
+                appliedIgtfAmount: l.appliedIgtfAmount.toDecimalPlaces(2),
               })),
             },
           },
@@ -350,7 +374,9 @@ export class PaymentsService {
         data: {
           paymentId: payment.id,
           itemType: 'LAB',
-          description: dto.item.description || `Laboratorio - ${labOrder.tests.map((t) => t.testName).join(', ')}`,
+          description:
+            dto.item.description ||
+            `Laboratorio - ${labOrder.tests.map((t) => t.testName).join(', ')}`,
           quantity: labOrder.tests.length,
           unitPriceUsd: round(totalServiceUsd / (labOrder.tests.length || 1)),
           totalPriceUsd: round(totalServiceUsd),
@@ -376,7 +402,10 @@ export class PaymentsService {
     return this.buildResponse(full);
   }
 
-  async findOne(tenantId: string, paymentId: string): Promise<PaymentResponseDto> {
+  async findOne(
+    tenantId: string,
+    paymentId: string,
+  ): Promise<PaymentResponseDto> {
     const payment = await this.prisma.payment.findFirst({
       where: { id: paymentId, tenantId },
       include: {
@@ -390,29 +419,91 @@ export class PaymentsService {
         adjustments: true,
       },
     });
-    if (!payment) throw new NotFoundException(`Pago ${paymentId} no encontrado`);
+    if (!payment)
+      throw new NotFoundException(`Pago ${paymentId} no encontrado`);
     return this.buildResponse(payment);
   }
 
-  async findAll(tenantId: string): Promise<PaymentResponseDto[]> {
-    const payments = await this.prisma.payment.findMany({
-      where: { tenantId, status: 'COMPLETED' },
-      include: {
-        item: {
-          include: {
-            consultation: { include: { services: true } },
-            labOrder: { include: { tests: true } },
+  async findAll(
+    tenantId: string,
+    query: PaymentQueryDto,
+  ): Promise<PaginatedResponseDto<PaymentResponseDto>> {
+    const { page, limit, search, status } = query;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.PaymentWhereInput = {
+      tenantId,
+      ...(status ? { status: status as PaymentStatus } : {}),
+      ...(search
+        ? {
+            OR: [
+              { id: { contains: search, mode: 'insensitive' as const } },
+              {
+                item: {
+                  description: {
+                    contains: search,
+                    mode: 'insensitive' as const,
+                  },
+                },
+              },
+              {
+                item: {
+                  consultation: {
+                    patient: {
+                      name: { contains: search, mode: 'insensitive' as const },
+                    },
+                  },
+                },
+              },
+              {
+                item: {
+                  consultation: {
+                    patient: {
+                      documentId: {
+                        contains: search,
+                        mode: 'insensitive' as const,
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const [total, payments] = await this.prisma.$transaction([
+      this.prisma.payment.count({ where }),
+      this.prisma.payment.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          item: {
+            include: {
+              consultation: { include: { services: true } },
+              labOrder: { include: { tests: true } },
+            },
           },
+          details: true,
+          adjustments: true,
         },
-        details: true,
-        adjustments: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    return payments.map((p) => this.buildResponse(p));
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return createPaginatedResponse(
+      payments.map((p) => this.buildResponse(p)),
+      total,
+      page,
+      limit,
+    );
   }
 
-  async voidPayment(tenantId: string, paymentId: string): Promise<PaymentResponseDto> {
+  async voidPayment(
+    tenantId: string,
+    paymentId: string,
+  ): Promise<PaymentResponseDto> {
     const payment = await this.prisma.payment.findFirst({
       where: { id: paymentId, tenantId },
       include: {
@@ -420,11 +511,16 @@ export class PaymentsService {
         consultationPayment: true,
       },
     });
-    if (!payment) throw new NotFoundException(`Pago ${paymentId} no encontrado`);
-    if (payment.status === 'VOIDED') throw new BadRequestException('Pago ya está anulado');
+    if (!payment)
+      throw new NotFoundException(`Pago ${paymentId} no encontrado`);
+    if (payment.status === 'VOIDED')
+      throw new BadRequestException('Pago ya está anulado');
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.payment.update({ where: { id: paymentId }, data: { status: 'VOIDED' } });
+      await tx.payment.update({
+        where: { id: paymentId },
+        data: { status: 'VOIDED' },
+      });
 
       if (payment.consultationPayment) {
         await tx.consultationPayment.update({
@@ -461,8 +557,10 @@ export class PaymentsService {
       select: { id: true, status: true },
     });
 
-    if (!payment) throw new NotFoundException(`Pago ${paymentId} no encontrado`);
-    if (payment.status === 'VOIDED') throw new BadRequestException('Pago anulado no admite ajustes');
+    if (!payment)
+      throw new NotFoundException(`Pago ${paymentId} no encontrado`);
+    if (payment.status === 'VOIDED')
+      throw new BadRequestException('Pago anulado no admite ajustes');
 
     await this.prisma.paymentAdjustment.create({
       data: {
@@ -476,64 +574,63 @@ export class PaymentsService {
     return this.findOne(tenantId, paymentId);
   }
 
-  private buildResponse(
-    payment: {
+  private buildResponse(payment: {
+    id: string;
+    idempotencyKey: string | null;
+    status: PaymentStatus;
+    tenantId: string;
+    totalServiceUsd: Prisma.Decimal;
+    bcvExchangeRate: Prisma.Decimal;
+    totalPaidUsd: Prisma.Decimal;
+    totalPaidUsdEquivalent: Prisma.Decimal;
+    totalPaidBs: Prisma.Decimal;
+    totalIgtfUsd: Prisma.Decimal;
+    doctorShareUsd: Prisma.Decimal;
+    centerShareUsd: Prisma.Decimal;
+    createdAt: Date;
+    details: Array<{
       id: string;
-      idempotencyKey: string | null;
-      status: PaymentStatus;
-      tenantId: string;
-      totalServiceUsd: Prisma.Decimal;
-      bcvExchangeRate: Prisma.Decimal;
-      totalPaidUsd: Prisma.Decimal;
-      totalPaidBs: Prisma.Decimal;
-      totalIgtfUsd: Prisma.Decimal;
-      doctorShareUsd: Prisma.Decimal;
-      centerShareUsd: Prisma.Decimal;
+      paymentMethod: PaymentMethod;
+      currency: Currency;
+      amount: Prisma.Decimal;
+      referenceNumber: string | null;
+      appliedIgtfAmount: Prisma.Decimal;
+    }>;
+    adjustments: Array<{
+      id: string;
+      description: string;
+      amountUsd: Prisma.Decimal;
+      paymentDetailId: string | null;
       createdAt: Date;
-      details: Array<{
-        id: string;
-        paymentMethod: PaymentMethod;
-        currency: Currency;
-        amount: Prisma.Decimal;
-        referenceNumber: string | null;
-        appliedIgtfAmount: Prisma.Decimal;
-      }>;
-      adjustments: Array<{
-        id: string;
-        description: string;
-        amountUsd: Prisma.Decimal;
-        paymentDetailId: string | null;
-        createdAt: Date;
-      }>;
-      item?: {
-        id: string;
-        itemType: ItemType;
-        description: string;
-        quantity: number;
-        unitPriceUsd: Prisma.Decimal;
-        totalPriceUsd: Prisma.Decimal;
-        consultationId?: string | null;
-        labOrderId?: string | null;
-        consultation?: {
-          patientId: string;
-          doctorId: string;
-          services: Array<{
-            serviceId: string;
-            serviceName: string;
-            specialtyName: string;
-            priceUsd: Prisma.Decimal;
-          }>;
-        } | null;
-        labOrder?: {
-          tests: Array<{
-            labTestId: string;
-            testName: string;
-            priceUsd: Prisma.Decimal;
-          }>;
-        } | null;
+    }>;
+    item?: {
+      id: string;
+      itemType: ItemType;
+      description: string;
+      quantity: number;
+      unitPriceUsd: Prisma.Decimal;
+      totalPriceUsd: Prisma.Decimal;
+      consultationId?: string | null;
+      labOrderId?: string | null;
+      consultation?: {
+        patientId: string;
+        doctorId: string;
+        services: Array<{
+          serviceId: string;
+          serviceName: string;
+          specialtyName: string;
+          priceUsd: Prisma.Decimal;
+        }>;
       } | null;
-    },
-  ): PaymentResponseDto {
+      labOrder?: {
+        tests: Array<{
+          labTestId: string;
+          testName: string;
+          priceUsd: Prisma.Decimal;
+        }>;
+      } | null;
+    } | null;
+  }): PaymentResponseDto {
     const item = payment.item;
 
     let services: PaymentResponseDto['item']['services'] = undefined;
@@ -568,6 +665,7 @@ export class PaymentsService {
         quantity: item?.quantity ?? 1,
         unitPriceUsd: item?.unitPriceUsd.toString() ?? '0',
         totalPriceUsd: item?.totalPriceUsd.toString() ?? '0',
+        patientId: item?.consultation?.patientId ?? undefined,
         consultationId: item?.consultationId ?? undefined,
         labOrderId: item?.labOrderId ?? undefined,
         services,
@@ -576,6 +674,7 @@ export class PaymentsService {
       totalServiceUsd: payment.totalServiceUsd.toString(),
       bcvExchangeRate: payment.bcvExchangeRate.toString(),
       totalPaidUsd: payment.totalPaidUsd.toString(),
+      totalPaidUsdEquivalent: payment.totalPaidUsdEquivalent.toString(),
       totalPaidBs: payment.totalPaidBs.toString(),
       totalIgtfUsd: payment.totalIgtfUsd.toString(),
       doctorShareUsd: payment.doctorShareUsd.toString(),
@@ -596,6 +695,68 @@ export class PaymentsService {
         createdAt: a.createdAt,
       })),
       createdAt: payment.createdAt,
+    };
+  }
+
+  async processReceiptSideEffects(
+    tenantId: string,
+    paymentId: string,
+    generatedById: string,
+    doctorEmail?: string,
+  ): Promise<{
+    receiptId?: string;
+    emailDeliveryStatus: string;
+    warnings: string[];
+  }> {
+    const warnings: string[] = [];
+    let receiptId: string | undefined;
+
+    try {
+      const receipt = await this.receiptsService.createForPayment(
+        tenantId,
+        paymentId,
+        generatedById,
+      );
+      receiptId = receipt.id;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Receipt generation failed for payment ${paymentId}: ${message}`,
+      );
+      warnings.push(`Receipt generation failed: ${message}`);
+    }
+
+    if (doctorEmail && receiptId) {
+      try {
+        const receipt = await this.receiptsService.findByPayment(
+          tenantId,
+          paymentId,
+        );
+        const { subject, html } = this.mailerService.renderTemplate(
+          'receiptEmail',
+          {
+            receiptNumber: receipt.receiptNumber,
+            doctorName: receipt.doctorName,
+            doctorShare: receipt.doctorShare,
+            paymentId: receipt.paymentId,
+          },
+        );
+        await this.mailerService.sendReceiptEmail(doctorEmail, subject, html);
+        return { receiptId, emailDeliveryStatus: 'sent', warnings };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.error(
+          `Receipt email failed for payment ${paymentId}: ${message}`,
+        );
+        warnings.push(`Receipt email failed: ${message}`);
+        return { receiptId, emailDeliveryStatus: 'failed', warnings };
+      }
+    }
+
+    return {
+      receiptId,
+      emailDeliveryStatus: receiptId ? 'skipped' : 'failed',
+      warnings,
     };
   }
 }

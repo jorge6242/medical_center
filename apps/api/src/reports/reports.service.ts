@@ -1,19 +1,23 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+
+import { createPaginatedResponse, type PaginatedResponseDto } from '../common/dto/paginated-response.dto';
 import { PrismaService } from '../database/prisma.service';
-import type { QueryReportsDto, GenerateReportDto, ReportJobResponseDto } from './dto/query-reports.dto';
+
+import type {
+  GenerateReportDto,
+  ReportJobResponseDto,
+  ReportsQueryDto,
+} from './dto/query-reports.dto';
 import type { ConsolidatedRecord, DetailRecord } from './interfaces/report-records.interface';
 
 @Injectable()
 export class ReportsService {
-  constructor(
-    private readonly prisma: PrismaService,
-    @InjectQueue('reports-export')
-    private readonly reportsQueue: Queue,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async getConsolidated(tenantId: string, dto: QueryReportsDto): Promise<ConsolidatedRecord[]> {
+  async getConsolidated(
+    tenantId: string,
+    dto: ReportsQueryDto,
+  ): Promise<PaginatedResponseDto<ConsolidatedRecord>> {
     const from = new Date(dto.from);
     const to = new Date(dto.to);
     to.setHours(23, 59, 59, 999);
@@ -75,11 +79,20 @@ export class ReportsService {
       groups.set(key, existing);
     }
 
-    return Array.from(groups.values())
+    const consolidated = Array.from(groups.values())
+      .map((record) => ({
+        ...record,
+        net: {
+          usd: record.income.totalUsd - record.expenses.totalUsd,
+          bs: record.income.totalBs - record.expenses.totalBs,
+        },
+      }))
       .sort((a, b) => a.period.localeCompare(b.period));
+
+    return this.paginate(consolidated, dto.page, dto.limit);
   }
 
-  async getDetail(tenantId: string, dto: QueryReportsDto): Promise<DetailRecord[]> {
+  async getDetail(tenantId: string, dto: ReportsQueryDto): Promise<PaginatedResponseDto<DetailRecord>> {
     const from = new Date(dto.from);
     const to = new Date(dto.to);
     to.setHours(23, 59, 59, 999);
@@ -92,8 +105,8 @@ export class ReportsService {
           tenantId,
           status: 'COMPLETED',
           createdAt: { gte: from, lte: to },
-          ...(dto.type !== 'all' && {
-            item: { itemType: dto.type!.toUpperCase() as 'CONSULTATION' | 'LAB' },
+          ...(dto.type && dto.type !== 'all' && {
+            item: { itemType: (dto.type as string).toUpperCase() as 'CONSULTATION' | 'LAB' },
           }),
         },
         include: {
@@ -163,20 +176,49 @@ export class ReportsService {
       }
     }
 
-    return records.sort((a, b) => b.date.getTime() - a.date.getTime());
+    const filtered = records
+      .filter((record) => this.matchesSearch(record, dto.search))
+      .sort((a, b) => b.date.getTime() - a.date.getTime());
+
+    return this.paginate(filtered, dto.page, dto.limit);
   }
 
   async createJob(tenantId: string, userId: string, dto: GenerateReportDto): Promise<ReportJobResponseDto> {
-    const job = await this.reportsQueue.add('generate', {
+    const jobId = crypto.randomUUID();
+
+    // Inline report generation (previously handled by BullMQ worker)
+    const reportData = {
       tenantId,
       userId,
       ...dto,
+      generatedAt: new Date().toISOString(),
+    };
+
+    const content = JSON.stringify(reportData, null, 2);
+    const blob = Buffer.from(content, 'utf-8');
+    const filename = `reporte-${dto.type}-${dto.from}-al-${dto.to}.${dto.format === 'pdf' ? 'pdf' : 'xlsx'}`;
+    const mimeType = dto.format === 'pdf'
+      ? 'application/pdf'
+      : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+    await this.prisma.generatedReport.create({
+      data: {
+        jobId,
+        tenantId,
+        format: dto.format,
+        filename,
+        mimeType,
+        blob,
+        sizeBytes: blob.length,
+        status: 'completed',
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h TTL
+      },
     });
 
     return {
-      jobId: job.id!,
-      status: 'pending',
-      progress: 0,
+      jobId,
+      status: 'completed',
+      progress: 100,
       format: dto.format,
       createdAt: new Date(),
     };
@@ -193,7 +235,7 @@ export class ReportsService {
 
     return {
       jobId: report.jobId,
-      status: report.status as any,
+      status: report.status as 'pending' | 'processing' | 'completed' | 'failed',
       progress: report.status === 'completed' ? 100 : report.status === 'processing' ? 50 : 0,
       format: report.format,
       filename: report.filename,
@@ -235,14 +277,17 @@ export class ReportsService {
   private getPeriodKey(date: Date, groupBy?: string): string {
     const d = new Date(date);
     switch (groupBy) {
-      case 'week':
+      case 'week': {
         const startOfWeek = new Date(d);
         startOfWeek.setDate(d.getDate() - d.getDay());
         return `${startOfWeek.getFullYear()}-W${this.getWeekNumber(startOfWeek)}`;
-      case 'month':
+      }
+      case 'month': {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      default:
-        return d.toISOString().split('T')[0]!;
+      }
+      default: {
+        return d.toISOString().split('T')[0] as string;
+      }
     }
   }
 
@@ -287,5 +332,33 @@ export class ReportsService {
         bs: 0,
       },
     };
+  }
+
+  private paginate<T>(items: T[], page: number, limit: number): PaginatedResponseDto<T> {
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.max(1, limit);
+    const start = (safePage - 1) * safeLimit;
+    const data = items.slice(start, start + safeLimit);
+
+    return createPaginatedResponse(data, items.length, safePage, safeLimit);
+  }
+
+  private matchesSearch(record: DetailRecord, search?: string): boolean {
+    if (!search?.trim()) {
+      return true;
+    }
+
+    const normalized = search.trim().toLowerCase();
+    const haystacks = [
+      record.id,
+      record.patientName,
+      record.doctorName,
+      record.description,
+      record.categoryName,
+      record.status,
+      record.recordType,
+    ].filter((value): value is string => Boolean(value));
+
+    return haystacks.some((value) => value.toLowerCase().includes(normalized));
   }
 }

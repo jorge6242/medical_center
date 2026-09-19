@@ -19,6 +19,27 @@ const USERS = [
     name: 'Recepcionista Demo',
     roleName: 'recepcionista',
   },
+  {
+    id: 'user-doc-001',
+    email: 'maria.gonzalez@centromedico.demo',
+    password: 'Doc1234!',
+    name: 'Dra. María González',
+    roleName: 'doctor',
+  },
+  {
+    id: 'user-doc-002',
+    email: 'carlos.rodriguez@centromedico.demo',
+    password: 'Doc1234!',
+    name: 'Dr. Carlos Rodríguez',
+    roleName: 'doctor',
+  },
+  {
+    id: 'user-doc-003',
+    email: 'luis.martinez@centromedico.demo',
+    password: 'Doc1234!',
+    name: 'Dr. Luis Martínez',
+    roleName: 'doctor',
+  },
 ];
 
 export async function seedUsers(prisma: PrismaClient): Promise<void> {

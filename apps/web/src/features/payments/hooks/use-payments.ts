@@ -7,11 +7,20 @@ import {
   createPayment,
   createPaymentAdjustment,
   getPayments,
+  getPaginatedPayments,
+  type GetPaymentsQuery,
   voidPayment,
 } from '../services/payments.service';
 
 export function usePayments() {
   return useQuery({ queryKey: ['payments'], queryFn: getPayments });
+}
+
+export function usePaginatedPayments(query?: GetPaymentsQuery) {
+  return useQuery({
+    queryKey: ['payments', query?.page, query?.limit, query?.search, query?.status],
+    queryFn: () => getPaginatedPayments(query),
+  });
 }
 
 export function useDoctors() {

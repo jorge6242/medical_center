@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { pdf } from '@react-pdf/renderer';
 import { FileDown, Loader2 } from 'lucide-react';
+import { type ColumnDef, type PaginationState } from '@tanstack/react-table';
+import type { OnChangeFn } from '@tanstack/react-table';
 
 import { ConsolidatedReportPDF, DetailReportPDF } from '@/features/reports/components/report-pdf';
 import { generateConsolidatedExcel, generateDetailExcel } from '@/features/reports/components/report-excel';
@@ -11,13 +13,46 @@ import { useConsolidatedReports, useDetailReports } from '@/features/reports/hoo
 import { useReportJobsStore } from '@/stores/report-jobs.store';
 import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
+import { DataTable } from '@/shared/components/ui/data-table';
+import { Input } from '@/shared/components/ui/input';
 import { formatUsd, formatDate } from '@/shared/utils/format';
 
 import type { QueryReportsParams } from '@/features/reports/services/reports.service';
+import type { ConsolidatedRecord, DetailRecord } from '@/features/reports/services/reports.service';
+
+type TabKey = 'consolidado' | 'detalle';
+
+type TabState = {
+  pagination: PaginationState;
+  search: string;
+};
+
+const INITIAL_TAB_STATE: Record<TabKey, TabState> = {
+  consolidado: { pagination: { pageIndex: 0, pageSize: 10 }, search: '' },
+  detalle: { pagination: { pageIndex: 0, pageSize: 10 }, search: '' },
+};
+
+const consolidatedColumns: ColumnDef<ConsolidatedRecord>[] = [
+  { accessorKey: 'period', header: 'Período', cell: ({ row }) => row.original.period },
+  { accessorKey: 'income.consultationsUsd', header: 'Consultas', cell: ({ row }) => formatUsd(row.original.income.consultationsUsd) },
+  { accessorKey: 'income.laboratoriesUsd', header: 'Laboratorios', cell: ({ row }) => formatUsd(row.original.income.laboratoriesUsd) },
+  { accessorKey: 'income.totalUsd', header: 'Ingresos', cell: ({ row }) => formatUsd(row.original.income.totalUsd) },
+  { accessorKey: 'expenses.totalUsd', header: 'Egresos', cell: ({ row }) => formatUsd(row.original.expenses.totalUsd) },
+  { accessorKey: 'net.usd', header: 'Neto', cell: ({ row }) => formatUsd(row.original.net.usd) },
+];
+
+const detailColumns: ColumnDef<DetailRecord>[] = [
+  { accessorKey: 'date', header: 'Fecha', cell: ({ row }) => formatDate(row.original.date) },
+  { accessorKey: 'recordType', header: 'Tipo', cell: ({ row }) => (row.original.recordType === 'CONSULTATION' ? 'Consulta' : row.original.recordType === 'LAB' ? 'Lab' : 'Egreso') },
+  { accessorKey: 'description', header: 'Descripción', cell: ({ row }) => row.original.description },
+  { accessorKey: 'amountUsd', header: 'Monto', cell: ({ row }) => formatUsd(row.original.amountUsd) },
+  { accessorKey: 'status', header: 'Estado', cell: ({ row }) => row.original.status },
+];
 
 export default function ReportesPage() {
-  const [activeTab, setActiveTab] = useState<'consolidado' | 'detalle'>('consolidado');
+  const [activeTab, setActiveTab] = useState<TabKey>('consolidado');
   const [isExporting, setIsExporting] = useState(false);
+  const [tabState, setTabState] = useState<Record<TabKey, TabState>>(INITIAL_TAB_STATE);
   const today = new Date();
   const firstDayOfMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -27,16 +62,61 @@ export default function ReportesPage() {
   const [groupBy, setGroupBy] = useState<'day' | 'week' | 'month'>('day');
   const [type, setType] = useState<'all' | 'consultation' | 'lab' | 'expense'>('all');
 
-  const params: QueryReportsParams = { from, to, groupBy, type };
-  const { data: consolidated = [], isLoading: loadingConsolidated } = useConsolidatedReports(params);
-  const { data: detail = [], isLoading: loadingDetail } = useDetailReports(params);
+  const consolidatedParams = useMemo<QueryReportsParams>(() => ({
+    from,
+    to,
+    groupBy,
+    type,
+    page: tabState.consolidado.pagination.pageIndex + 1,
+    limit: tabState.consolidado.pagination.pageSize,
+    search: tabState.consolidado.search,
+  }), [from, to, groupBy, type, tabState.consolidado]);
+
+  const detailParams = useMemo<QueryReportsParams>(() => ({
+    from,
+    to,
+    groupBy,
+    type,
+    page: tabState.detalle.pagination.pageIndex + 1,
+    limit: tabState.detalle.pagination.pageSize,
+    search: tabState.detalle.search,
+  }), [from, to, groupBy, type, tabState.detalle]);
+
+  const { data: consolidatedData, isLoading: loadingConsolidated } = useConsolidatedReports(consolidatedParams);
+  const { data: detailData, isLoading: loadingDetail } = useDetailReports(detailParams);
   const addJob = useReportJobsStore((s) => s.addJob);
   const updateJob = useReportJobsStore((s) => s.updateJob);
 
+  const consolidated = consolidatedData?.data ?? [];
+  const consolidatedMeta = consolidatedData?.meta;
+  const detail = detailData?.data ?? [];
+  const detailMeta = detailData?.meta;
+
+  const setActiveTabState = (updater: (current: TabState) => TabState) => {
+    setTabState((current) => ({
+      ...current,
+      [activeTab]: updater(current[activeTab]),
+    }));
+  };
+
+  const handleSearchChange = (value: string) => {
+    setActiveTabState((current) => ({
+      ...current,
+      search: value,
+      pagination: { ...current.pagination, pageIndex: 0 },
+    }));
+  };
+
+  const handlePaginationChange: OnChangeFn<PaginationState> = (updater) => {
+    setActiveTabState((current) => ({
+      ...current,
+      pagination: typeof updater === 'function' ? updater(current.pagination) : updater,
+    }));
+  };
+
   const handleExportPDF = async () => {
-    // Validar que hay datos para el tab activo
-    if (activeTab === 'consolidado' && !consolidated?.length) return;
-    if (activeTab === 'detalle' && !detail?.length) return;
+    if (activeTab === 'consolidado' && !consolidated.length) return;
+    if (activeTab === 'detalle' && !detail.length) return;
     
     setIsExporting(true);
     const jobId = `local-${crypto.randomUUID()}`;
@@ -105,9 +185,8 @@ export default function ReportesPage() {
   };
 
   const handleExportExcel = async () => {
-    // Validar que hay datos para el tab activo
-    if (activeTab === 'consolidado' && !consolidated?.length) return;
-    if (activeTab === 'detalle' && !detail?.length) return;
+    if (activeTab === 'consolidado' && !consolidated.length) return;
+    if (activeTab === 'detalle' && !detail.length) return;
     
     setIsExporting(true);
     const jobId = `local-${crypto.randomUUID()}`;
@@ -249,7 +328,7 @@ export default function ReportesPage() {
           <label className="text-xs text-on-surface-variant">Agrupar por</label>
           <select
             value={groupBy}
-            onChange={(e) => setGroupBy(e.target.value as any)}
+            onChange={(e) => setGroupBy(e.target.value as 'day' | 'week' | 'month')}
             className="rounded-lg border border-outline bg-surface px-3 py-2 text-sm text-on-surface"
           >
             <option value="day">Día</option>
@@ -261,7 +340,7 @@ export default function ReportesPage() {
           <label className="text-xs text-on-surface-variant">Tipo</label>
           <select
             value={type}
-            onChange={(e) => setType(e.target.value as any)}
+            onChange={(e) => setType(e.target.value as 'all' | 'consultation' | 'lab' | 'expense')}
             className="rounded-lg border border-outline bg-surface px-3 py-2 text-sm text-on-surface"
           >
             <option value="all">Todos</option>
@@ -275,86 +354,50 @@ export default function ReportesPage() {
       {/* Consolidado Table */}
       {activeTab === 'consolidado' && (
         <Card>
-          {loadingConsolidated ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : consolidated.length === 0 ? (
-            <p className="py-12 text-center text-on-surface-variant">No hay datos para el período seleccionado</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-outline-variant text-left text-on-surface-variant">
-                    <th className="pb-3 pr-4 font-medium">Período</th>
-                    <th className="pb-3 pr-4 font-medium text-right">Consultas</th>
-                    <th className="pb-3 pr-4 font-medium text-right">Laboratorios</th>
-                    <th className="pb-3 pr-4 font-medium text-right">Ingresos</th>
-                    <th className="pb-3 pr-4 font-medium text-right">Egresos</th>
-                    <th className="pb-3 font-medium text-right">Neto</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {consolidated.map((row) => (
-                    <tr key={row.period} className="border-b border-outline-variant last:border-0">
-                      <td className="py-3 pr-4 text-on-surface">{row.period}</td>
-                      <td className="py-3 pr-4 text-right text-on-surface">{formatUsd(row.income.consultationsUsd)}</td>
-                      <td className="py-3 pr-4 text-right text-on-surface">{formatUsd(row.income.laboratoriesUsd)}</td>
-                      <td className="py-3 pr-4 text-right font-medium text-success">{formatUsd(row.income.totalUsd)}</td>
-                      <td className="py-3 pr-4 text-right font-medium text-error">{formatUsd(row.expenses.totalUsd)}</td>
-                      <td className="py-3 text-right font-bold text-on-surface">{formatUsd(row.net.usd)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <DataTable
+            data={consolidated}
+            columns={consolidatedColumns}
+            toolbar={(
+              <div className="flex flex-1 items-center gap-3">
+                <Input
+                  value={tabState.consolidado.search}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder="Buscar en consolidado"
+                  className="max-w-sm"
+                />
+              </div>
+            )}
+            isLoading={loadingConsolidated}
+            pagination={tabState.consolidado.pagination}
+            onPaginationChange={handlePaginationChange}
+            pageCount={consolidatedMeta?.totalPages ?? 0}
+            rowCount={consolidatedMeta?.total ?? 0}
+          />
         </Card>
       )}
 
       {/* Detalle Table */}
       {activeTab === 'detalle' && (
         <Card>
-          {loadingDetail ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : detail.length === 0 ? (
-            <p className="py-12 text-center text-on-surface-variant">No hay datos para el período seleccionado</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-outline-variant text-left text-on-surface-variant">
-                    <th className="pb-3 pr-4 font-medium">Fecha</th>
-                    <th className="pb-3 pr-4 font-medium">Tipo</th>
-                    <th className="pb-3 pr-4 font-medium">Descripción</th>
-                    <th className="pb-3 pr-4 font-medium text-right">Monto</th>
-                    <th className="pb-3 font-medium">Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.map((row) => (
-                    <tr key={row.id} className="border-b border-outline-variant last:border-0">
-                      <td className="py-3 pr-4 text-on-surface">{formatDate(row.date)}</td>
-                      <td className="py-3 pr-4">
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                          row.recordType === 'CONSULTATION' ? 'bg-primary-container text-on-primary-container' :
-                          row.recordType === 'LAB' ? 'bg-secondary-container text-on-secondary-container' :
-                          'bg-tertiary-container text-on-tertiary-container'
-                        }`}>
-                          {row.recordType === 'CONSULTATION' ? 'Consulta' : row.recordType === 'LAB' ? 'Lab' : 'Egreso'}
-                        </span>
-                      </td>
-                      <td className="py-3 pr-4 text-on-surface">{row.description}</td>
-                      <td className="py-3 pr-4 text-right font-medium text-on-surface">{formatUsd(row.amountUsd)}</td>
-                      <td className="py-3 text-on-surface-variant">{row.status}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <DataTable
+            data={detail}
+            columns={detailColumns}
+            toolbar={(
+              <div className="flex flex-1 items-center gap-3">
+                <Input
+                  value={tabState.detalle.search}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder="Buscar en detalle"
+                  className="max-w-sm"
+                />
+              </div>
+            )}
+            isLoading={loadingDetail}
+            pagination={tabState.detalle.pagination}
+            onPaginationChange={handlePaginationChange}
+            pageCount={detailMeta?.totalPages ?? 0}
+            rowCount={detailMeta?.total ?? 0}
+          />
         </Card>
       )}
     </div>

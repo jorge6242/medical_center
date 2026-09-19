@@ -9,11 +9,17 @@ import {
   StreamableFile,
 } from '@nestjs/common';
 import { Response } from 'express';
+
+import {
+  ConsolidatedReportsQueryDto,
+  DetailReportsQueryDto,
+  GenerateReportDto,
+} from './dto/query-reports.dto';
+import { ReportsService } from './reports.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
+
 import type { JwtPayload } from '../common/decorators/current-user.decorator';
-import { ReportsService } from './reports.service';
-import type { GenerateReportDto } from './dto/query-reports.dto';
 
 @Controller('reports')
 @RequirePermission('reports', 'read')
@@ -23,23 +29,17 @@ export class ReportsController {
   @Get('consolidated')
   async getConsolidated(
     @CurrentUser() user: JwtPayload,
-    @Query('from') from: string,
-    @Query('to') to: string,
-    @Query('groupBy') groupBy?: string,
-    @Query('type') type?: string,
+    @Query() query: ConsolidatedReportsQueryDto,
   ) {
-    return this.reportsService.getConsolidated(user.tenantId, { from, to, groupBy: groupBy as any, type: type as any });
+    return this.reportsService.getConsolidated(user.tenantId, query);
   }
 
   @Get('detail')
   async getDetail(
     @CurrentUser() user: JwtPayload,
-    @Query('from') from: string,
-    @Query('to') to: string,
-    @Query('groupBy') groupBy?: string,
-    @Query('type') type?: string,
+    @Query() query: DetailReportsQueryDto,
   ) {
-    return this.reportsService.getDetail(user.tenantId, { from, to, groupBy: groupBy as any, type: type as any });
+    return this.reportsService.getDetail(user.tenantId, query);
   }
 
   @Post('generate')

@@ -74,6 +74,7 @@ export interface Payment {
   totalServiceUsd: string;
   bcvExchangeRate: string;
   totalPaidUsd: string;
+  totalPaidUsdEquivalent: string;
   totalPaidBs: string;
   totalIgtfUsd: string;
   doctorShareUsd: string;

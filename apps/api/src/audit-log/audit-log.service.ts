@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-
-import { PrismaService } from '../database/prisma.service';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Prisma, PrismaClient } from '@prisma/client';
 
 export interface AuditLogEntry {
   tenantId: string;
@@ -15,8 +15,21 @@ export interface AuditLogEntry {
 }
 
 @Injectable()
-export class AuditLogService {
-  constructor(private readonly prisma: PrismaService) {}
+export class AuditLogService implements OnModuleInit, OnModuleDestroy {
+  private readonly prisma: PrismaClient;
+
+  constructor(configService: ConfigService) {
+    const url = configService.getOrThrow<string>('DATABASE_URL');
+    this.prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+  }
+
+  async onModuleInit(): Promise<void> {
+    await this.prisma.$connect();
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.prisma.$disconnect();
+  }
 
   async log(entry: AuditLogEntry): Promise<void> {
     await this.prisma.auditLog.create({

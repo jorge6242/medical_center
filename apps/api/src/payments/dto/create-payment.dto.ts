@@ -2,6 +2,7 @@ import { Currency, ItemType, PaymentMethod } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  ArrayMinSize,
   IsEnum,
   IsNumber,
   IsOptional,
@@ -42,6 +43,7 @@ export class PaymentItemDto {
 
   @ValidateIf((o) => o.itemType === 'CONSULTATION')
   @IsArray()
+  @ArrayMinSize(1)
   @IsString({ each: true })
   declare servicePriceIds?: string[];
 

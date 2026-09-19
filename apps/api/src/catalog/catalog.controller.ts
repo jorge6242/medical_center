@@ -1,21 +1,22 @@
 import { Controller, Get } from '@nestjs/common';
 
 import { CatalogService } from './catalog.service';
-import { Public } from '../common/decorators/public.decorator';
+import { CurrentUser, type JwtPayload } from '../common/decorators/current-user.decorator';
+import { RequirePermission } from '../common/decorators/require-permission.decorator';
 
 @Controller('catalog')
 export class CatalogController {
   constructor(private readonly catalogService: CatalogService) {}
 
   @Get('services')
-  @Public()
-  findServices() {
-    return this.catalogService.findServices();
+  @RequirePermission('payments', 'read')
+  findServices(@CurrentUser() user: JwtPayload) {
+    return this.catalogService.findServices(user.tenantId);
   }
 
   @Get('laboratories')
-  @Public()
-  findLaboratoryTests() {
-    return this.catalogService.findLaboratoryTests();
+  @RequirePermission('payments', 'read')
+  findLaboratoryTests(@CurrentUser() user: JwtPayload) {
+    return this.catalogService.findLaboratoryTests(user.tenantId);
   }
 }

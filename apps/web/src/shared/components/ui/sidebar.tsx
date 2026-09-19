@@ -13,6 +13,7 @@ import {
   House,
   Receipt,
   Stethoscope,
+  User,
   Users,
 } from 'lucide-react';
 
@@ -21,6 +22,7 @@ import { cn } from '@/shared/utils/cn';
 
 const ICON_MAP = {
   Users,
+  User,
   CreditCard,
   Receipt,
   Stethoscope,

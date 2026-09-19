@@ -2,12 +2,19 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { createPatient, deactivatePatient, getPatients, updatePatient } from '../services/patients.service';
+import { createPatient, deactivatePatient, getPatients, getPaginatedPatients, updatePatient, type GetPatientsQuery } from '../services/patients.service';
 
 export function usePatients() {
   return useQuery({
     queryKey: ['patients'],
     queryFn: getPatients,
+  });
+}
+
+export function usePaginatedPatients(query?: GetPatientsQuery) {
+  return useQuery({
+    queryKey: ['patients', query?.page, query?.limit, query?.search],
+    queryFn: () => getPaginatedPatients(query),
   });
 }
 
@@ -28,6 +35,7 @@ export function useUpdatePatient(id: string, onSuccess?: () => void) {
     mutationFn: (dto: Parameters<typeof updatePatient>[1]) => updatePatient(id, dto),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['patients'] });
+      void queryClient.invalidateQueries({ queryKey: ['patients', id] });
       onSuccess?.();
     },
   });

@@ -2,6 +2,7 @@
   "name": "centro-medico",
   "version": "0.0.1",
   "private": true,
+  "packageManager": "pnpm@10.26.0",
   "scripts": {
     "lint": "pnpm -r run lint",
     "lint:fix": "pnpm -r run lint:fix",
@@ -28,7 +29,15 @@
     ]
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["prisma", "sharp", "unrs-resolver", "@prisma/client"]
+    "onlyBuiltDependencies": [
+      "prisma",
+      "sharp",
+      "unrs-resolver",
+      "@prisma/client",
+      "@nestjs/core",
+      "@prisma/engines",
+      "bcrypt"
+    ]
   },
   "devDependencies": {
     "@commitlint/cli": "^19.0.0",

@@ -37,6 +37,7 @@ export interface PaymentItemResponse {
   quantity: number;
   unitPriceUsd: string;
   totalPriceUsd: string;
+  patientId?: string;
   consultationId?: string;
   labOrderId?: string;
   services?: ConsultationServiceSnapshot[];
@@ -52,6 +53,7 @@ export interface PaymentResponse {
   totalServiceUsd: string;
   bcvExchangeRate: string;
   totalPaidUsd: string;
+  totalPaidUsdEquivalent: string;
   totalPaidBs: string;
   totalIgtfUsd: string;
   doctorShareUsd: string;
@@ -59,6 +61,25 @@ export interface PaymentResponse {
   details: PaymentDetailResponse[];
   adjustments: PaymentAdjustmentResponse[];
   createdAt: string;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+}
+
+export interface GetPaymentsQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
 }
 
 export interface PaymentLineDto {
@@ -85,7 +106,18 @@ export interface CreatePaymentDto {
 }
 
 export const getPayments = (): Promise<PaymentResponse[]> =>
-  apiJson('/payments');
+  apiJson<PaginatedResponse<PaymentResponse>>('/payments').then((res) => res.data);
+
+export const getPaginatedPayments = (query?: GetPaymentsQuery): Promise<PaginatedResponse<PaymentResponse>> => {
+  const params = new URLSearchParams();
+  if (query?.page) params.append('page', String(query.page));
+  if (query?.limit) params.append('limit', String(query.limit));
+  if (query?.search) params.append('search', query.search);
+  if (query?.status) params.append('status', query.status);
+
+  const queryString = params.toString();
+  return apiJson(`/payments${queryString ? `?${queryString}` : ''}`);
+};
 
 export const createPayment = (dto: CreatePaymentDto): Promise<PaymentResponse> =>
   apiJson('/payments', { method: 'POST', body: JSON.stringify(dto) });

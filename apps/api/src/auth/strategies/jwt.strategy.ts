@@ -22,7 +22,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   validate(payload: JwtPayload): JwtPayload {
-    if (!payload.sub || !payload.email) {
+    if (!payload.sub || !payload.email || !payload.tenantId) {
       throw new UnauthorizedException();
     }
     return payload;

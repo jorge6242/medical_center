@@ -1,8 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
+import { createPaginatedResponse, type PaginatedResponseDto } from '../common/dto/paginated-response.dto';
 import { PrismaService } from '../database/prisma.service';
 
 import type { CreateExpenseDto } from './dto/create-expense.dto';
+import type { ExpenseQueryDto } from './dto/expense-query.dto';
 import type { ExpenseResponseDto } from './dto/expense-response.dto';
 import type { VoidExpenseDto } from './dto/void-expense.dto';
 import type { ExpenseStatus, Prisma } from '@prisma/client';
@@ -11,12 +13,41 @@ import type { ExpenseStatus, Prisma } from '@prisma/client';
 export class ExpensesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(tenantId: string): Promise<ExpenseResponseDto[]> {
-    const expenses = await this.prisma.expense.findMany({
-      where: { tenantId, status: 'ACTIVE' },
-      orderBy: { createdAt: 'desc' },
-    });
-    return expenses.map((e) => this.toResponse(e));
+  async findAll(
+    tenantId: string,
+    query: ExpenseQueryDto,
+  ): Promise<PaginatedResponseDto<ExpenseResponseDto>> {
+    const { page, limit, search } = query;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ExpenseWhereInput = {
+      tenantId,
+      ...(search
+        ? {
+            OR: [
+              { categoryName: { contains: search, mode: 'insensitive' } },
+              { description: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    const [total, expenses] = await this.prisma.$transaction([
+      this.prisma.expense.count({ where }),
+      this.prisma.expense.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return createPaginatedResponse(
+      expenses.map((expense) => this.toResponse(expense)),
+      total,
+      page,
+      limit,
+    );
   }
 
   async findOne(tenantId: string, id: string): Promise<ExpenseResponseDto> {
@@ -25,7 +56,7 @@ export class ExpensesService {
     return this.toResponse(expense);
   }
 
-  async create(tenantId: string, userId: string, dto: CreateExpenseDto): Promise<ExpenseResponseDto> {
+  async create(tenantId: string, dto: CreateExpenseDto): Promise<ExpenseResponseDto> {
     const category = await this.prisma.expenseCategory.findFirst({
       where: { id: dto.categoryId, isActive: true },
     });

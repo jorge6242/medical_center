@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 import { PrismaService } from '../database/prisma.service';
@@ -16,8 +17,18 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto): Promise<{ token: string; response: AuthResponseDto }> {
-    const user = await this.prisma.user.findFirst({
-      where: { email: dto.email, isActive: true },
+    const where: Prisma.UserWhereInput = {
+      email: dto.email,
+      isActive: true,
+      tenant: {
+        isActive: true,
+        slug: dto.tenantSlug,
+      },
+    };
+
+    const users = await this.prisma.user.findMany({
+      where,
+      take: 2,
       include: {
         role: {
           include: {
@@ -25,8 +36,15 @@ export class AuthService {
             version: true,
           },
         },
+        doctor: true,
       },
     });
+
+    if (users.length !== 1) {
+      throw new UnauthorizedException('Credenciales inválidas');
+    }
+
+    const user = users[0];
 
     if (!user || !user.role) {
       throw new UnauthorizedException('Credenciales inválidas');
@@ -44,6 +62,7 @@ export class AuthService {
       tenantId: user.tenantId,
       email: user.email,
       role: user.role.name,
+      doctorId: user.doctor?.id ?? null,
       permissions: user.role.permissions.map((p) => ({
         resource: p.resource,
         action: p.action,
@@ -54,8 +73,11 @@ export class AuthService {
     const token = this.jwtService.sign(payload);
 
     const response: AuthResponseDto = {
+      userId: user.id,
+      email: user.email,
       role: user.role.name,
       roleVersion,
+      doctorId: payload.doctorId,
       permissions: payload.permissions,
     };
 

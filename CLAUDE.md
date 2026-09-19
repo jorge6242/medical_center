@@ -92,10 +92,7 @@ centro_medico/
     web/          → Next.js (puerto 3000)
   packages/
     shared/       → DTOs, enums, interfaces compartidas
-  docker/
-    nginx/        → config reverse proxy
-  docker-compose.yml       → producción
-  docker-compose.dev.yml   → desarrollo (hot reload, DB expuesta)
+  docker-compose.dev.yml   → desarrollo local (hot reload, DB expuesta)
 ```
 
 ## Comandos
@@ -105,7 +102,10 @@ centro_medico/
 docker compose -f docker-compose.dev.yml up
 
 # Producción
-docker compose up
+# Railway usa servicios separados desde imágenes Docker Hub.
+# No hay docker-compose.yml local de producción.
+
+# Solo backend/API
 
 # Solo backend (sin Docker)
 cd apps/api && pnpm run start:dev
@@ -223,14 +223,11 @@ services:
 ```
 
 ```yaml
-# docker-compose.yml — producción
-services:
-  api:
-    env_file:
-      - .env.production
-    environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/centro_medico?schema=public
-      - NODE_ENV=production
+# Railway — producción
+# DATABASE_URL se configura como variable del servicio API,
+# apuntando al PostgreSQL managed de Railway.
+NODE_ENV=production
+DATABASE_URL=<railway-postgres-url>
 ```
 
 **Regla crítica:** `DATABASE_URL` siempre se sobreescribe en el bloque `environment:` del compose para apuntar al servicio `db` — aunque el `.env` local use `localhost`. Con Prisma, una sola variable reemplaza los 5 override individuales de TypeORM.
@@ -1171,83 +1168,9 @@ Cache en memoria (`Map` en `RolesService`) con TTL 60s — sin Redis.
 
 Punto de entrada único para todas las operaciones del proyecto. Archivo en la raíz del monorepo.
 
-```makefile
-.PHONY: setup dev down down-v logs logs-db shell-api shell-db \
-        db-migrate db-deploy db-seed db-studio prod prod-down
+Ver `Makefile` directamente para la lista actualizada. Regla importante: `make setup`, `make dev`, `make api`, `make web`, shells y comandos Prisma operan sobre `docker-compose.dev.yml`.
 
-# ── Setup ─────────────────────────────────────────────────────────────────────
-
-setup: ## Primera vez: build + start + espera hasta que API esté lista
-	@echo "[1/4] Building images..."
-	@docker compose -f docker-compose.dev.yml build
-	@echo "[2/4] Starting containers..."
-	@docker compose -f docker-compose.dev.yml up -d
-	@echo "[3/4] Waiting for database..."
-	@n=0; until docker compose -f docker-compose.dev.yml exec -T db pg_isready -U postgres -q 2>/dev/null; do \
-		n=$$((n+1)); \
-		if [ $$n -ge 30 ]; then echo "ERROR: DB timeout (60s)" && exit 1; fi; \
-		printf "."; sleep 2; \
-	done; echo " ready"
-	@echo "[4/4] Waiting for API (migrations + seeds)..."
-	@n=0; until curl -sf http://localhost:3001/health > /dev/null 2>&1; do \
-		n=$$((n+1)); \
-		if [ $$n -ge 60 ]; then echo "ERROR: API timeout (120s)" && exit 1; fi; \
-		printf "."; sleep 2; \
-	done; echo " ready"
-	@echo ""
-	@echo "Setup complete."
-	@echo "  API -> http://localhost:3001"
-	@echo "  Web -> http://localhost:3000"
-
-# ── Desarrollo ────────────────────────────────────────────────────────────────
-
-dev: ## Levantar entorno dev (sin rebuild)
-	docker compose -f docker-compose.dev.yml up
-
-down: ## Bajar todos los containers dev
-	docker compose -f docker-compose.dev.yml down
-
-down-v: ## Bajar containers + eliminar volúmenes — BORRA DATOS DB
-	docker compose -f docker-compose.dev.yml down -v
-
-# ── Logs ──────────────────────────────────────────────────────────────────────
-
-logs: ## Tail logs del API
-	docker compose -f docker-compose.dev.yml logs -f api
-
-logs-db: ## Tail logs de la DB
-	docker compose -f docker-compose.dev.yml logs -f db
-
-# ── Shells ────────────────────────────────────────────────────────────────────
-
-shell-api: ## Shell dentro del container API
-	docker compose -f docker-compose.dev.yml exec api sh
-
-shell-db: ## psql dentro del container DB
-	docker compose -f docker-compose.dev.yml exec db psql -U postgres -d centro_medico
-
-# ── Prisma ────────────────────────────────────────────────────────────────────
-
-db-migrate: ## Desarrollo — detecta cambios en schema, genera y aplica migración
-	docker compose -f docker-compose.dev.yml exec api pnpm run db:migrate
-
-db-deploy: ## Producción — aplica migraciones existentes (no genera nuevas)
-	docker compose -f docker-compose.dev.yml exec api pnpm run db:deploy
-
-db-seed: ## Corre prisma/seed.ts
-	docker compose -f docker-compose.dev.yml exec api pnpm run db:seed
-
-db-studio: ## Abre Prisma Studio (UI explorador de DB)
-	docker compose -f docker-compose.dev.yml exec api pnpm run db:studio
-
-# ── Producción ────────────────────────────────────────────────────────────────
-
-prod: ## Levantar entorno producción
-	docker compose up -d
-
-prod-down: ## Bajar entorno producción
-	docker compose down
-```
+Producción Railway no usa `make prod` ni `docker-compose.yml`; usa imágenes Docker Hub y servicios Railway separados.
 
 ### Flujo `make setup` — paso a paso
 
@@ -1365,13 +1288,13 @@ services:
 ```yaml
 networks:
   backend-net:    # api + db
-  frontend-net:   # frontend + nginx + api
+  frontend-net:   # frontend + api en desarrollo local
 ```
 
-`centro_medico_db` solo accesible desde `backend-net` — nunca expuesto en prod.
+`centro_medico_dev_db` está expuesto solo para desarrollo local.
 
-- `docker-compose.dev.yml`: volúmenes montados para hot reload, puerto 5432 expuesto, sin nginx
-- `docker-compose.yml`: imágenes buildeadas, nginx como reverse proxy, puerto DB cerrado
+- `docker-compose.dev.yml`: volúmenes montados para hot reload, puerto DB dev expuesto, sin nginx
+- Producción Railway: servicios separados desde imágenes Docker Hub, sin Docker Compose local
 
 ### Healthcheck + depends_on — orden de arranque garantizado
 

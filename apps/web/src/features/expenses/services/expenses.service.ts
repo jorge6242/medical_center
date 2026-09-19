@@ -18,6 +18,24 @@ export interface ExpenseResponse {
   createdAt: string;
 }
 
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+}
+
+export interface GetExpensesQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
 export interface CreateExpenseDto {
   categoryId: string;
   description: string;
@@ -33,7 +51,20 @@ export const getExpenseCategories = (): Promise<ExpenseCategoryResponse[]> =>
   apiJson('/expenses/categories');
 
 export const getExpenses = (): Promise<ExpenseResponse[]> =>
-  apiJson('/expenses');
+  apiJson<PaginatedResponse<ExpenseResponse>>('/expenses').then((res) => res.data);
+
+export const getPaginatedExpenses = (
+  query?: GetExpensesQuery,
+): Promise<PaginatedResponse<ExpenseResponse>> => {
+  const params = new URLSearchParams();
+
+  if (query?.page) params.append('page', String(query.page));
+  if (query?.limit) params.append('limit', String(query.limit));
+  if (query?.search) params.append('search', query.search);
+
+  const queryString = params.toString();
+  return apiJson(`/expenses${queryString ? `?${queryString}` : ''}`);
+};
 
 export const createExpense = (dto: CreateExpenseDto): Promise<ExpenseResponse> =>
   apiJson('/expenses', { method: 'POST', body: JSON.stringify(dto) });

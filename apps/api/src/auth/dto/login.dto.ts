@@ -7,4 +7,7 @@ export class LoginDto {
   @IsString()
   @MinLength(8)
   declare password: string;
+
+  @IsString()
+  declare tenantSlug: string;
 }

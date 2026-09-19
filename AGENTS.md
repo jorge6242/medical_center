@@ -86,7 +86,7 @@ centro_medico/
   apps/api/      → NestJS (puerto 3001)
   apps/web/     → Next.js (puerto 3000)
   packages/shared/  → DTOs, enums, interfaces compartidas
-  docker-compose.yml       → producción
+  docker-compose.dev.yml   → desarrollo local
   docker-compose.dev.yml   → desarrollo
 ```
 
@@ -105,7 +105,7 @@ make shell-db           # psql en container DB
 make db-migrate name=NombreMigracion  # Genera + aplica migración (prisma migrate dev)
 make db-deploy                         # Solo aplica migraciones existentes (prisma migrate deploy)
 make db-studio                         # Abre Prisma Studio (UI explorador DB)
-make prod               # Producción
+Producción Railway usa servicios separados desde imágenes Docker Hub; no hay `docker-compose.yml` local de producción.
 ```
 
 **Orden de arranque garantizado:**
@@ -195,6 +195,28 @@ Migraciones generadas automáticamente en `prisma/migrations/`. Seeds en `prisma
 **Campos monetarios:** `Decimal @db.Decimal(12, 2)` — nunca `Float`.
 
 **Transacciones:** `await prisma.$transaction(async (tx) => { ... })` — rollback automático si cualquier operación falla.
+
+### Tenant Safety — Reglas Estrictas
+
+**Regla base:** toda query sobre datos de negocio debe estar scoped por `tenantId`. Si un modelo no tiene `tenantId` directo, filtrar por la relación que sí lo tiene.
+
+| Caso | Regla obligatoria |
+|---|---|
+| `findMany` / `count` / reportes | Incluir `where: { tenantId, ... }` en el modelo principal. |
+| `findFirst` / detalle por id | Usar `where: { id, tenantId }`; nunca solo `{ id }` en modelos tenant-scoped. |
+| `update` / `delete` / `upsert` por id | Primero validar pertenencia con `tenantId` o usar `updateMany({ where: { id, tenantId } })`. Nunca aceptar ids del request sin validación tenant previa. |
+| Modelos indirectos sin `tenantId` (`ServicePrice`, `DoctorReceipt`, detalles de pagos, pivotes) | Filtrar por relación tenant-scoped: ej. `ServicePrice -> specialty.tenantId`, `DoctorReceipt -> payment.tenantId`, `PaymentDetail -> payment.tenantId`. |
+| Auth / roles | El backend login requiere `tenantSlug + email + password`; el frontend debe resolver `tenantSlug` por contexto/configuración, no pedirlo manualmente al usuario salvo fallback operativo. Cualquier lookup de `User`, `Role` o `RoleVersion` debe considerar tenant. El cache de roles debe usar key compuesta `tenantId:roleName`. |
+| Idempotencia | Las claves de idempotencia nunca pueden devolver datos de otro tenant. Si la constraint es global, validar el tenant del registro encontrado antes de responder. |
+| Endpoints `@Public()` | Prohibido devolver datos tenant-scoped. Solo `GET /health` puede ser público sin tenant. |
+| Catálogos y precios | Aunque parezcan "globales", si dependen de `Specialty`, `LabTestCatalog`, precios o configuración, deben usar `tenantId`. |
+
+**Checklist antes de cerrar cualquier cambio backend:**
+- [ ] Busqué queries Prisma nuevas o modificadas.
+- [ ] Cada modelo con `tenantId` tiene filtro tenant en lecturas/listados.
+- [ ] Cada modelo indirecto se filtra por relación tenant-scoped.
+- [ ] Ningún endpoint `@Public()` expone precios, pacientes, doctores, pagos, reportes, laboratorios o configuración tenant.
+- [ ] No introduje cache global por nombre (`roleName`, `email`, `slug`) cuando el dato varía por tenant.
 
 ## Estructura Frontend (Next.js)
 

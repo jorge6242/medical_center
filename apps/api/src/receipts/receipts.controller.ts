@@ -20,7 +20,7 @@ export class ReceiptsController {
     @CurrentUser() user: JwtPayload,
     @Param('paymentId') paymentId: string,
   ): Promise<ReceiptResponseDto> {
-    return this.receiptsService.findByPayment(user.tenantId, paymentId);
+    return this.receiptsService.findByPayment(user.tenantId, paymentId, user.sub);
   }
 
   @Post(':paymentId/generate')

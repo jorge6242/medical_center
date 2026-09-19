@@ -6,11 +6,13 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 
 import { CreatePaymentAdjustmentDto } from './dto/create-payment-adjustment.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { PaymentQueryDto } from './dto/payment-query.dto';
 import { PaymentsService } from './payments.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -18,6 +20,7 @@ import { CurrentUser, type JwtPayload } from '../common/decorators/current-user.
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
 
 import type { PaymentResponseDto } from './dto/payment-response.dto';
+import type { PaginatedResponseDto } from '../common/dto/paginated-response.dto';
 
 
 @Controller('payments')
@@ -27,8 +30,11 @@ export class PaymentsController {
 
   @Get()
   @RequirePermission('payments', 'read')
-  findAll(@CurrentUser() user: JwtPayload): Promise<PaymentResponseDto[]> {
-    return this.paymentsService.findAll(user.tenantId);
+  findAll(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: PaymentQueryDto,
+  ): Promise<PaginatedResponseDto<PaymentResponseDto>> {
+    return this.paymentsService.findAll(user.tenantId, query);
   }
 
   @Get(':id')

@@ -1,6 +1,9 @@
 import { apiJson } from '@/config/api';
 
 export interface QueryReportsParams {
+  page: number;
+  limit: number;
+  search?: string;
   from: string;
   to: string;
   groupBy?: 'day' | 'week' | 'month';
@@ -64,11 +67,38 @@ export interface DetailRecord {
   status: string;
 }
 
-export const getConsolidated = (params: QueryReportsParams): Promise<ConsolidatedRecord[]> =>
-  apiJson('/reports/consolidated?' + new URLSearchParams(params as unknown as Record<string, string>));
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+}
 
-export const getDetail = (params: QueryReportsParams): Promise<DetailRecord[]> =>
-  apiJson('/reports/detail?' + new URLSearchParams(params as unknown as Record<string, string>));
+function toSearchParams(params: QueryReportsParams): URLSearchParams {
+  const searchParams = new URLSearchParams();
+
+  searchParams.set('page', String(params.page));
+  searchParams.set('limit', String(params.limit));
+  searchParams.set('from', params.from);
+  searchParams.set('to', params.to);
+
+  if (params.search) searchParams.set('search', params.search);
+  if (params.groupBy) searchParams.set('groupBy', params.groupBy);
+  if (params.type) searchParams.set('type', params.type);
+
+  return searchParams;
+}
+
+export const getConsolidated = (params: QueryReportsParams): Promise<PaginatedResponse<ConsolidatedRecord>> =>
+  apiJson('/reports/consolidated?' + toSearchParams(params).toString());
+
+export const getDetail = (params: QueryReportsParams): Promise<PaginatedResponse<DetailRecord>> =>
+  apiJson('/reports/detail?' + toSearchParams(params).toString());
 
 export const generateReport = (params: GenerateReportParams): Promise<ReportJob> =>
   apiJson('/reports/generate', { method: 'POST', body: JSON.stringify(params) });

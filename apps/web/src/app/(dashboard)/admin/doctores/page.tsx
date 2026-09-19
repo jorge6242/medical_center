@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CheckCircle2, Loader2, Pencil, Plus, RefreshCw, Trash2, XCircle } from 'lucide-react';
+import { CheckCircle2, Loader2, Plus, XCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod/v4';
 
@@ -14,13 +14,15 @@ import {
   useDoctorsAdmin,
   useVerifyDoctor,
   useVerifyDocument,
+  useSendDoctorOnboarding,
 } from '@/features/doctors/hooks/use-doctors-admin';
 import { useSpecialties } from '@/features/specialties/hooks/use-specialties';
-import { VerificationBadge } from '@/features/doctors/components/verification-badge';
+import { getDoctorColumns } from '@/features/doctors/components/doctor-columns';
+import { DoctorToolbar } from '@/features/doctors/components/doctor-toolbar';
 import { useDebounce } from '@/shared/hooks/use-debounce';
-import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
+import { DataTable } from '@/shared/components/ui/data-table';
 import { Input } from '@/shared/components/ui/input';
 import { Modal } from '@/shared/components/ui/modal';
 import { Select } from '@/shared/components/ui/select';
@@ -194,12 +196,24 @@ function DoctorForm({ doctor, onClose }: { readonly doctor?: DoctorAdminResponse
 }
 
 export default function DoctoresPage() {
-  const { data: doctors = [], isLoading } = useDoctorsAdmin();
-  const { mutate: deactivate } = useDeactivateDoctor();
-  const { mutate: verify, isPending: isVerifying } = useVerifyDoctor();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState<DoctorAdminResponse | null>(null);
+  const [search, setSearch] = useState('');
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [sendingDoctorId, setSendingDoctorId] = useState<string | null>(null);
+
+  const { data, isLoading } = useDoctorsAdmin({
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize,
+    search,
+  });
+  const { mutate: deactivate } = useDeactivateDoctor();
+  const { mutate: verify, isPending: isVerifying } = useVerifyDoctor();
+  const { mutate: sendOnboarding, isPending: isSendingOnboarding } = useSendDoctorOnboarding();
+
+  const doctors = data?.data ?? [];
+  const meta = data?.meta;
 
   return (
     <div className="flex flex-col gap-6">
@@ -210,83 +224,33 @@ export default function DoctoresPage() {
         </Button>
       </div>
 
-      <Card>
-        {isLoading ? (
-          <div className="space-y-3">{[...Array(4)].map((_, i) => <div key={i} className="h-12 animate-pulse rounded-lg bg-surface-variant" />)}</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-outline-variant text-left text-on-surface-variant">
-                  <th className="pb-3 pr-4 font-medium">Nombre</th>
-                  <th className="pb-3 pr-4 font-medium">Documento</th>
-                  <th className="pb-3 pr-4 font-medium">Especialidades</th>
-                  <th className="pb-3 pr-4 font-medium">Split</th>
-                  <th className="pb-3 pr-4 font-medium">Verificación</th>
-                  <th className="pb-3 pr-4 font-medium">Estado</th>
-                  <th className="pb-3 font-medium" />
-                </tr>
-              </thead>
-              <tbody>
-                {doctors.map((d) => (
-                  <tr key={d.id} className="border-b border-outline-variant last:border-0">
-                    <td className="py-3 pr-4 font-medium text-on-surface">{d.name}</td>
-                    <td className="py-3 pr-4 text-on-surface-variant">{d.documentType}-{d.documentId}</td>
-                    <td className="py-3 pr-4 text-on-surface-variant">
-                      {d.specialties.map((s) => s.specialtyName).join(', ')}
-                    </td>
-                    <td className="py-3 pr-4 text-on-surface-variant">{d.splitPercentage}%</td>
-                    <td className="py-3 pr-4">
-                      <VerificationBadge status={d.verificationStatus} />
-                    </td>
-                    <td className="py-3 pr-4">
-                      <Badge variant={d.isActive ? 'success' : 'error'}>{d.isActive ? 'Activo' : 'Inactivo'}</Badge>
-                    </td>
-                    <td className="py-3">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => verify(d.id)}
-                          disabled={isVerifying}
-                          title="Re-verificar credenciales"
-                        >
-                          <RefreshCw className={`h-4 w-4 ${isVerifying ? 'animate-spin' : ''}`} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedDoctor(d);
-                            setShowEditModal(true);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                          Editar
-                        </Button>
-                        {d.isActive && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deactivate(d.id)}
-                            className="text-error hover:text-error"
-                            title="Desactivar doctor"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Desactivar
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {doctors.length === 0 && !isLoading && (
-                  <tr><td colSpan={7} className="py-8 text-center text-on-surface-variant">No hay doctores registrados</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <Card className="p-4">
+        <DataTable
+          data={doctors}
+          columns={getDoctorColumns()}
+          toolbar={<DoctorToolbar search={search} onSearchChange={setSearch} />}
+          isLoading={isLoading}
+          pagination={pagination}
+          onPaginationChange={setPagination}
+          pageCount={meta?.totalPages ?? 0}
+          rowCount={meta?.total ?? 0}
+          meta={{
+            onEdit: (doctor: DoctorAdminResponse) => {
+              setSelectedDoctor(doctor);
+              setShowEditModal(true);
+            },
+            onVerify: (id: string) => verify(id),
+            onDeactivate: (id: string) => deactivate(id),
+            onSendOnboarding: (id: string) => {
+              setSendingDoctorId(id);
+              sendOnboarding(id, {
+                onSettled: () => setSendingDoctorId(null),
+              });
+            },
+            isVerifying,
+            isSendingOnboarding: sendingDoctorId,
+          }}
+        />
       </Card>
 
       <Modal open={showCreateModal} onClose={() => setShowCreateModal(false)} title="Nuevo doctor" className="max-w-lg">

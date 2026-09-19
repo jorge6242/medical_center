@@ -8,6 +8,9 @@ import { useLogin } from '@/features/auth/hooks/use-login';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 
+const TENANT_NAME = process.env['NEXT_PUBLIC_TENANT_NAME'] ?? 'Centro Médico Demo';
+const TENANT_SLUG = process.env['NEXT_PUBLIC_TENANT_SLUG'] ?? 'centro-medico-demo-demo';
+
 const schema = z.object({
   email: z.email('Email inválido'),
   password: z.string().min(1, 'Contraseña requerida'),
@@ -26,10 +29,14 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-variant">
       <div className="w-full max-w-md rounded-2xl bg-surface p-8 shadow-elevation-3">
-        <h1 className="mb-2 text-2xl font-bold text-on-surface">Centro Médico</h1>
-        <p className="mb-6 text-sm text-on-surface-variant">Inicia sesión para continuar</p>
+        <p className="mb-2 text-sm font-medium text-primary">{TENANT_NAME}</p>
+        <h1 className="mb-2 text-2xl font-bold text-on-surface">Iniciar sesión</h1>
+        <p className="mb-6 text-sm text-on-surface-variant">Accede al panel administrativo</p>
 
-        <form onSubmit={handleSubmit((data) => mutate(data))} className="flex flex-col gap-4">
+        <form
+          onSubmit={handleSubmit((data) => mutate({ ...data, tenantSlug: TENANT_SLUG }))}
+          className="flex flex-col gap-4"
+        >
           <Input
             {...register('email')}
             id="email"
