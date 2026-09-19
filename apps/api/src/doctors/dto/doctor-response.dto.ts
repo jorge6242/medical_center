@@ -1,4 +1,8 @@
-import type { AccountType, DocumentType, VerificationStatus } from '@prisma/client';
+import type {
+  AccountType,
+  DocumentType,
+  VerificationStatus,
+} from '@prisma/client';
 
 export class DoctorBankAccountResponseDto {
   declare id: string;

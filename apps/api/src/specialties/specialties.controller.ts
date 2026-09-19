@@ -17,11 +17,13 @@ import { UpdateSpecialtyDto } from './dto/update-specialty.dto';
 import { SpecialtiesService } from './specialties.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser, type JwtPayload } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type JwtPayload,
+} from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
 
 import type { SpecialtyResponseDto } from './dto/specialty-response.dto';
-
 
 @Controller('specialties')
 @UseGuards(JwtAuthGuard, AclGuard)
@@ -70,7 +72,12 @@ export class SpecialtiesController {
     @Param('servicePriceId') servicePriceId: string,
     @Body() dto: UpdateServicePriceDto,
   ): Promise<SpecialtyResponseDto> {
-    return this.specialtiesService.updateServicePrice(user.tenantId, specialtyId, servicePriceId, dto);
+    return this.specialtiesService.updateServicePrice(
+      user.tenantId,
+      specialtyId,
+      servicePriceId,
+      dto,
+    );
   }
 
   @Delete(':id')
@@ -91,6 +98,10 @@ export class SpecialtiesController {
     @Param('specialtyId') specialtyId: string,
     @Param('servicePriceId') servicePriceId: string,
   ): Promise<SpecialtyResponseDto> {
-    return this.specialtiesService.deactivateService(user.tenantId, specialtyId, servicePriceId);
+    return this.specialtiesService.deactivateService(
+      user.tenantId,
+      specialtyId,
+      servicePriceId,
+    );
   }
 }

@@ -8,6 +8,6 @@ export default defineConfig({
     url: process.env['DATABASE_URL'],
   },
   migrations: {
-    seed: `ts-node --transpile-only ${path.join(__dirname, 'seed.ts')}`,
+    seed: `ts-node --project ${path.join(__dirname, '..', 'tsconfig.json')} --transpile-only ${path.join(__dirname, 'seed.ts')}`,
   },
 });

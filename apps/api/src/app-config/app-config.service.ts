@@ -13,7 +13,9 @@ export class AppConfigService {
   async getInitConfig(tenantId: string) {
     const [tenant, igtfConfig, exchangeRate] = await Promise.all([
       this.prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } }),
-      this.prisma.systemConfig.findFirst({ where: { tenantId, key: 'igtf_rate' } }),
+      this.prisma.systemConfig.findFirst({
+        where: { tenantId, key: 'igtf_rate' },
+      }),
       this.exchangeRates.findLatest(tenantId),
     ]);
 

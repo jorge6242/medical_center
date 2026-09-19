@@ -14,29 +14,40 @@ export class RolesService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async assertRoleVersionCurrent(roleName: string, jwtVersion: number): Promise<void> {
-    const currentVersion = await this.getRoleVersion(roleName);
+  async assertRoleVersionCurrent(
+    tenantId: string,
+    roleName: string,
+    jwtVersion: number,
+  ): Promise<void> {
+    const currentVersion = await this.getRoleVersion(tenantId, roleName);
     if (currentVersion !== jwtVersion) {
-      throw new UnauthorizedException('Permisos del rol actualizados. Inicie sesión nuevamente.');
+      throw new UnauthorizedException(
+        'Permisos del rol actualizados. Inicie sesión nuevamente.',
+      );
     }
   }
 
-  async getRoleVersion(roleName: string): Promise<number> {
-    const cached = this.cache.get(roleName);
+  async getRoleVersion(tenantId: string, roleName: string): Promise<number> {
+    const cacheKey = this.getCacheKey(tenantId, roleName);
+    const cached = this.cache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
       return cached.version;
     }
 
     const roleVersion = await this.prisma.roleVersion.findFirst({
-      where: { role: { name: roleName } },
+      where: { role: { tenantId, name: roleName } },
     });
 
     const version = roleVersion?.version ?? 1;
-    this.cache.set(roleName, { version, expiresAt: Date.now() + this.TTL_MS });
+    this.cache.set(cacheKey, { version, expiresAt: Date.now() + this.TTL_MS });
     return version;
   }
 
-  invalidateCache(roleName: string): void {
-    this.cache.delete(roleName);
+  invalidateCache(tenantId: string, roleName: string): void {
+    this.cache.delete(this.getCacheKey(tenantId, roleName));
+  }
+
+  private getCacheKey(tenantId: string, roleName: string): string {
+    return `${tenantId}:${roleName}`;
   }
 }

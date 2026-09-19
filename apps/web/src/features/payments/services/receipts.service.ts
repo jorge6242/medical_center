@@ -13,6 +13,12 @@ export interface ReceiptData {
   totalConsultation: string;
   doctorShare: string;
   centerShare: string;
+  services?: Array<{
+    serviceId: string;
+    serviceName: string;
+    specialtyName: string;
+    priceUsd: string;
+  }>;
   details?: Array<{
     paymentMethod: string;
     currency: string;

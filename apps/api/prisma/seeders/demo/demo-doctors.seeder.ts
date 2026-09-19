@@ -12,7 +12,7 @@ const DOCTORS = [
     documentType: 'V' as const,
     documentId: '90000001',
     splitPercentage: 70,
-    specialtyNames: ['Ginecología'],
+    specialtyNames: ['Ginecología', 'Obstetricia', 'Ginecología / Obstetricia'],
     bankName: 'Banco de Venezuela',
     accountNumber: '0102-0000-0000-00000001',
   },

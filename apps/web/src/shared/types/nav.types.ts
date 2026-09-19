@@ -8,4 +8,5 @@ export interface NavItem {
   path: string;
   icon: string;
   permission: NavPermission;
+  visibleForRoles?: string[];
 }

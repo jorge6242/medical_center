@@ -2,8 +2,10 @@ import { Controller, Get, UseGuards } from '@nestjs/common';
 
 import { AppConfigService } from './app-config.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser, type JwtPayload } from '../common/decorators/current-user.decorator';
-
+import {
+  CurrentUser,
+  type JwtPayload,
+} from '../common/decorators/current-user.decorator';
 
 @Controller('config')
 @UseGuards(JwtAuthGuard)

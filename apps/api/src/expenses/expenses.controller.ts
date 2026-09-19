@@ -6,19 +6,24 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 
 import { CreateExpenseDto } from './dto/create-expense.dto';
+import { ExpenseQueryDto } from './dto/expense-query.dto';
 import { VoidExpenseDto } from './dto/void-expense.dto';
 import { ExpensesService } from './expenses.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser, type JwtPayload } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type JwtPayload,
+} from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
 
 import type { ExpenseResponseDto } from './dto/expense-response.dto';
-
+import type { PaginatedResponseDto } from '../common/dto/paginated-response.dto';
 
 @Controller('expenses')
 @UseGuards(JwtAuthGuard, AclGuard)
@@ -33,8 +38,11 @@ export class ExpensesController {
 
   @Get()
   @RequirePermission('expenses', 'read')
-  findAll(@CurrentUser() user: JwtPayload): Promise<ExpenseResponseDto[]> {
-    return this.expensesService.findAll(user.tenantId);
+  findAll(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: ExpenseQueryDto,
+  ): Promise<PaginatedResponseDto<ExpenseResponseDto>> {
+    return this.expensesService.findAll(user.tenantId, query);
   }
 
   @Get(':id')
@@ -52,7 +60,7 @@ export class ExpensesController {
     @CurrentUser() user: JwtPayload,
     @Body() dto: CreateExpenseDto,
   ): Promise<ExpenseResponseDto> {
-    return this.expensesService.create(user.tenantId, user.sub, dto);
+    return this.expensesService.create(user.tenantId, dto);
   }
 
   @Post(':id/void')

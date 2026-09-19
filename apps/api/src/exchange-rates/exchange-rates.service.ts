@@ -1,5 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { PrismaService } from '../database/prisma.service';
 
@@ -11,13 +14,18 @@ import type { Prisma } from '@prisma/client';
 export class ExchangeRatesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(tenantId: string, dto: CreateExchangeRateDto): Promise<ExchangeRateResponseDto> {
+  async create(
+    tenantId: string,
+    dto: CreateExchangeRateDto,
+  ): Promise<ExchangeRateResponseDto> {
     const date = new Date(dto.date);
     const existing = await this.prisma.exchangeRate.findFirst({
       where: { tenantId, date },
     });
     if (existing) {
-      throw new ConflictException(`Ya existe una tasa BCV para la fecha ${dto.date}`);
+      throw new ConflictException(
+        `Ya existe una tasa BCV para la fecha ${dto.date}`,
+      );
     }
 
     const rate = await this.prisma.exchangeRate.create({
@@ -42,8 +50,14 @@ export class ExchangeRatesService {
     return rate ? this.toResponse(rate) : null;
   }
 
-  async update(tenantId: string, id: string, dto: CreateExchangeRateDto): Promise<ExchangeRateResponseDto> {
-    const existing = await this.prisma.exchangeRate.findFirst({ where: { id, tenantId } });
+  async update(
+    tenantId: string,
+    id: string,
+    dto: CreateExchangeRateDto,
+  ): Promise<ExchangeRateResponseDto> {
+    const existing = await this.prisma.exchangeRate.findFirst({
+      where: { id, tenantId },
+    });
     if (!existing) throw new NotFoundException(`Tasa ${id} no encontrada`);
 
     const updated = await this.prisma.exchangeRate.update({

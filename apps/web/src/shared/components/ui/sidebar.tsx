@@ -5,10 +5,15 @@ import { usePathname } from 'next/navigation';
 
 import {
   BarChart3,
+  BookOpen,
+  Boxes,
   ClipboardList,
   CreditCard,
+  FlaskConical,
+  House,
   Receipt,
   Stethoscope,
+  User,
   Users,
 } from 'lucide-react';
 
@@ -17,11 +22,16 @@ import { cn } from '@/shared/utils/cn';
 
 const ICON_MAP = {
   Users,
+  User,
   CreditCard,
   Receipt,
   Stethoscope,
   BarChart3,
   ClipboardList,
+  House,
+  BookOpen,
+  Boxes,
+  FlaskConical,
 } as const;
 
 type IconName = keyof typeof ICON_MAP;

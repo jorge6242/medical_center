@@ -58,6 +58,11 @@ export default [
 
   {
     files: ['**/*.spec.ts', '**/*.test.ts', '**/test/**/*.ts'],
+    languageOptions: {
+      globals: {
+        ...globals.jest,
+      },
+    },
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'off',

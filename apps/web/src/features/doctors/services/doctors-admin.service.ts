@@ -59,8 +59,32 @@ export interface UpdateDoctorDto {
   medicalLicenseNumber?: string;
 }
 
-export const getDoctorsAdmin = (): Promise<DoctorAdminResponse[]> =>
-  apiJson('/doctors');
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+}
+
+export interface GetDoctorsQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export const getDoctorsAdmin = (query?: GetDoctorsQuery): Promise<PaginatedResponse<DoctorAdminResponse>> => {
+  const params = new URLSearchParams();
+  if (query?.page) params.append('page', String(query.page));
+  if (query?.limit) params.append('limit', String(query.limit));
+  if (query?.search) params.append('search', query.search);
+  const qs = params.toString();
+  return apiJson(`/doctors${qs ? `?${qs}` : ''}`);
+};
 
 export const createDoctor = (dto: CreateDoctorDto): Promise<DoctorAdminResponse> =>
   apiJson('/doctors', { method: 'POST', body: JSON.stringify(dto) });
@@ -99,3 +123,15 @@ export const verifyDocument = (
       documentId: dto.documentId,
     }),
   });
+
+export interface OnboardingStatusResponse {
+  status: string;
+  sentAt: string | null;
+  expiresAt: string | null;
+}
+
+export const getDoctorOnboardingStatus = (id: string): Promise<OnboardingStatusResponse> =>
+  apiJson(`/doctors/${id}/onboarding-status`);
+
+export const sendDoctorOnboarding = (id: string): Promise<{ message: string; tokenId: string; sentAt: string }> =>
+  apiJson(`/doctors/${id}/send-onboarding`, { method: 'POST' });

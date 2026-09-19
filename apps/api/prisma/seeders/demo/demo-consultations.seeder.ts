@@ -9,12 +9,14 @@ export async function seedDemoConsultations(
   patients: Patient[],
   users: { admin: User; reception: User },
 ): Promise<Consultation[]> {
+  await prisma.medicalRecord.deleteMany({ where: { tenantId: DEMO_TENANT_ID } });
   await prisma.consultationService.deleteMany({ where: { consultation: { tenantId: DEMO_TENANT_ID } } });
-  await prisma.doctorReceipt.deleteMany({ where: { payment: { consultation: { tenantId: DEMO_TENANT_ID } } } });
-  await prisma.paymentAdjustment.deleteMany({ where: { payment: { consultation: { tenantId: DEMO_TENANT_ID } } } });
-  await prisma.paymentDetail.deleteMany({ where: { payment: { consultation: { tenantId: DEMO_TENANT_ID } } } });
+  await prisma.doctorReceipt.deleteMany({ where: { payment: { tenantId: DEMO_TENANT_ID } } });
+  await prisma.paymentAdjustment.deleteMany({ where: { payment: { tenantId: DEMO_TENANT_ID } } });
+  await prisma.paymentDetail.deleteMany({ where: { payment: { tenantId: DEMO_TENANT_ID } } });
+  await prisma.paymentItem.deleteMany({ where: { payment: { tenantId: DEMO_TENANT_ID } } });
   await prisma.consultationPayment.deleteMany({ where: { consultation: { tenantId: DEMO_TENANT_ID } } });
-  await prisma.payment.deleteMany({ where: { consultation: { tenantId: DEMO_TENANT_ID } } });
+  await prisma.payment.deleteMany({ where: { tenantId: DEMO_TENANT_ID } });
   await prisma.consultation.deleteMany({ where: { tenantId: DEMO_TENANT_ID } });
 
   const today = new Date();
@@ -36,9 +38,41 @@ export async function seedDemoConsultations(
     patient: Patient;
     status: 'PAID' | 'VOIDED';
     offsetDays: number;
+    specialtyName?: string;
+    serviceName?: string;
   }> = [
-    { doctor: doctor1, patient: patient1, status: 'PAID', offsetDays: 0 },
-    { doctor: doctor1, patient: patient2, status: 'PAID', offsetDays: 0 },
+    {
+      doctor: doctor1,
+      patient: patient1,
+      status: 'PAID',
+      offsetDays: 0,
+      specialtyName: 'Ginecología',
+      serviceName: 'Consulta',
+    },
+    {
+      doctor: doctor1,
+      patient: patient2,
+      status: 'PAID',
+      offsetDays: 0,
+      specialtyName: 'Ginecología',
+      serviceName: 'Ecografía',
+    },
+    {
+      doctor: doctor1,
+      patient: patient3,
+      status: 'PAID',
+      offsetDays: 0,
+      specialtyName: 'Obstetricia',
+      serviceName: 'Ecografía obstétrica',
+    },
+    {
+      doctor: doctor1,
+      patient: patient4,
+      status: 'PAID',
+      offsetDays: -1,
+      specialtyName: 'Ginecología / Obstetricia',
+      serviceName: 'Control gineco-obstétrico + ecografía',
+    },
     { doctor: doctor2, patient: patient3, status: 'PAID', offsetDays: 0 },
     { doctor: doctor2, patient: patient4, status: 'PAID', offsetDays: 0 },
     { doctor: doctor3, patient: patient5, status: 'VOIDED', offsetDays: 0 },
@@ -69,11 +103,21 @@ export async function seedDemoConsultations(
     });
 
     const specialty = await prisma.doctorSpecialty.findFirstOrThrow({
-      where: { doctorId: doctor.id },
+      where: {
+        doctorId: doctor.id,
+        ...(item.specialtyName
+          ? { specialty: { is: { tenantId: DEMO_TENANT_ID, name: item.specialtyName } } }
+          : {}),
+      },
       include: { specialty: true },
+      orderBy: { isPrimary: 'desc' },
     });
     const servicePrice = await prisma.servicePrice.findFirstOrThrow({
-      where: { specialtyId: specialty.specialtyId, isActive: true },
+      where: {
+        specialtyId: specialty.specialtyId,
+        isActive: true,
+        ...(item.serviceName ? { service: { is: { name: item.serviceName } } } : {}),
+      },
       include: { service: true, specialty: true },
     });
 
@@ -93,8 +137,11 @@ export async function seedDemoConsultations(
       const doctorShare = round(total * Number(doctor.splitPercentage) / 100);
       const centerShare = round(total - doctorShare);
 
+      const idempotencyKey = `demo-${index}-${now.getTime()}`;
       const payment = await prisma.payment.create({
         data: {
+          tenantId: DEMO_TENANT_ID,
+          idempotencyKey,
           totalServiceUsd: total,
           bcvExchangeRate: 36.5,
           totalPaidUsd: total,
@@ -114,6 +161,18 @@ export async function seedDemoConsultations(
           },
         },
         include: { details: true },
+      });
+
+      await prisma.paymentItem.create({
+        data: {
+          paymentId: payment.id,
+          itemType: 'CONSULTATION',
+          description: `Consulta demo - ${servicePrice.service.name}`,
+          quantity: 1,
+          unitPriceUsd: total,
+          totalPriceUsd: total,
+          consultationId: consultation.id,
+        },
       });
 
       await prisma.consultationPayment.create({

@@ -17,11 +17,13 @@ export interface ReceiptEmailTemplateContext {
   paymentId: string;
 }
 
-export const receiptEmailTemplate: TemplateDefinition<ReceiptEmailTemplateContext> = {
-  name: 'receipt-generated',
-  version: 1,
-  category: 'receipt',
-  audience: 'doctor',
-  subject: 'Recibo {{receiptNumber}}',
-  render: (context) => renderTemplateString(receiptEmailTemplateHtml, context),
-};
+export const receiptEmailTemplate: TemplateDefinition<ReceiptEmailTemplateContext> =
+  {
+    name: 'receipt-generated',
+    version: 1,
+    category: 'receipt',
+    audience: 'doctor',
+    subject: 'Recibo {{receiptNumber}}',
+    render: (context) =>
+      renderTemplateString(receiptEmailTemplateHtml, context),
+  };

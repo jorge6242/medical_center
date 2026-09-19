@@ -12,6 +12,7 @@ interface MeResponse {
   email: string;
   role: string;
   roleVersion: number;
+  doctorId: string | null;
   permissions: Array<{ resource: string; action: string }>;
 }
 
@@ -29,7 +30,7 @@ export function AuthHydrator() {
 
   useEffect(() => {
     if (data) {
-      setAuth({ userId: data.userId, email: data.email, role: data.role, permissions: data.permissions });
+      setAuth({ userId: data.userId, email: data.email, role: data.role, doctorId: data.doctorId, permissions: data.permissions });
     }
   }, [data, setAuth]);
 

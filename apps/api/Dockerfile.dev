@@ -1,17 +1,15 @@
 FROM node:20-alpine
 
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.26.0
 
 WORKDIR /app
 
 # Copy workspace config + lockfile first (cache layer)
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY apps/api/package.json ./apps/api/
-COPY apps/worker/package.json ./apps/worker/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/ ./packages/
 COPY tsconfig.base.json ./
-COPY apps/worker/ ./apps/worker/
 
 # Install all workspace deps
 RUN pnpm install --frozen-lockfile
@@ -32,4 +30,4 @@ WORKDIR /app/apps/api
 
 EXPOSE 3001
 
-CMD ["tail", "-f", "/dev/null"]
+CMD ["pnpm", "start:dev"]

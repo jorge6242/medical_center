@@ -6,17 +6,23 @@ import {
   createDoctor,
   deactivateDoctor,
   getDoctorsAdmin,
+  getDoctorOnboardingStatus,
+  sendDoctorOnboarding,
   updateDoctor,
   verifyDoctor,
   verifyDocument,
   type CreateDoctorDto,
+  type GetDoctorsQuery,
   type UpdateDoctorDto,
   type VerifyDocumentDto,
   type SacsVerificationResult,
 } from '../services/doctors-admin.service';
 
-export function useDoctorsAdmin() {
-  return useQuery({ queryKey: ['doctors-admin'], queryFn: getDoctorsAdmin });
+export function useDoctorsAdmin(query?: GetDoctorsQuery) {
+  return useQuery({
+    queryKey: ['doctors-admin', query?.page, query?.limit, query?.search],
+    queryFn: () => getDoctorsAdmin(query),
+  });
 }
 
 export function useCreateDoctor(onSuccess?: () => void) {
@@ -67,5 +73,24 @@ export function useVerifyDoctor() {
 export function useVerifyDocument() {
   return useMutation<SacsVerificationResult, Error, VerifyDocumentDto>({
     mutationFn: verifyDocument,
+  });
+}
+
+export function useDoctorOnboardingStatus(doctorId: string) {
+  return useQuery({
+    queryKey: ['doctor-onboarding-status', doctorId],
+    queryFn: () => getDoctorOnboardingStatus(doctorId),
+    enabled: !!doctorId,
+    retry: false,
+  });
+}
+
+export function useSendDoctorOnboarding() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: sendDoctorOnboarding,
+    onSuccess: (_data, doctorId) => {
+      void qc.invalidateQueries({ queryKey: ['doctor-onboarding-status', doctorId] });
+    },
   });
 }

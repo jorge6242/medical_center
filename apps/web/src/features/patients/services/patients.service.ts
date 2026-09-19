@@ -9,8 +9,21 @@ export interface PatientResponse {
   email: string | null;
   birthDate: string | null;
   gender: string | null;
+  clinicalHistory?: Record<string, unknown> | null;
   isActive: boolean;
   createdAt: string;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
 }
 
 export interface CreatePatientDto {
@@ -31,8 +44,24 @@ export interface UpdatePatientDto {
   gender?: string;
 }
 
+export interface GetPatientsQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
 export const getPatients = (): Promise<PatientResponse[]> =>
-  apiJson('/patients');
+  apiJson<PaginatedResponse<PatientResponse>>('/patients').then((res) => res.data);
+
+export const getPaginatedPatients = (query?: GetPatientsQuery): Promise<PaginatedResponse<PatientResponse>> => {
+  const params = new URLSearchParams();
+  if (query?.page) params.append('page', String(query.page));
+  if (query?.limit) params.append('limit', String(query.limit));
+  if (query?.search) params.append('search', query.search);
+
+  const queryString = params.toString();
+  return apiJson(`/patients${queryString ? `?${queryString}` : ''}`);
+};
 
 export const getPatient = (id: string): Promise<PatientResponse> =>
   apiJson(`/patients/${id}`);

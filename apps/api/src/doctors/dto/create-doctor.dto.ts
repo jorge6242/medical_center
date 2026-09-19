@@ -14,7 +14,6 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-
 export class CreateBankAccountDto {
   @IsString()
   @Length(2, 100)

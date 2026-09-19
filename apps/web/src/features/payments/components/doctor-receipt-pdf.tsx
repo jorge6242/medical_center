@@ -103,6 +103,13 @@ export function DoctorReceiptPDF({ data, tenantName = 'Centro Médico' }: Props)
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Detalle de Consulta</Text>
+          {data.services && data.services.length > 0 &&
+            data.services.map((service, idx) => (
+              <View key={`${service.serviceId}-${idx}`} style={styles.row}>
+                <Text style={styles.label}>{service.specialtyName}:</Text>
+                <Text style={styles.value}>{service.serviceName} - {fmt(service.priceUsd)}</Text>
+              </View>
+            ))}
           <View style={styles.row}>
             <Text style={styles.label}>Total consulta:</Text>
             <Text style={styles.value}>{fmt(data.totalConsultation)}</Text>

@@ -3,12 +3,15 @@ import { apiJson } from '@/config/api';
 export interface LoginDto {
   email: string;
   password: string;
+  tenantSlug: string;
 }
 
 export interface LoginResponse {
   userId: string;
   email: string;
   role: string;
+  roleVersion: number;
+  doctorId: string | null;
   permissions: Array<{ resource: string; action: string }>;
 }
 

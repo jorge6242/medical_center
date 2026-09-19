@@ -2,7 +2,10 @@ import { Controller, Get, UseGuards } from '@nestjs/common';
 
 import { StatsService } from './stats.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser, type JwtPayload } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type JwtPayload,
+} from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
 
 import type { HomeStatsDto } from './dto/home-stats.dto';

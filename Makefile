@@ -1,10 +1,18 @@
 .PHONY: setup dev down down-v restart restart-api restart-web \
         logs logs-api logs-web logs-db shell-api shell-web shell-db \
-        db-migrate db-deploy db-seed db-studio deps-sync prod prod-down
+        db-migrate db-deploy db-seed db-studio deps-sync \
+        docker-build-api docker-build-web docker-build docker-push-api docker-push-web docker-push
+
+DOCKERHUB_USER ?= jgomezfreelancer
+IMAGE_TAG ?= railway-mvp
+DOCKER_PLATFORM ?= linux/amd64
+NEXT_PUBLIC_API_URL ?= http://localhost:3001
+API_IMAGE := $(DOCKERHUB_USER)/centro-medico-api:$(IMAGE_TAG)
+WEB_IMAGE := $(DOCKERHUB_USER)/centro-medico-web:$(IMAGE_TAG)
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 
-setup: ## Primera vez: build + start + espera hasta que API esté lista
+setup: ## Primera vez: build + start containers base; API se inicia manualmente con make api
 	@echo "[1/4] Building images..."
 	@docker compose -f docker-compose.dev.yml build
 	@echo "[2/4] Starting containers..."
@@ -15,15 +23,10 @@ setup: ## Primera vez: build + start + espera hasta que API esté lista
 		if [ $$n -ge 30 ]; then echo "ERROR: DB timeout (60s)" && exit 1; fi; \
 		printf "."; sleep 2; \
 	done; echo " ready"
-	@echo "[4/4] Waiting for API (migrations + seeds)..."
-	@n=0; until curl -sf http://localhost:3001/health > /dev/null 2>&1; do \
-		n=$$((n+1)); \
-		if [ $$n -ge 60 ]; then echo "ERROR: API timeout (120s)" && exit 1; fi; \
-		printf "."; sleep 2; \
-	done; echo " ready"
+	@echo "[4/4] API manual start required: run 'make api'"
 	@echo ""
 	@echo "Setup complete."
-	@echo "  API -> http://localhost:3001"
+	@echo "  API -> http://localhost:3001 (after make api)"
 	@echo "  Web -> http://localhost:3000"
 
 # ── Desarrollo ────────────────────────────────────────────────────────────────
@@ -99,10 +102,20 @@ db-seed: ## Corre prisma/seed.ts
 db-studio: ## Abre Prisma Studio (UI explorador de DB)
 	docker compose -f docker-compose.dev.yml exec api pnpm run db:studio
 
-# ── Producción ────────────────────────────────────────────────────────────────
+# ── Docker Hub Images ─────────────────────────────────────────────────────────
 
-prod: ## Levantar entorno producción
-	docker compose up -d
+docker-build-api: ## Build imagen API para Docker Hub
+	docker buildx build --platform $(DOCKER_PLATFORM) -f apps/api/Dockerfile -t $(API_IMAGE) --load .
 
-prod-down: ## Bajar entorno producción
-	docker compose down
+docker-build-web: ## Build imagen Web para Docker Hub
+	docker buildx build --platform $(DOCKER_PLATFORM) --build-arg NEXT_PUBLIC_API_URL=$(NEXT_PUBLIC_API_URL) -f apps/web/Dockerfile -t $(WEB_IMAGE) --load .
+
+docker-build: docker-build-api docker-build-web ## Build API + Web
+
+docker-push-api: ## Push imagen API a Docker Hub
+	docker push $(API_IMAGE)
+
+docker-push-web: ## Push imagen Web a Docker Hub
+	docker push $(WEB_IMAGE)
+
+docker-push: docker-push-api docker-push-web ## Push API + Web

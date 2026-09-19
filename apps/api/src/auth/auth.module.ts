@@ -4,10 +4,11 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 
-
-
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { RequestContextModule } from '../common/context';
+import { OnboardingService } from '../doctors/onboarding.service';
+import { MailerModule } from '../mailer/mailer.module';
 import { RolesModule } from '../roles/roles.module';
 import { AclGuard } from './guards/acl.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -25,11 +26,14 @@ import { JwtStrategy } from './strategies/jwt.strategy';
         },
       }),
     }),
+    RequestContextModule,
     RolesModule,
+    MailerModule,
   ],
   controllers: [AuthController],
   providers: [
     AuthService,
+    OnboardingService,
     JwtStrategy,
     {
       provide: APP_GUARD,

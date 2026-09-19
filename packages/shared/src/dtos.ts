@@ -64,14 +64,27 @@ export interface CreateConsultationDto {
   serviceIds: string[];
 }
 
+export interface PaymentItemDto {
+  itemType: 'CONSULTATION' | 'LAB';
+  description: string;
+  doctorId?: string;
+  servicePriceIds?: string[];
+  labOrderId?: string;
+}
+
+export interface PaymentLineDto {
+  paymentMethod: string;
+  currency: string;
+  amount: number;
+  referenceNumber?: string;
+}
+
 export interface CreatePaymentDto {
-  consultationId: string;
-  details: Array<{
-    paymentMethod: string;
-    currency: string;
-    amount: string;
-    referenceNumber?: string;
-  }>;
+  idempotencyKey: string;
+  patientId: string;
+  bcvExchangeRate: number;
+  item: PaymentItemDto;
+  paymentLines: PaymentLineDto[];
 }
 
 export interface CreateExpenseDto {
@@ -92,6 +105,7 @@ export interface VoidExpenseDto {
 export interface LoginDto {
   email: string;
   password: string;
+  tenantSlug: string;
 }
 
 export interface AuthResponseDto {

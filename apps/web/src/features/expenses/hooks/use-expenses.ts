@@ -2,10 +2,24 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { createExpense, getExpenseCategories, getExpenses, voidExpense } from '../services/expenses.service';
+import {
+  createExpense,
+  getExpenseCategories,
+  getExpenses,
+  getPaginatedExpenses,
+  voidExpense,
+  type GetExpensesQuery,
+} from '../services/expenses.service';
 
 export function useExpenses() {
   return useQuery({ queryKey: ['expenses'], queryFn: getExpenses });
+}
+
+export function usePaginatedExpenses(query?: GetExpensesQuery) {
+  return useQuery({
+    queryKey: ['expenses', query?.page, query?.limit, query?.search],
+    queryFn: () => getPaginatedExpenses(query),
+  });
 }
 
 export function useExpenseCategories() {

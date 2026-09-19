@@ -26,6 +26,39 @@ export function DoctorReceiptView({ data }: { data: ReceiptData }) {
 
       <Card>
         <div className="space-y-2">
+          <h3 className="text-sm font-medium text-on-surface-variant">Servicios y especialidad</h3>
+          {data.services && data.services.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-on-surface-variant">
+                    <th className="pb-2 pr-4">Especialidad</th>
+                    <th className="pb-2 pr-4">Servicio</th>
+                    <th className="pb-2 text-right">Monto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.services.map((service, index) => (
+                    <tr
+                      key={`${service.serviceId}-${index}`}
+                      className="border-b border-outline-variant last:border-0"
+                    >
+                      <td className="py-2 pr-4 text-on-surface-variant">{service.specialtyName}</td>
+                      <td className="py-2 pr-4 text-on-surface">{service.serviceName}</td>
+                      <td className="py-2 text-right text-on-surface">{formatUsd(service.priceUsd)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-sm text-on-surface-variant">No hay servicios asociados al recibo.</p>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <div className="space-y-2">
           <h3 className="text-sm font-medium text-on-surface-variant">Detalle del recibo</h3>
           {data.details && data.details.length > 0 ? (
             <div className="overflow-x-auto">

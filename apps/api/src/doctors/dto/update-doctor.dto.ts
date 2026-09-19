@@ -1,4 +1,12 @@
-import { IsEmail, IsNumber, IsOptional, IsString, Length, Max, Min } from 'class-validator';
+import {
+  IsEmail,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Length,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class UpdateDoctorDto {
   @IsOptional()

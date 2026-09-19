@@ -13,6 +13,12 @@ export class ReceiptResponseDto {
   declare centerShare: string;
   declare status: string;
   declare generatedAt: Date;
+  declare services?: Array<{
+    serviceId: string;
+    serviceName: string;
+    specialtyName: string;
+    priceUsd: string;
+  }>;
   declare details?: Array<{
     paymentMethod: string;
     currency: string;

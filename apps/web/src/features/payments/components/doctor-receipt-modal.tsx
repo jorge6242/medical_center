@@ -17,15 +17,23 @@ interface Props {
 
 export function DoctorReceiptModal({ paymentId, open, onClose }: Props) {
   const [data, setData] = useState<ReceiptData | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!open || !paymentId) return;
     let mounted = true;
     setLoading(true);
+    setError(null);
+    setData(null);
     void getReceipt(paymentId)
       .then((res) => {
         if (mounted) setData(res);
+      })
+      .catch((err: unknown) => {
+        if (!mounted) return;
+        const message = err instanceof Error ? err.message : 'No se pudo cargar el recibo';
+        setError(message);
       })
       .finally(() => mounted && setLoading(false));
     return () => {
@@ -56,6 +64,8 @@ export function DoctorReceiptModal({ paymentId, open, onClose }: Props) {
             <Button onClick={onClose}>Cerrar</Button>
           </div>
         </div>
+      ) : error ? (
+        <div className="py-6 text-center text-on-surface-variant">{error}</div>
       ) : (
         <div className="py-6 text-center text-on-surface-variant">No se pudo cargar el recibo.</div>
       )}

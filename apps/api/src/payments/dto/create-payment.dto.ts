@@ -1,7 +1,8 @@
-import { Currency, PaymentMethod } from '@prisma/client';
+import { Currency, ItemType, PaymentMethod } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  ArrayMinSize,
   IsEnum,
   IsNumber,
   IsOptional,
@@ -9,6 +10,7 @@ import {
   IsString,
   IsUUID,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
@@ -28,6 +30,28 @@ export class PaymentLineDto {
   declare referenceNumber?: string;
 }
 
+export class PaymentItemDto {
+  @IsEnum(ItemType)
+  declare itemType: ItemType;
+
+  @IsString()
+  declare description: string;
+
+  @ValidateIf((o) => o.itemType === 'CONSULTATION')
+  @IsString()
+  declare doctorId?: string;
+
+  @ValidateIf((o) => o.itemType === 'CONSULTATION')
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  declare servicePriceIds?: string[];
+
+  @ValidateIf((o) => o.itemType === 'LAB')
+  @IsString()
+  declare labOrderId?: string;
+}
+
 export class CreatePaymentDto {
   @IsUUID('4')
   declare idempotencyKey: string;
@@ -35,16 +59,13 @@ export class CreatePaymentDto {
   @IsString()
   declare patientId: string;
 
-  @IsString()
-  declare doctorId: string;
-
-  @IsArray()
-  @IsString({ each: true })
-  declare servicePriceIds: string[];
-
   @IsNumber({ maxDecimalPlaces: 4 })
   @IsPositive()
   declare bcvExchangeRate: number;
+
+  @ValidateNested()
+  @Type(() => PaymentItemDto)
+  declare item: PaymentItemDto;
 
   @IsArray()
   @ValidateNested({ each: true })

@@ -5,6 +5,7 @@ const TENANT_ID = 'tenant-demo-001';
 const DOCTORS = [
   {
     id: 'doc-001',
+    userId: 'user-doc-001',
     name: 'Dra. María González',
     email: 'maria.gonzalez@centromedico.demo',
     phone: '0412-1234567',
@@ -22,6 +23,7 @@ const DOCTORS = [
   },
   {
     id: 'doc-002',
+    userId: 'user-doc-002',
     name: 'Dr. Carlos Rodríguez',
     email: 'carlos.rodriguez@centromedico.demo',
     phone: '0414-7654321',
@@ -39,6 +41,7 @@ const DOCTORS = [
   },
   {
     id: 'doc-003',
+    userId: 'user-doc-003',
     name: 'Dr. Luis Martínez',
     email: 'luis.martinez@centromedico.demo',
     phone: '0424-5551234',
@@ -70,6 +73,7 @@ export async function seedDoctors(prisma: PrismaClient): Promise<void> {
       create: {
         id: docData.id,
         tenantId: TENANT_ID,
+        userId: docData.userId,
         name: docData.name,
         email: docData.email,
         phone: docData.phone,
