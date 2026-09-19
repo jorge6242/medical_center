@@ -63,8 +63,6 @@ describe('ExpensesController (e2e)', () => {
         role: 'ADMIN',
         permissions: [{ resource: 'expenses', action: 'read' }],
         roleVersion: 1,
-        doctorId: null,
-
       };
       next();
     });

@@ -1,12 +1,28 @@
-import { isPatientClinicalHistory, type PatientClinicalHistory } from '@centro-medico/shared';
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  isPatientClinicalHistory,
+  type PatientClinicalHistory,
+} from '@centro-medico/shared';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma, type DocumentType, type GenderType } from '@prisma/client';
 
 import { LookupQueryDto } from '../common/dto/lookup-query.dto';
-import { EntityLookupItemDto, LookupResponseDto } from '../common/dto/lookup-response.dto';
-import { createPaginatedResponse, type PaginatedResponseDto } from '../common/dto/paginated-response.dto';
+import {
+  EntityLookupItemDto,
+  LookupResponseDto,
+} from '../common/dto/lookup-response.dto';
+import {
+  createPaginatedResponse,
+  type PaginatedResponseDto,
+} from '../common/dto/paginated-response.dto';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
-import { decodeNameCursor, encodeNameCursor } from '../common/utils/cursor-pagination.utils';
+import {
+  decodeNameCursor,
+  encodeNameCursor,
+} from '../common/utils/cursor-pagination.utils';
 import { PrismaService } from '../database/prisma.service';
 
 import type { CreatePatientDto } from './dto/create-patient.dto';
@@ -18,7 +34,10 @@ import type { UpdatePatientDto } from './dto/update-patient.dto';
 export class PatientsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async lookup(tenantId: string, query: LookupQueryDto): Promise<LookupResponseDto> {
+  async lookup(
+    tenantId: string,
+    query: LookupQueryDto,
+  ): Promise<LookupResponseDto> {
     const cursor = decodeNameCursor(query.cursor);
     const search = query.q.trim();
     const where = {
@@ -30,7 +49,14 @@ export class PatientsService {
       ],
       ...(cursor
         ? {
-            AND: [{ OR: [{ name: { gt: cursor.name } }, { name: cursor.name, id: { gt: cursor.id } }] }],
+            AND: [
+              {
+                OR: [
+                  { name: { gt: cursor.name } },
+                  { name: cursor.name, id: { gt: cursor.id } },
+                ],
+              },
+            ],
           }
         : {}),
     };
@@ -51,7 +77,10 @@ export class PatientsService {
     return {
       data,
       hasNextPage,
-      nextCursor: hasNextPage && last ? encodeNameCursor({ name: last.name, id: last.id }) : null,
+      nextCursor:
+        hasNextPage && last
+          ? encodeNameCursor({ name: last.name, id: last.id })
+          : null,
     };
   }
 
@@ -69,7 +98,9 @@ export class PatientsService {
         ? {
             OR: [
               { name: { contains: search, mode: 'insensitive' as const } },
-              { documentId: { contains: search, mode: 'insensitive' as const } },
+              {
+                documentId: { contains: search, mode: 'insensitive' as const },
+              },
             ],
           }
         : {}),
@@ -85,7 +116,12 @@ export class PatientsService {
       }),
     ]);
 
-    return createPaginatedResponse(data.map(mapPatientResponse), total, page, limit);
+    return createPaginatedResponse(
+      data.map(mapPatientResponse),
+      total,
+      page,
+      limit,
+    );
   }
 
   async findOne(tenantId: string, id: string): Promise<PatientResponseDto> {
@@ -96,7 +132,10 @@ export class PatientsService {
     return mapPatientResponse(patient);
   }
 
-  async create(tenantId: string, dto: CreatePatientDto): Promise<PatientResponseDto> {
+  async create(
+    tenantId: string,
+    dto: CreatePatientDto,
+  ): Promise<PatientResponseDto> {
     const existing = await this.prisma.patient.findFirst({
       where: {
         tenantId,
@@ -115,19 +154,21 @@ export class PatientsService {
       throw new ConflictException('Historial clínico inválido');
     }
 
-    return this.prisma.patient.create({
-      data: {
-        tenantId,
-        documentType: dto.documentType,
-        documentId: dto.documentId,
-        name: dto.name,
-        phone: dto.phone,
-        email: dto.email,
-        birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
-        gender: dto.gender,
-        clinicalHistory: dto.clinicalHistory as Prisma.InputJsonValue,
-      },
-    }).then(mapPatientResponse);
+    return this.prisma.patient
+      .create({
+        data: {
+          tenantId,
+          documentType: dto.documentType,
+          documentId: dto.documentId,
+          name: dto.name,
+          phone: dto.phone,
+          email: dto.email,
+          birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+          gender: dto.gender,
+          clinicalHistory: dto.clinicalHistory as Prisma.InputJsonValue,
+        },
+      })
+      .then(mapPatientResponse);
   }
 
   async update(
@@ -141,25 +182,29 @@ export class PatientsService {
       throw new ConflictException('Historial clínico inválido');
     }
 
-    return this.prisma.patient.update({
-      where: { id },
-      data: {
-        name: dto.name,
-        phone: dto.phone,
-        email: dto.email,
-        birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
-        gender: dto.gender,
-        clinicalHistory: dto.clinicalHistory as Prisma.InputJsonValue,
-      },
-    }).then(mapPatientResponse);
+    return this.prisma.patient
+      .update({
+        where: { id },
+        data: {
+          name: dto.name,
+          phone: dto.phone,
+          email: dto.email,
+          birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+          gender: dto.gender,
+          clinicalHistory: dto.clinicalHistory as Prisma.InputJsonValue,
+        },
+      })
+      .then(mapPatientResponse);
   }
 
   async deactivate(tenantId: string, id: string): Promise<PatientResponseDto> {
     await this.findOne(tenantId, id);
-    return this.prisma.patient.update({
-      where: { id },
-      data: { isActive: false },
-    }).then(mapPatientResponse);
+    return this.prisma.patient
+      .update({
+        where: { id },
+        data: { isActive: false },
+      })
+      .then(mapPatientResponse);
   }
 
   async findConsultations(

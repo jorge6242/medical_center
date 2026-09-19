@@ -1,9 +1,20 @@
-import { BadRequestException, Controller, Get, Headers, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 
 import { ReceiptsService } from './receipts.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser, type JwtPayload } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type JwtPayload,
+} from '../common/decorators/current-user.decorator';
 import { InternalRequest } from '../common/decorators/internal-request.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
 
@@ -20,7 +31,11 @@ export class ReceiptsController {
     @CurrentUser() user: JwtPayload,
     @Param('paymentId') paymentId: string,
   ): Promise<ReceiptResponseDto> {
-    return this.receiptsService.findByPayment(user.tenantId, paymentId, user.sub);
+    return this.receiptsService.findByPayment(
+      user.tenantId,
+      paymentId,
+      user.sub,
+    );
   }
 
   @Post(':paymentId/generate')
@@ -34,6 +49,10 @@ export class ReceiptsController {
       throw new BadRequestException('Missing internal receipt headers');
     }
 
-    return this.receiptsService.createForPayment(tenantId, paymentId, generatedById);
+    return this.receiptsService.createForPayment(
+      tenantId,
+      paymentId,
+      generatedById,
+    );
   }
 }

@@ -21,7 +21,9 @@ export class RolesService {
   ): Promise<void> {
     const currentVersion = await this.getRoleVersion(tenantId, roleName);
     if (currentVersion !== jwtVersion) {
-      throw new UnauthorizedException('Permisos del rol actualizados. Inicie sesión nuevamente.');
+      throw new UnauthorizedException(
+        'Permisos del rol actualizados. Inicie sesión nuevamente.',
+      );
     }
   }
 

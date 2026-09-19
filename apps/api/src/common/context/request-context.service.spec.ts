@@ -22,15 +22,21 @@ describe('RequestContextService', () => {
   });
 
   it('isolates concurrent stores', async () => {
-    const first = service.run({ userId: 'user-1', tenantId: 'tenant-1' }, async () => {
-      await Promise.resolve();
-      return service.getStore();
-    });
+    const first = service.run(
+      { userId: 'user-1', tenantId: 'tenant-1' },
+      async () => {
+        await Promise.resolve();
+        return service.getStore();
+      },
+    );
 
-    const second = service.run({ userId: 'user-2', tenantId: 'tenant-2' }, async () => {
-      await Promise.resolve();
-      return service.getStore();
-    });
+    const second = service.run(
+      { userId: 'user-2', tenantId: 'tenant-2' },
+      async () => {
+        await Promise.resolve();
+        return service.getStore();
+      },
+    );
 
     await expect(Promise.all([first, second])).resolves.toEqual([
       { userId: 'user-1', tenantId: 'tenant-1' },

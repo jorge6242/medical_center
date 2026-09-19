@@ -38,7 +38,9 @@ export class SacsVerificationCron {
         await this.sacsVerification.verifyDoctor(doctor.id);
         await this.sacsVerification.randomDelay();
       } catch (error) {
-        this.logger.error(`Failed to re-verify doctor ${doctor.name} (${doctor.id}): ${error instanceof Error ? error.message : String(error)}`);
+        this.logger.error(
+          `Failed to re-verify doctor ${doctor.name} (${doctor.id}): ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     }
 

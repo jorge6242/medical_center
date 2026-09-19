@@ -24,7 +24,9 @@ type MutationArgs = {
 };
 
 type ModelDelegate = {
-  findUnique(args: { where: Record<string, unknown> }): Promise<Record<string, unknown> | null>;
+  findUnique(args: {
+    where: Record<string, unknown>;
+  }): Promise<Record<string, unknown> | null>;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -67,7 +69,10 @@ export function getChangedFields(
   }
 
   return Object.entries(newValues)
-    .filter(([field, value]) => !valuesAreEqual(getComparableValue(value), oldValues[field]))
+    .filter(
+      ([field, value]) =>
+        !valuesAreEqual(getComparableValue(value), oldValues[field]),
+    )
     .map(([field]) => field);
 }
 
@@ -89,7 +94,9 @@ async function findOldValues(
   }
 
   const delegateName = getModelDelegateName(model);
-  const delegate = (prisma as unknown as Record<string, ModelDelegate>)[delegateName];
+  const delegate = (prisma as unknown as Record<string, ModelDelegate>)[
+    delegateName
+  ];
 
   if (!delegate) {
     return undefined;
@@ -107,15 +114,29 @@ export async function executeWithAudit<TArgs, TResult>(params: {
   args: TArgs;
   query: (args: TArgs) => Promise<TResult>;
 }): Promise<TResult> {
-  const { prisma, requestContext, auditLogService, model, operation, args, query } = params;
+  const {
+    prisma,
+    requestContext,
+    auditLogService,
+    model,
+    operation,
+    args,
+    query,
+  } = params;
 
-  if (!model || !AUDITED_MODELS.has(model) || !AUDITED_OPERATIONS.has(operation)) {
+  if (
+    !model ||
+    !AUDITED_MODELS.has(model) ||
+    !AUDITED_OPERATIONS.has(operation)
+  ) {
     return query(args);
   }
 
   const mutationArgs = getMutationArgs(args);
   const oldValues =
-    operation === 'update' ? await findOldValues(prisma, model, mutationArgs) : undefined;
+    operation === 'update'
+      ? await findOldValues(prisma, model, mutationArgs)
+      : undefined;
 
   const result = await query(args);
   const context = requestContext.getStore();

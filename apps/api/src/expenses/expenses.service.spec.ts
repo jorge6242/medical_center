@@ -24,7 +24,11 @@ describe('ExpensesService', () => {
   });
 
   it('paginates and searches by categoryName or description', async () => {
-    const query: ExpenseQueryDto = { page: 2, limit: 5, search: 'internet' } as ExpenseQueryDto;
+    const query: ExpenseQueryDto = {
+      page: 2,
+      limit: 5,
+      search: 'internet',
+    } as ExpenseQueryDto;
     const expenses = [
       {
         id: '1',

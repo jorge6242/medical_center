@@ -1,4 +1,12 @@
-import { BadRequestException, GoneException, HttpException, HttpStatus, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  GoneException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 
@@ -50,14 +58,17 @@ export class OnboardingService {
         where: { tenantId, name: 'doctor', isActive: true },
       });
       if (!doctorRole) {
-        throw new NotFoundException('Rol doctor no encontrado para este tenant');
+        throw new NotFoundException(
+          'Rol doctor no encontrado para este tenant',
+        );
       }
 
       const passwordHash = await bcrypt.hash(this.generateTempPassword(), 10);
       user = await this.prisma.user.create({
         data: {
           tenantId,
-          email: doctor.email ?? `doctor-${doctor.documentId}@centromedico.local`,
+          email:
+            doctor.email ?? `doctor-${doctor.documentId}@centromedico.local`,
           passwordHash,
           name: doctor.name,
           roleId: doctorRole.id,
@@ -77,7 +88,9 @@ export class OnboardingService {
       where: {
         userId: user.id,
         sentAt: {
-          gte: new Date(Date.now() - this.RATE_LIMIT_WINDOW_HOURS * 60 * 60 * 1000),
+          gte: new Date(
+            Date.now() - this.RATE_LIMIT_WINDOW_HOURS * 60 * 60 * 1000,
+          ),
         },
       },
     });
@@ -106,7 +119,9 @@ export class OnboardingService {
       expiresIn: `${this.ONBOARDING_EXPIRES_HOURS}h`,
     });
 
-    const expiresAt = new Date(Date.now() + this.ONBOARDING_EXPIRES_HOURS * 60 * 60 * 1000);
+    const expiresAt = new Date(
+      Date.now() + this.ONBOARDING_EXPIRES_HOURS * 60 * 60 * 1000,
+    );
 
     const onboardingToken = await this.prisma.onboardingToken.create({
       data: {
@@ -119,7 +134,11 @@ export class OnboardingService {
     });
 
     // Send email (fire-and-forget)
-    this.sendOnboardingEmail(doctor.name, doctor.email ?? user.email, token).catch((error: unknown) => {
+    this.sendOnboardingEmail(
+      doctor.name,
+      doctor.email ?? user.email,
+      token,
+    ).catch((error: unknown) => {
       this.logger.error(
         `Failed to send onboarding email to ${doctor.email}: ${error instanceof Error ? error.message : String(error)}`,
       );
@@ -128,13 +147,17 @@ export class OnboardingService {
     return { tokenId: onboardingToken.id, sentAt: onboardingToken.sentAt };
   }
 
-  async validateToken(token: string): Promise<{ userId: string; doctorId: string }> {
+  async validateToken(
+    token: string,
+  ): Promise<{ userId: string; doctorId: string }> {
     // Verify JWT
     let payload: OnboardingJwtPayload;
     try {
       payload = this.jwtService.verify<OnboardingJwtPayload>(token);
     } catch {
-      throw new GoneException('El enlace de activación ha expirado o es inválido');
+      throw new GoneException(
+        'El enlace de activación ha expirado o es inválido',
+      );
     }
 
     if (payload.purpose !== 'onboarding') {
@@ -173,7 +196,10 @@ export class OnboardingService {
       }),
       this.prisma.onboardingToken.update({
         where: { token },
-        data: { status: 'COMPLETED' as OnboardingTokenStatus, completedAt: new Date() },
+        data: {
+          status: 'COMPLETED' as OnboardingTokenStatus,
+          completedAt: new Date(),
+        },
       }),
     ]);
 
@@ -209,14 +235,21 @@ export class OnboardingService {
     };
   }
 
-  private async sendOnboardingEmail(doctorName: string, to: string, token: string): Promise<void> {
+  private async sendOnboardingEmail(
+    doctorName: string,
+    to: string,
+    token: string,
+  ): Promise<void> {
     const onboardingUrl = `${this.getFrontendUrl()}/onboarding?token=${encodeURIComponent(token)}`;
 
-    const { subject, html } = this.mailerService.renderTemplate('onboardingEmail', {
-      doctorName,
-      onboardingUrl,
-      expiresIn: '24 horas',
-    });
+    const { subject, html } = this.mailerService.renderTemplate(
+      'onboardingEmail',
+      {
+        doctorName,
+        onboardingUrl,
+        expiresIn: '24 horas',
+      },
+    );
 
     await this.mailerService.sendReceiptEmail(to, subject, html);
   }
@@ -227,6 +260,8 @@ export class OnboardingService {
   }
 
   private generateTempPassword(): string {
-    return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    return (
+      Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+    );
   }
 }

@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { PrismaService } from '../database/prisma.service';
 
@@ -47,7 +51,8 @@ export class SpecialtiesService {
         },
       },
     });
-    if (!specialty) throw new NotFoundException(`Especialidad ${id} no encontrada`);
+    if (!specialty)
+      throw new NotFoundException(`Especialidad ${id} no encontrada`);
 
     return {
       id: specialty.id,
@@ -63,11 +68,15 @@ export class SpecialtiesService {
     };
   }
 
-  async create(tenantId: string, dto: CreateSpecialtyDto): Promise<SpecialtyResponseDto> {
+  async create(
+    tenantId: string,
+    dto: CreateSpecialtyDto,
+  ): Promise<SpecialtyResponseDto> {
     const existing = await this.prisma.specialty.findFirst({
       where: { tenantId, name: dto.name, isActive: true },
     });
-    if (existing) throw new ConflictException(`Especialidad "${dto.name}" ya existe`);
+    if (existing)
+      throw new ConflictException(`Especialidad "${dto.name}" ya existe`);
 
     const specialty = await this.prisma.specialty.create({
       data: { tenantId, name: dto.name },
@@ -98,7 +107,10 @@ export class SpecialtiesService {
     dto: UpdateSpecialtyDto,
   ): Promise<SpecialtyResponseDto> {
     await this.assertExists(tenantId, id);
-    await this.prisma.specialty.update({ where: { id }, data: { name: dto.name } });
+    await this.prisma.specialty.update({
+      where: { id },
+      data: { name: dto.name },
+    });
     return this.findOne(tenantId, id);
   }
 
@@ -112,7 +124,8 @@ export class SpecialtiesService {
     const sp = await this.prisma.servicePrice.findFirst({
       where: { id: servicePriceId, specialtyId, isActive: true },
     });
-    if (!sp) throw new NotFoundException(`Servicio ${servicePriceId} no encontrado`);
+    if (!sp)
+      throw new NotFoundException(`Servicio ${servicePriceId} no encontrado`);
 
     await this.prisma.servicePrice.update({
       where: { id: servicePriceId },
@@ -121,15 +134,23 @@ export class SpecialtiesService {
     return this.findOne(tenantId, specialtyId);
   }
 
-  async deactivate(tenantId: string, id: string): Promise<SpecialtyResponseDto> {
+  async deactivate(
+    tenantId: string,
+    id: string,
+  ): Promise<SpecialtyResponseDto> {
     await this.assertExists(tenantId, id);
-    await this.prisma.specialty.update({ where: { id }, data: { isActive: false } });
-    return this.prisma.specialty.findUniqueOrThrow({ where: { id } }).then((s) => ({
-      id: s.id,
-      name: s.name,
-      isActive: s.isActive,
-      services: [],
-    }));
+    await this.prisma.specialty.update({
+      where: { id },
+      data: { isActive: false },
+    });
+    return this.prisma.specialty
+      .findUniqueOrThrow({ where: { id } })
+      .then((s) => ({
+        id: s.id,
+        name: s.name,
+        isActive: s.isActive,
+        services: [],
+      }));
   }
 
   async deactivateService(
@@ -149,6 +170,7 @@ export class SpecialtiesService {
     const exists = await this.prisma.specialty.findFirst({
       where: { id, tenantId, isActive: true },
     });
-    if (!exists) throw new NotFoundException(`Especialidad ${id} no encontrada`);
+    if (!exists)
+      throw new NotFoundException(`Especialidad ${id} no encontrada`);
   }
 }

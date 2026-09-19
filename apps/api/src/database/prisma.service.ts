@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
@@ -8,7 +13,10 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import { RequestContextService } from '../common/context';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(PrismaService.name);
 
   constructor(
@@ -24,7 +32,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     await this.$connect();
     Object.assign(
       this,
-      this.$extends(buildAuditExtension(this, this.requestContext, this.auditLogService)),
+      this.$extends(
+        buildAuditExtension(this, this.requestContext, this.auditLogService),
+      ),
     );
     this.logger.log('Database connected');
   }

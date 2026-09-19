@@ -48,8 +48,6 @@ services:
       - ./apps/api/package.json:/app/apps/api/package.json
       # Hot reload: mount source only — node_modules stays in container
       - ./apps/api/src:/app/apps/api/src
-      - ./apps/api/test:/app/apps/api/test
-
       - ./apps/api/prisma:/app/apps/api/prisma
       - ./packages/shared:/app/packages/shared
     depends_on:

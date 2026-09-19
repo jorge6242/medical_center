@@ -15,7 +15,10 @@ describe('JwtAuthGuard', () => {
       enterWith: jest.fn(),
     };
 
-    guard = new JwtAuthGuard(new Reflector(), requestContext as unknown as RequestContextService);
+    guard = new JwtAuthGuard(
+      new Reflector(),
+      requestContext as unknown as RequestContextService,
+    );
   });
 
   it('stores request context from the validated JWT payload', () => {
@@ -39,7 +42,9 @@ describe('JwtAuthGuard', () => {
   });
 
   it('throws unauthorized when user is missing', () => {
-    expect(() => guard.handleRequest(null, null)).toThrow(UnauthorizedException);
+    expect(() => guard.handleRequest(null, null)).toThrow(
+      UnauthorizedException,
+    );
     expect(requestContext.enterWith).not.toHaveBeenCalled();
   });
 });

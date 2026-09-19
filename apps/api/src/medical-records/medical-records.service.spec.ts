@@ -1,4 +1,8 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 import { MedicalRecordExportFormat } from './dto/generate-medical-record-export.dto';
@@ -29,7 +33,9 @@ describe('MedicalRecordsService', () => {
     user: {
       findFirst: jest.fn(),
     },
-    $transaction: jest.fn((operations: Array<Promise<unknown>>) => Promise.all(operations)),
+    $transaction: jest.fn((operations: Array<Promise<unknown>>) =>
+      Promise.all(operations),
+    ),
   } as unknown as PrismaService;
   const service = new MedicalRecordsService(prisma);
 
@@ -425,14 +431,22 @@ describe('MedicalRecordsService', () => {
       select: expect.any(Object),
     });
     expect(result.records).toHaveLength(2);
-    expect(result.records[0]).toMatchObject({ id: 'record-2', doctorName: 'Dr. Gomez' });
-    expect(result.records[1]).toMatchObject({ id: 'record-1', doctorName: 'Dr. Ruiz' });
+    expect(result.records[0]).toMatchObject({
+      id: 'record-2',
+      doctorName: 'Dr. Gomez',
+    });
+    expect(result.records[1]).toMatchObject({
+      id: 'record-1',
+      doctorName: 'Dr. Ruiz',
+    });
   });
 
   it('throws when reading a missing medical record', async () => {
     (prisma.medicalRecord.findFirst as jest.Mock).mockResolvedValue(null);
 
-    await expect(service.findOne('tenant-1', 'record-1')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(
+      service.findOne('tenant-1', 'record-1'),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('lists paid consultations with report state for the consultations view', async () => {
@@ -473,7 +487,15 @@ describe('MedicalRecordsService', () => {
     ]);
 
     const result = await service.findPaidConsultations(
-      { sub: 'user-1', tenantId: 'tenant-1', email: 'test@test.com', role: 'admin', doctorId: null, permissions: [], roleVersion: 1 },
+      {
+        sub: 'user-1',
+        tenantId: 'tenant-1',
+        email: 'test@test.com',
+        role: 'admin',
+        doctorId: null,
+        permissions: [],
+        roleVersion: 1,
+      },
       { page: 1, limit: 10, search: 'maria' },
     );
 
@@ -521,11 +543,18 @@ describe('MedicalRecordsService', () => {
   });
 
   it('generates a medical record export inline and stores it as completed', async () => {
-    (prisma.medicalRecord.findFirst as jest.Mock).mockResolvedValue({ id: 'record-1' });
-
-    const result = await service.createExportJob('tenant-1', 'user-1', 'record-1', {
-      format: MedicalRecordExportFormat.PDF,
+    (prisma.medicalRecord.findFirst as jest.Mock).mockResolvedValue({
+      id: 'record-1',
     });
+
+    const result = await service.createExportJob(
+      'tenant-1',
+      'user-1',
+      'record-1',
+      {
+        format: MedicalRecordExportFormat.PDF,
+      },
+    );
 
     expect(prisma.medicalRecord.findFirst).toHaveBeenCalledWith({
       where: { id: 'record-1', tenantId: 'tenant-1' },
@@ -555,7 +584,9 @@ describe('MedicalRecordsService', () => {
     (prisma.medicalRecord.findFirst as jest.Mock).mockResolvedValue(null);
 
     await expect(
-      service.createExportJob('tenant-1', 'user-1', 'missing-record', { format: MedicalRecordExportFormat.PDF }),
+      service.createExportJob('tenant-1', 'user-1', 'missing-record', {
+        format: MedicalRecordExportFormat.PDF,
+      }),
     ).rejects.toBeInstanceOf(NotFoundException);
 
     expect(prisma.generatedReport.upsert).not.toHaveBeenCalled();

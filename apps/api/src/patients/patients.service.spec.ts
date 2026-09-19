@@ -52,7 +52,9 @@ describe('PatientsService', () => {
   });
 
   it('persists clinicalHistory when updating a patient', async () => {
-    (prisma.patient.findFirst as jest.Mock).mockResolvedValue({ id: 'patient-1' });
+    (prisma.patient.findFirst as jest.Mock).mockResolvedValue({
+      id: 'patient-1',
+    });
     (prisma.patient.update as jest.Mock).mockResolvedValue({
       id: 'patient-1',
       clinicalHistory: { antecedentesGinecologicos: { menarquiaEdad: 12 } },
@@ -142,7 +144,12 @@ describe('PatientsService', () => {
         date: new Date('2026-01-02T10:00:00.000Z'),
         status: 'PAID',
         medicalRecord: null,
-        services: [{ serviceName: 'Consulta ginecológica', specialtyName: 'Ginecología' }],
+        services: [
+          {
+            serviceName: 'Consulta ginecológica',
+            specialtyName: 'Ginecología',
+          },
+        ],
       },
     ]);
 
@@ -155,7 +162,12 @@ describe('PatientsService', () => {
         status: 'PAID',
         hasMedicalRecord: false,
         canCreateMedicalRecord: true,
-        services: [{ serviceName: 'Consulta ginecológica', specialtyName: 'Ginecología' }],
+        services: [
+          {
+            serviceName: 'Consulta ginecológica',
+            specialtyName: 'Ginecología',
+          },
+        ],
       },
     ]);
   });

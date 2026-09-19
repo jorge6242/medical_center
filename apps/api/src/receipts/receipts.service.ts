@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../database/prisma.service';
@@ -20,7 +24,9 @@ export class ReceiptsService {
         payment: {
           include: {
             details: true,
-            item: { include: { consultation: { include: { services: true } } } },
+            item: {
+              include: { consultation: { include: { services: true } } },
+            },
           },
         },
       },
@@ -51,7 +57,9 @@ export class ReceiptsService {
         payment: {
           include: {
             details: true,
-            item: { include: { consultation: { include: { services: true } } } },
+            item: {
+              include: { consultation: { include: { services: true } } },
+            },
           },
         },
       },
@@ -71,7 +79,9 @@ export class ReceiptsService {
             consultation: {
               include: {
                 services: true,
-                doctor: { include: { bankAccounts: { where: { isDefault: true } } } },
+                doctor: {
+                  include: { bankAccounts: { where: { isDefault: true } } },
+                },
               },
             },
           },
@@ -85,12 +95,16 @@ export class ReceiptsService {
     }
 
     if (payment.item?.itemType !== 'CONSULTATION') {
-      throw new BadRequestException('Los recibos de doctor solo aplican a pagos de consulta médica');
+      throw new BadRequestException(
+        'Los recibos de doctor solo aplican a pagos de consulta médica',
+      );
     }
 
     const doctor = payment.item.consultation?.doctor;
     if (!doctor) {
-      throw new NotFoundException(`Doctor no encontrado para el pago ${paymentId}`);
+      throw new NotFoundException(
+        `Doctor no encontrado para el pago ${paymentId}`,
+      );
     }
 
     const defaultAccount = doctor.bankAccounts[0];
@@ -122,16 +136,25 @@ export class ReceiptsService {
         },
       });
 
-      return this.toResponse(receipt, payment.details ?? [], this.extractServices(payment));
+      return this.toResponse(
+        receipt,
+        payment.details ?? [],
+        this.extractServices(payment),
+      );
     } catch (error: unknown) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
         const existingReceipt = await this.prisma.doctorReceipt.findFirst({
           where: { paymentId, payment: { tenantId } },
           include: {
             payment: {
               include: {
                 details: true,
-                item: { include: { consultation: { include: { services: true } } } },
+                item: {
+                  include: { consultation: { include: { services: true } } },
+                },
               },
             },
           },
@@ -212,18 +235,20 @@ export class ReceiptsService {
     };
   }
 
-  private extractServices(payment: {
-    item?: {
-      consultation?: {
-        services: Array<{
-          serviceId: string;
-          serviceName: string;
-          specialtyName: string;
-          priceUsd: Prisma.Decimal;
-        }>;
+  private extractServices(
+    payment: {
+      item?: {
+        consultation?: {
+          services: Array<{
+            serviceId: string;
+            serviceName: string;
+            specialtyName: string;
+            priceUsd: Prisma.Decimal;
+          }>;
+        } | null;
       } | null;
-    } | null;
-  } | null): Array<{
+    } | null,
+  ): Array<{
     serviceId: string;
     serviceName: string;
     specialtyName: string;

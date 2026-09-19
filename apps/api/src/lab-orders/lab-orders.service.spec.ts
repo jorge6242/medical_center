@@ -1,9 +1,8 @@
-
 import { LabOrderStatus, Prisma } from '@prisma/client';
 
 import { LabOrdersService } from './lab-orders.service';
 
-import type { PrismaService } from "../database/prisma.service";
+import type { PrismaService } from '../database/prisma.service';
 import type { LabOrderQueryDto } from './dto/lab-order-query.dto';
 
 describe('LabOrdersService', () => {
@@ -48,7 +47,9 @@ describe('LabOrdersService', () => {
 
     const result = await service.findAll('tenant-1', query);
 
-    expect(prisma.labOrder.count).toHaveBeenCalledWith({ where: { tenantId: 'tenant-1' } });
+    expect(prisma.labOrder.count).toHaveBeenCalledWith({
+      where: { tenantId: 'tenant-1' },
+    });
     expect(prisma.labOrder.findMany).toHaveBeenCalledWith({
       where: { tenantId: 'tenant-1' },
       skip: 0,
@@ -90,8 +91,18 @@ describe('LabOrdersService', () => {
         OR: [
           { id: { contains: 'hemograma', mode: 'insensitive' } },
           { patient: { name: { contains: 'hemograma', mode: 'insensitive' } } },
-          { patient: { documentId: { contains: 'hemograma', mode: 'insensitive' } } },
-          { tests: { some: { testName: { contains: 'hemograma', mode: 'insensitive' } } } },
+          {
+            patient: {
+              documentId: { contains: 'hemograma', mode: 'insensitive' },
+            },
+          },
+          {
+            tests: {
+              some: {
+                testName: { contains: 'hemograma', mode: 'insensitive' },
+              },
+            },
+          },
         ],
       },
     });
@@ -130,8 +141,14 @@ describe('LabOrdersService', () => {
         OR: [
           { id: { contains: 'V123', mode: 'insensitive' } },
           { patient: { name: { contains: 'V123', mode: 'insensitive' } } },
-          { patient: { documentId: { contains: 'V123', mode: 'insensitive' } } },
-          { tests: { some: { testName: { contains: 'V123', mode: 'insensitive' } } } },
+          {
+            patient: { documentId: { contains: 'V123', mode: 'insensitive' } },
+          },
+          {
+            tests: {
+              some: { testName: { contains: 'V123', mode: 'insensitive' } },
+            },
+          },
         ],
       },
     });

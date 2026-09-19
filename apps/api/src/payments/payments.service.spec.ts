@@ -31,7 +31,12 @@ describe('PaymentsService receipt side effects', () => {
     (mailerService.renderTemplate as jest.Mock).mockReturnValue({
       subject: 'Recibo CM-2026-1',
       html: '<p>Recibo</p>',
-      template: { name: 'receipt-generated', version: 1, category: 'receipt', audience: 'doctor' },
+      template: {
+        name: 'receipt-generated',
+        version: 1,
+        category: 'receipt',
+        audience: 'doctor',
+      },
     });
 
     const result = await service.processReceiptSideEffects(
@@ -41,7 +46,11 @@ describe('PaymentsService receipt side effects', () => {
       'doctor@example.com',
     );
 
-    expect(receiptsService.createForPayment).toHaveBeenCalledWith('tenant-1', 'payment-1', 'user-1');
+    expect(receiptsService.createForPayment).toHaveBeenCalledWith(
+      'tenant-1',
+      'payment-1',
+      'user-1',
+    );
     expect(mailerService.sendReceiptEmail).toHaveBeenCalledWith(
       'doctor@example.com',
       'Recibo CM-2026-1',
@@ -55,7 +64,9 @@ describe('PaymentsService receipt side effects', () => {
   });
 
   it('returns a warning when receipt generation fails and skips email delivery', async () => {
-    (receiptsService.createForPayment as jest.Mock).mockRejectedValue(new Error('doctor data missing'));
+    (receiptsService.createForPayment as jest.Mock).mockRejectedValue(
+      new Error('doctor data missing'),
+    );
 
     const result = await service.processReceiptSideEffects(
       'tenant-1',
@@ -82,9 +93,16 @@ describe('PaymentsService receipt side effects', () => {
     (mailerService.renderTemplate as jest.Mock).mockReturnValue({
       subject: 'Recibo CM-2026-1',
       html: '<p>Recibo</p>',
-      template: { name: 'receipt-generated', version: 1, category: 'receipt', audience: 'doctor' },
+      template: {
+        name: 'receipt-generated',
+        version: 1,
+        category: 'receipt',
+        audience: 'doctor',
+      },
     });
-    (mailerService.sendReceiptEmail as jest.Mock).mockRejectedValue(new Error('SMTP unreachable'));
+    (mailerService.sendReceiptEmail as jest.Mock).mockRejectedValue(
+      new Error('SMTP unreachable'),
+    );
 
     const result = await service.processReceiptSideEffects(
       'tenant-1',

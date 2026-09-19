@@ -1,10 +1,9 @@
-
 import { Prisma } from '@prisma/client';
 
 import { ReportGroupBy, ReportType } from './dto/query-reports.dto';
 import { ReportsService } from './reports.service';
 
-import type { PrismaService } from "../database/prisma.service";
+import type { PrismaService } from '../database/prisma.service';
 
 describe('ReportsService', () => {
   const prisma = {
@@ -46,7 +45,13 @@ describe('ReportsService', () => {
           },
           labOrder: null,
         },
-        details: [{ paymentMethod: 'CASH', currency: 'USD', amount: new Prisma.Decimal('40.00') }],
+        details: [
+          {
+            paymentMethod: 'CASH',
+            currency: 'USD',
+            amount: new Prisma.Decimal('40.00'),
+          },
+        ],
       },
       {
         id: 'pay-2',
@@ -65,7 +70,13 @@ describe('ReportsService', () => {
           },
           labOrder: null,
         },
-        details: [{ paymentMethod: 'CASH', currency: 'USD', amount: new Prisma.Decimal('55.00') }],
+        details: [
+          {
+            paymentMethod: 'CASH',
+            currency: 'USD',
+            amount: new Prisma.Decimal('55.00'),
+          },
+        ],
       },
     ]);
     (prisma.expense.findMany as jest.Mock).mockResolvedValue([
@@ -128,7 +139,13 @@ describe('ReportsService', () => {
           },
           labOrder: null,
         },
-        details: [{ paymentMethod: 'CASH', currency: 'USD', amount: new Prisma.Decimal('40.00') }],
+        details: [
+          {
+            paymentMethod: 'CASH',
+            currency: 'USD',
+            amount: new Prisma.Decimal('40.00'),
+          },
+        ],
       },
     ]);
     (prisma.expense.findMany as jest.Mock).mockResolvedValue([]);
@@ -239,7 +256,9 @@ describe('ReportsService', () => {
   });
 
   it('creates a completed report job inline for PDF format', async () => {
-    (prisma.generatedReport.create as jest.Mock).mockResolvedValue({ id: 'report-1' });
+    (prisma.generatedReport.create as jest.Mock).mockResolvedValue({
+      id: 'report-1',
+    });
 
     const result = await service.createJob('tenant-1', 'user-1', {
       from: '2026-01-01',
@@ -267,7 +286,9 @@ describe('ReportsService', () => {
   });
 
   it('creates a completed report job inline for Excel format', async () => {
-    (prisma.generatedReport.create as jest.Mock).mockResolvedValue({ id: 'report-2' });
+    (prisma.generatedReport.create as jest.Mock).mockResolvedValue({
+      id: 'report-2',
+    });
 
     const result = await service.createJob('tenant-1', 'user-1', {
       from: '2026-01-01',

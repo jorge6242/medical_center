@@ -1,6 +1,13 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
-import { createPaginatedResponse, type PaginatedResponseDto } from '../common/dto/paginated-response.dto';
+import {
+  createPaginatedResponse,
+  type PaginatedResponseDto,
+} from '../common/dto/paginated-response.dto';
 import { PrismaService } from '../database/prisma.service';
 
 import type { CreateExpenseDto } from './dto/create-expense.dto';
@@ -51,16 +58,22 @@ export class ExpensesService {
   }
 
   async findOne(tenantId: string, id: string): Promise<ExpenseResponseDto> {
-    const expense = await this.prisma.expense.findFirst({ where: { id, tenantId } });
+    const expense = await this.prisma.expense.findFirst({
+      where: { id, tenantId },
+    });
     if (!expense) throw new NotFoundException(`Egreso ${id} no encontrado`);
     return this.toResponse(expense);
   }
 
-  async create(tenantId: string, dto: CreateExpenseDto): Promise<ExpenseResponseDto> {
+  async create(
+    tenantId: string,
+    dto: CreateExpenseDto,
+  ): Promise<ExpenseResponseDto> {
     const category = await this.prisma.expenseCategory.findFirst({
       where: { id: dto.categoryId, isActive: true },
     });
-    if (!category) throw new NotFoundException(`Categoría ${dto.categoryId} no encontrada`);
+    if (!category)
+      throw new NotFoundException(`Categoría ${dto.categoryId} no encontrada`);
 
     const expense = await this.prisma.expense.create({
       data: {
@@ -76,10 +89,18 @@ export class ExpensesService {
     return this.toResponse(expense);
   }
 
-  async void(tenantId: string, userId: string, id: string, dto: VoidExpenseDto): Promise<ExpenseResponseDto> {
-    const expense = await this.prisma.expense.findFirst({ where: { id, tenantId } });
+  async void(
+    tenantId: string,
+    userId: string,
+    id: string,
+    dto: VoidExpenseDto,
+  ): Promise<ExpenseResponseDto> {
+    const expense = await this.prisma.expense.findFirst({
+      where: { id, tenantId },
+    });
     if (!expense) throw new NotFoundException(`Egreso ${id} no encontrado`);
-    if (expense.status === 'VOIDED') throw new BadRequestException('Egreso ya está anulado');
+    if (expense.status === 'VOIDED')
+      throw new BadRequestException('Egreso ya está anulado');
 
     const updated = await this.prisma.expense.update({
       where: { id },

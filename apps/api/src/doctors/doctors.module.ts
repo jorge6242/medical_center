@@ -12,7 +12,12 @@ import { SacsVerificationService } from './sacs-verification.service';
 @Module({
   imports: [JwtModule.register({}), ScheduleModule.forRoot()],
   controllers: [DoctorsMeController, DoctorsController],
-  providers: [DoctorsService, OnboardingService, SacsVerificationService, SacsVerificationCron],
+  providers: [
+    DoctorsService,
+    OnboardingService,
+    SacsVerificationService,
+    SacsVerificationCron,
+  ],
   exports: [DoctorsService, OnboardingService],
 })
 export class DoctorsModule {}

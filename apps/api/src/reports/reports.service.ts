@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
-import { createPaginatedResponse, type PaginatedResponseDto } from '../common/dto/paginated-response.dto';
+import {
+  createPaginatedResponse,
+  type PaginatedResponseDto,
+} from '../common/dto/paginated-response.dto';
 import { PrismaService } from '../database/prisma.service';
 
 import type {
@@ -8,7 +11,10 @@ import type {
   ReportJobResponseDto,
   ReportsQueryDto,
 } from './dto/query-reports.dto';
-import type { ConsolidatedRecord, DetailRecord } from './interfaces/report-records.interface';
+import type {
+  ConsolidatedRecord,
+  DetailRecord,
+} from './interfaces/report-records.interface';
 
 @Injectable()
 export class ReportsService {
@@ -46,36 +52,40 @@ export class ReportsService {
 
     for (const payment of payments) {
       const key = this.getPeriodKey(payment.createdAt, dto.groupBy);
-      const existing = groups.get(key) || this.emptyRecord(key, payment.createdAt, dto.groupBy);
-      
+      const existing =
+        groups.get(key) ||
+        this.emptyRecord(key, payment.createdAt, dto.groupBy);
+
       const totalUsd = Number(payment.totalServiceUsd);
       const totalBs = Number(payment.totalPaidBs);
       const igtf = Number(payment.totalIgtfUsd);
-      
+
       existing.income.totalUsd += totalUsd;
       existing.income.totalBs += totalBs;
       existing.income.igtfUsd += igtf;
       existing.income.transactionCount += 1;
-      
+
       if (payment.item?.itemType === 'CONSULTATION') {
         existing.income.consultationsUsd += totalUsd;
       } else if (payment.item?.itemType === 'LAB') {
         existing.income.laboratoriesUsd += totalUsd;
       }
-      
+
       groups.set(key, existing);
     }
 
     for (const expense of expenses) {
       const key = this.getPeriodKey(expense.createdAt, dto.groupBy);
-      const existing = groups.get(key) || this.emptyRecord(key, expense.createdAt, dto.groupBy);
-      
+      const existing =
+        groups.get(key) ||
+        this.emptyRecord(key, expense.createdAt, dto.groupBy);
+
       existing.expenses.totalUsd += Number(expense.amountUsd);
       if (expense.amountBs) {
         existing.expenses.totalBs += Number(expense.amountBs);
       }
       existing.expenses.transactionCount += 1;
-      
+
       groups.set(key, existing);
     }
 
@@ -92,31 +102,47 @@ export class ReportsService {
     return this.paginate(consolidated, dto.page, dto.limit);
   }
 
-  async getDetail(tenantId: string, dto: ReportsQueryDto): Promise<PaginatedResponseDto<DetailRecord>> {
+  async getDetail(
+    tenantId: string,
+    dto: ReportsQueryDto,
+  ): Promise<PaginatedResponseDto<DetailRecord>> {
     const from = new Date(dto.from);
     const to = new Date(dto.to);
     to.setHours(23, 59, 59, 999);
 
     const records: DetailRecord[] = [];
 
-    if (dto.type === 'all' || dto.type === 'consultation' || dto.type === 'lab') {
+    if (
+      dto.type === 'all' ||
+      dto.type === 'consultation' ||
+      dto.type === 'lab'
+    ) {
       const payments = await this.prisma.payment.findMany({
         where: {
           tenantId,
           status: 'COMPLETED',
           createdAt: { gte: from, lte: to },
-          ...(dto.type && dto.type !== 'all' && {
-            item: { itemType: (dto.type as string).toUpperCase() as 'CONSULTATION' | 'LAB' },
-          }),
+          ...(dto.type &&
+            dto.type !== 'all' && {
+              item: {
+                itemType: (dto.type as string).toUpperCase() as
+                  | 'CONSULTATION'
+                  | 'LAB',
+              },
+            }),
         },
         include: {
           item: {
             include: {
-              consultation: { include: { patient: true, doctor: true, services: true } },
+              consultation: {
+                include: { patient: true, doctor: true, services: true },
+              },
               labOrder: { include: { patient: true, tests: true } },
             },
           },
-          details: { select: { paymentMethod: true, currency: true, amount: true } },
+          details: {
+            select: { paymentMethod: true, currency: true, amount: true },
+          },
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -133,7 +159,9 @@ export class ReportsService {
             description: item.description,
             amountUsd: Number(payment.totalServiceUsd),
             amountBs: Number(payment.totalPaidBs),
-            paymentMethods: payment.details.map(d => `${d.paymentMethod} (${d.currency})`),
+            paymentMethods: payment.details.map(
+              (d) => `${d.paymentMethod} (${d.currency})`,
+            ),
             status: payment.status,
           });
         } else if (item?.itemType === 'LAB' && item.labOrder) {
@@ -145,7 +173,9 @@ export class ReportsService {
             description: item.description,
             amountUsd: Number(payment.totalServiceUsd),
             amountBs: Number(payment.totalPaidBs),
-            paymentMethods: payment.details.map(d => `${d.paymentMethod} (${d.currency})`),
+            paymentMethods: payment.details.map(
+              (d) => `${d.paymentMethod} (${d.currency})`,
+            ),
             status: payment.status,
           });
         }
@@ -183,7 +213,11 @@ export class ReportsService {
     return this.paginate(filtered, dto.page, dto.limit);
   }
 
-  async createJob(tenantId: string, userId: string, dto: GenerateReportDto): Promise<ReportJobResponseDto> {
+  async createJob(
+    tenantId: string,
+    userId: string,
+    dto: GenerateReportDto,
+  ): Promise<ReportJobResponseDto> {
     const jobId = crypto.randomUUID();
 
     // Inline report generation (previously handled by BullMQ worker)
@@ -197,9 +231,10 @@ export class ReportsService {
     const content = JSON.stringify(reportData, null, 2);
     const blob = Buffer.from(content, 'utf-8');
     const filename = `reporte-${dto.type}-${dto.from}-al-${dto.to}.${dto.format === 'pdf' ? 'pdf' : 'xlsx'}`;
-    const mimeType = dto.format === 'pdf'
-      ? 'application/pdf'
-      : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    const mimeType =
+      dto.format === 'pdf'
+        ? 'application/pdf'
+        : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
     await this.prisma.generatedReport.create({
       data: {
@@ -224,7 +259,10 @@ export class ReportsService {
     };
   }
 
-  async getJobStatus(tenantId: string, jobId: string): Promise<ReportJobResponseDto> {
+  async getJobStatus(
+    tenantId: string,
+    jobId: string,
+  ): Promise<ReportJobResponseDto> {
     const report = await this.prisma.generatedReport.findFirst({
       where: { jobId, tenantId },
     });
@@ -235,8 +273,17 @@ export class ReportsService {
 
     return {
       jobId: report.jobId,
-      status: report.status as 'pending' | 'processing' | 'completed' | 'failed',
-      progress: report.status === 'completed' ? 100 : report.status === 'processing' ? 50 : 0,
+      status: report.status as
+        | 'pending'
+        | 'processing'
+        | 'completed'
+        | 'failed',
+      progress:
+        report.status === 'completed'
+          ? 100
+          : report.status === 'processing'
+            ? 50
+            : 0,
       format: report.format,
       filename: report.filename,
       sizeBytes: report.sizeBytes,
@@ -292,17 +339,23 @@ export class ReportsService {
   }
 
   private getWeekNumber(date: Date): number {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const d = new Date(
+      Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+    );
     const dayNum = d.getUTCDay() || 7;
     d.setUTCDate(d.getUTCDate() + 4 - dayNum);
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil((((+d - +yearStart) / 86400000) + 1) / 7);
+    return Math.ceil(((+d - +yearStart) / 86400000 + 1) / 7);
   }
 
-  private emptyRecord(key: string, date: Date, groupBy?: string): ConsolidatedRecord {
+  private emptyRecord(
+    key: string,
+    date: Date,
+    groupBy?: string,
+  ): ConsolidatedRecord {
     const periodStart = new Date(date);
     const periodEnd = new Date(date);
-    
+
     if (groupBy === 'week') {
       periodEnd.setDate(periodEnd.getDate() + 6);
     } else if (groupBy === 'month') {
@@ -334,7 +387,11 @@ export class ReportsService {
     };
   }
 
-  private paginate<T>(items: T[], page: number, limit: number): PaginatedResponseDto<T> {
+  private paginate<T>(
+    items: T[],
+    page: number,
+    limit: number,
+  ): PaginatedResponseDto<T> {
     const safePage = Math.max(1, page);
     const safeLimit = Math.max(1, limit);
     const start = (safePage - 1) * safeLimit;

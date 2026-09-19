@@ -20,7 +20,10 @@ import { VerifyDocumentDto } from './dto/verify-document.dto';
 import { OnboardingService } from './onboarding.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser, type JwtPayload } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type JwtPayload,
+} from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
 import { LookupQueryDto } from '../common/dto/lookup-query.dto';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
@@ -29,7 +32,6 @@ import type { DoctorResponseDto } from './dto/doctor-response.dto';
 import type { SacsQueryResult } from './sacs-verification.service';
 import type { LookupResponseDto } from '../common/dto/lookup-response.dto';
 import type { PaginatedResponseDto } from '../common/dto/paginated-response.dto';
-
 
 @Controller('doctors')
 @UseGuards(JwtAuthGuard, AclGuard)
@@ -96,20 +98,25 @@ export class DoctorsController {
 
   @Post('verify-document')
   @RequirePermission('doctors', 'read')
-  async verifyDocument(@Body() dto: VerifyDocumentDto): Promise<SacsQueryResult> {
+  async verifyDocument(
+    @Body() dto: VerifyDocumentDto,
+  ): Promise<SacsQueryResult> {
     try {
-      return await this.doctorsService.verifyDocument(dto.documentType, dto.documentId);
+      return await this.doctorsService.verifyDocument(
+        dto.documentType,
+        dto.documentId,
+      );
     } catch {
-      throw new BadGatewayException('SACS_UNAVAILABLE', 'No se pudo conectar con SACS. Intente nuevamente.');
+      throw new BadGatewayException(
+        'SACS_UNAVAILABLE',
+        'No se pudo conectar con SACS. Intente nuevamente.',
+      );
     }
   }
 
   @Get(':id/service-prices')
   @RequirePermission('doctors', 'read')
-  getServicePrices(
-    @CurrentUser() user: JwtPayload,
-    @Param('id') id: string,
-  ) {
+  getServicePrices(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
     return this.doctorsService.getServicePrices(user.tenantId, id);
   }
 
@@ -129,7 +136,11 @@ export class DoctorsController {
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
   ): Promise<{ message: string; tokenId: string; sentAt: Date }> {
-    const result = await this.onboardingService.sendOnboarding(user.tenantId, id, user.sub);
+    const result = await this.onboardingService.sendOnboarding(
+      user.tenantId,
+      id,
+      user.sub,
+    );
     return {
       message: 'Invitación enviada exitosamente',
       tokenId: result.tokenId,

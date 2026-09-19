@@ -1,7 +1,14 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { LabOrderStatus, Prisma } from '@prisma/client';
 
-import { createPaginatedResponse, type PaginatedResponseDto } from '../common/dto/paginated-response.dto';
+import {
+  createPaginatedResponse,
+  type PaginatedResponseDto,
+} from '../common/dto/paginated-response.dto';
 import { PrismaService } from '../database/prisma.service';
 
 import type { CreateLabOrderDto } from './dto/create-lab-order.dto';
@@ -29,9 +36,29 @@ export class LabOrdersService {
         ? {
             OR: [
               { id: { contains: search, mode: 'insensitive' as const } },
-              { patient: { name: { contains: search, mode: 'insensitive' as const } } },
-              { patient: { documentId: { contains: search, mode: 'insensitive' as const } } },
-              { tests: { some: { testName: { contains: search, mode: 'insensitive' as const } } } },
+              {
+                patient: {
+                  name: { contains: search, mode: 'insensitive' as const },
+                },
+              },
+              {
+                patient: {
+                  documentId: {
+                    contains: search,
+                    mode: 'insensitive' as const,
+                  },
+                },
+              },
+              {
+                tests: {
+                  some: {
+                    testName: {
+                      contains: search,
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                },
+              },
             ],
           }
         : {}),
@@ -68,29 +95,46 @@ export class LabOrdersService {
     );
   }
 
-  async findOne(tenantId: string, id: string): Promise<LabOrderDetailResponseDto> {
+  async findOne(
+    tenantId: string,
+    id: string,
+  ): Promise<LabOrderDetailResponseDto> {
     const order = await this.prisma.labOrder.findFirst({
       where: { id, tenantId },
       include: {
-        patient: { select: { id: true, name: true, documentType: true, documentId: true } },
+        patient: {
+          select: {
+            id: true,
+            name: true,
+            documentType: true,
+            documentId: true,
+          },
+        },
         tests: { select: { labTestId: true, testName: true, priceUsd: true } },
       },
     });
-    if (!order) throw new NotFoundException(`Orden de laboratorio ${id} no encontrada`);
+    if (!order)
+      throw new NotFoundException(`Orden de laboratorio ${id} no encontrada`);
     return this.toDetailResponse(order);
   }
 
-  async create(tenantId: string, dto: CreateLabOrderDto): Promise<LabOrderDetailResponseDto> {
+  async create(
+    tenantId: string,
+    dto: CreateLabOrderDto,
+  ): Promise<LabOrderDetailResponseDto> {
     const patient = await this.prisma.patient.findFirst({
       where: { id: dto.patientId, tenantId, isActive: true },
     });
-    if (!patient) throw new NotFoundException(`Paciente ${dto.patientId} no encontrado`);
+    if (!patient)
+      throw new NotFoundException(`Paciente ${dto.patientId} no encontrado`);
 
     const labTests = await this.prisma.labTestCatalog.findMany({
       where: { id: { in: dto.labTestIds }, tenantId, isActive: true },
     });
     if (labTests.length !== dto.labTestIds.length) {
-      throw new BadRequestException('Uno o más tests de laboratorio no son válidos o están inactivos');
+      throw new BadRequestException(
+        'Uno o más tests de laboratorio no son válidos o están inactivos',
+      );
     }
 
     const totalUsd = labTests.reduce((sum, t) => sum + Number(t.priceUsd), 0);
@@ -116,8 +160,17 @@ export class LabOrdersService {
       const created = await tx.labOrder.findFirstOrThrow({
         where: { id: order.id },
         include: {
-          patient: { select: { id: true, name: true, documentType: true, documentId: true } },
-          tests: { select: { labTestId: true, testName: true, priceUsd: true } },
+          patient: {
+            select: {
+              id: true,
+              name: true,
+              documentType: true,
+              documentId: true,
+            },
+          },
+          tests: {
+            select: { labTestId: true, testName: true, priceUsd: true },
+          },
         },
       });
 
@@ -127,8 +180,17 @@ export class LabOrdersService {
 
   private toDetailResponse(order: {
     id: string;
-    patient: { id: string; name: string; documentType: string; documentId: string };
-    tests: Array<{ labTestId: string; testName: string; priceUsd: Prisma.Decimal }>;
+    patient: {
+      id: string;
+      name: string;
+      documentType: string;
+      documentId: string;
+    };
+    tests: Array<{
+      labTestId: string;
+      testName: string;
+      priceUsd: Prisma.Decimal;
+    }>;
     totalUsd: Prisma.Decimal;
     status: LabOrderStatus;
     createdAt: Date;

@@ -1,9 +1,20 @@
 import { isMedicalRecordClinicalData } from '@centro-medico/shared';
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
-import { toMedicalRecordResponse, toPatientMedicalRecordResponse } from './medical-records.mapper';
-import { createPaginatedResponse, type PaginatedResponseDto } from '../common/dto/paginated-response.dto';
+import {
+  toMedicalRecordResponse,
+  toPatientMedicalRecordResponse,
+} from './medical-records.mapper';
+import {
+  createPaginatedResponse,
+  type PaginatedResponseDto,
+} from '../common/dto/paginated-response.dto';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { PrismaService } from '../database/prisma.service';
 
@@ -52,15 +63,21 @@ export class MedicalRecordsService {
     });
 
     if (!consultation) {
-      throw new NotFoundException(`Consulta ${dto.consultationId} no encontrada`);
+      throw new NotFoundException(
+        `Consulta ${dto.consultationId} no encontrada`,
+      );
     }
 
     if (consultation.patientId !== dto.patientId) {
-      throw new ConflictException('La consulta no pertenece al paciente indicado');
+      throw new ConflictException(
+        'La consulta no pertenece al paciente indicado',
+      );
     }
 
     if (consultation.status !== 'PAID') {
-      throw new BadRequestException('Solo se puede crear informe médico para consultas pagadas');
+      throw new BadRequestException(
+        'Solo se puede crear informe médico para consultas pagadas',
+      );
     }
 
     if (consultation.medicalRecord) {
@@ -150,11 +167,44 @@ export class MedicalRecordsService {
       ...(search
         ? {
             OR: [
-              { patient: { name: { contains: search, mode: 'insensitive' as const } } },
-              { patient: { documentId: { contains: search, mode: 'insensitive' as const } } },
-              { doctor: { name: { contains: search, mode: 'insensitive' as const } } },
-              { services: { some: { serviceName: { contains: search, mode: 'insensitive' as const } } } },
-              { services: { some: { specialtyName: { contains: search, mode: 'insensitive' as const } } } },
+              {
+                patient: {
+                  name: { contains: search, mode: 'insensitive' as const },
+                },
+              },
+              {
+                patient: {
+                  documentId: {
+                    contains: search,
+                    mode: 'insensitive' as const,
+                  },
+                },
+              },
+              {
+                doctor: {
+                  name: { contains: search, mode: 'insensitive' as const },
+                },
+              },
+              {
+                services: {
+                  some: {
+                    serviceName: {
+                      contains: search,
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                },
+              },
+              {
+                services: {
+                  some: {
+                    specialtyName: {
+                      contains: search,
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                },
+              },
             ],
           }
         : {}),
@@ -343,7 +393,9 @@ export class MedicalRecordsService {
 
     return {
       clinicalHistory: patient.clinicalHistory,
-      records: records.map((record) => toPatientMedicalRecordResponse(record as never)),
+      records: records.map((record) =>
+        toPatientMedicalRecordResponse(record as never),
+      ),
     };
   }
 
@@ -359,7 +411,9 @@ export class MedicalRecordsService {
     });
 
     if (!record) {
-      throw new NotFoundException(`Informe médico ${medicalRecordId} no encontrado`);
+      throw new NotFoundException(
+        `Informe médico ${medicalRecordId} no encontrado`,
+      );
     }
 
     const jobId = crypto.randomUUID();
@@ -412,7 +466,11 @@ export class MedicalRecordsService {
     };
   }
 
-  async getExportJobStatus(tenantId: string, medicalRecordId: string, jobId: string) {
+  async getExportJobStatus(
+    tenantId: string,
+    medicalRecordId: string,
+    jobId: string,
+  ) {
     const report = await this.prisma.generatedReport.findFirst({
       where: { jobId, tenantId },
     });
@@ -423,7 +481,9 @@ export class MedicalRecordsService {
     });
 
     if (!record) {
-      throw new NotFoundException(`Informe médico ${medicalRecordId} no encontrado`);
+      throw new NotFoundException(
+        `Informe médico ${medicalRecordId} no encontrado`,
+      );
     }
 
     if (!report) {
@@ -438,8 +498,17 @@ export class MedicalRecordsService {
 
     return {
       jobId: report.jobId,
-      status: report.status as 'pending' | 'processing' | 'completed' | 'failed',
-      progress: report.status === 'completed' ? 100 : report.status === 'processing' ? 50 : 0,
+      status: report.status as
+        | 'pending'
+        | 'processing'
+        | 'completed'
+        | 'failed',
+      progress:
+        report.status === 'completed'
+          ? 100
+          : report.status === 'processing'
+            ? 50
+            : 0,
       format: report.format,
       filename: report.filename,
       sizeBytes: report.sizeBytes,
@@ -449,7 +518,11 @@ export class MedicalRecordsService {
     };
   }
 
-  async downloadExport(tenantId: string, medicalRecordId: string, jobId: string) {
+  async downloadExport(
+    tenantId: string,
+    medicalRecordId: string,
+    jobId: string,
+  ) {
     const report = await this.prisma.generatedReport.findFirst({
       where: { jobId, tenantId },
     });
@@ -464,7 +537,9 @@ export class MedicalRecordsService {
     });
 
     if (!record) {
-      throw new NotFoundException(`Informe médico ${medicalRecordId} no encontrado`);
+      throw new NotFoundException(
+        `Informe médico ${medicalRecordId} no encontrado`,
+      );
     }
 
     if (report.status === 'pending') {
@@ -472,7 +547,9 @@ export class MedicalRecordsService {
     }
 
     if (report.status === 'failed') {
-      throw new BadRequestException(`Report generation failed: ${report.error}`);
+      throw new BadRequestException(
+        `Report generation failed: ${report.error}`,
+      );
     }
 
     if (new Date() > report.expiresAt) {
@@ -515,19 +592,30 @@ export class MedicalRecordsService {
     });
 
     // Priority 1: any specialty has explicit GYNECOLOGY_OBSTETRICS
-    const combined = specialties.find((s) => s.templateType === 'GYNECOLOGY_OBSTETRICS');
+    const combined = specialties.find(
+      (s) => s.templateType === 'GYNECOLOGY_OBSTETRICS',
+    );
     if (combined) {
-      return { templateType: combined.templateType, specialtyName: combined.name };
+      return {
+        templateType: combined.templateType,
+        specialtyName: combined.name,
+      };
     }
 
     // Priority 2: first specialty with any explicit templateType
     const withTemplate = specialties.find((s) => s.templateType);
     if (withTemplate?.templateType) {
-      return { templateType: withTemplate.templateType, specialtyName: withTemplate.name };
+      return {
+        templateType: withTemplate.templateType,
+        specialtyName: withTemplate.name,
+      };
     }
 
     // Fallback: no explicit templateType found → use GENERIC.
     // Configure templateType directly on the Specialty record in the DB.
-    return { templateType: 'GENERIC', specialtyName: specialties[0]?.name ?? null };
+    return {
+      templateType: 'GENERIC',
+      specialtyName: specialties[0]?.name ?? null,
+    };
   }
 }

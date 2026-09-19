@@ -1,6 +1,13 @@
 import { DocumentType, GenderType } from '@prisma/client';
-import { IsDateString, IsEmail, IsEnum, IsObject, IsOptional, IsString, Length } from 'class-validator';
-
+import {
+  IsDateString,
+  IsEmail,
+  IsEnum,
+  IsObject,
+  IsOptional,
+  IsString,
+  Length,
+} from 'class-validator';
 
 export class CreatePatientDto {
   @IsEnum(DocumentType)

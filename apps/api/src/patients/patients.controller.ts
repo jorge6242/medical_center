@@ -17,7 +17,10 @@ import { UpdatePatientDto } from './dto/update-patient.dto';
 import { PatientsService } from './patients.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser, type JwtPayload } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type JwtPayload,
+} from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
 import { LookupQueryDto } from '../common/dto/lookup-query.dto';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
@@ -26,7 +29,6 @@ import type { PatientConsultationResponseDto } from './dto/patient-consultation-
 import type { PatientResponseDto } from './dto/patient-response.dto';
 import type { LookupResponseDto } from '../common/dto/lookup-response.dto';
 import type { PaginatedResponseDto } from '../common/dto/paginated-response.dto';
-
 
 @Controller('patients')
 @UseGuards(JwtAuthGuard, AclGuard)

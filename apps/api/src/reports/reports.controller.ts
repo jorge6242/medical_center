@@ -64,8 +64,11 @@ export class ReportsController {
     @Param('jobId') jobId: string,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const report = await this.reportsService.downloadReport(user.tenantId, jobId);
-    
+    const report = await this.reportsService.downloadReport(
+      user.tenantId,
+      jobId,
+    );
+
     res.set({
       'Content-Type': report.mimeType,
       'Content-Disposition': `attachment; filename="${report.filename}"`,

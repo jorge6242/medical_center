@@ -1,7 +1,10 @@
 import { Controller, Get } from '@nestjs/common';
 
 import { CatalogService } from './catalog.service';
-import { CurrentUser, type JwtPayload } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type JwtPayload,
+} from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
 
 @Controller('catalog')

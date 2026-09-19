@@ -16,11 +16,13 @@ export interface OnboardingEmailTemplateContext {
   expiresIn: string;
 }
 
-export const onboardingEmailTemplate: TemplateDefinition<OnboardingEmailTemplateContext> = {
-  name: 'doctor-onboarding',
-  version: 1,
-  category: 'auth',
-  audience: 'doctor',
-  subject: 'Activa tu cuenta - Centro Médico',
-  render: (context) => renderTemplateString(onboardingEmailTemplateHtml, context),
-};
+export const onboardingEmailTemplate: TemplateDefinition<OnboardingEmailTemplateContext> =
+  {
+    name: 'doctor-onboarding',
+    version: 1,
+    category: 'auth',
+    audience: 'doctor',
+    subject: 'Activa tu cuenta - Centro Médico',
+    render: (context) =>
+      renderTemplateString(onboardingEmailTemplateHtml, context),
+  };

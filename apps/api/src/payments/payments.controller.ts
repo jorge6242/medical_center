@@ -16,12 +16,14 @@ import { PaymentQueryDto } from './dto/payment-query.dto';
 import { PaymentsService } from './payments.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser, type JwtPayload } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type JwtPayload,
+} from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
 
 import type { PaymentResponseDto } from './dto/payment-response.dto';
 import type { PaginatedResponseDto } from '../common/dto/paginated-response.dto';
-
 
 @Controller('payments')
 @UseGuards(JwtAuthGuard, AclGuard)

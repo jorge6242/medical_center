@@ -6,8 +6,6 @@ import { getTemplateCatalog, getTemplateSummary } from './template-catalog';
 import { TEMPLATE_REGISTRY, type TemplateName } from './template-registry';
 import { renderTemplateString } from './templates/render-template';
 
-
-
 @Injectable()
 export class MailerService {
   private readonly logger = new Logger(MailerService.name);
@@ -30,7 +28,12 @@ export class MailerService {
   ): {
     subject: string;
     html: string;
-    template: { name: string; version: number; category: string; audience: string };
+    template: {
+      name: string;
+      version: number;
+      category: string;
+      audience: string;
+    };
   } {
     const template = TEMPLATE_REGISTRY[templateName];
 
@@ -68,11 +71,18 @@ export class MailerService {
     this.logger.log(`Email sent to ${to} via ${mailerHost ?? 'smtp'}`);
   }
 
-  async sendReceiptEmail(to: string, subject: string, html: string): Promise<void> {
+  async sendReceiptEmail(
+    to: string,
+    subject: string,
+    html: string,
+  ): Promise<void> {
     return this.sendEmail(to, subject, html);
   }
 
-  private interpolate(template: string, context: Record<string, unknown>): string {
+  private interpolate(
+    template: string,
+    context: Record<string, unknown>,
+  ): string {
     return renderTemplateString(template, context);
   }
 }

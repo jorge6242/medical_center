@@ -1,4 +1,3 @@
-
 import {
   type ConsolidatedReportsQueryDto,
   type DetailReportsQueryDto,
@@ -9,8 +8,8 @@ import {
 } from './dto/query-reports.dto';
 import { ReportsController } from './reports.controller';
 
-import type { ReportsService } from "./reports.service";
-import type { JwtPayload } from "../common/decorators/current-user.decorator";
+import type { ReportsService } from './reports.service';
+import type { JwtPayload } from '../common/decorators/current-user.decorator';
 
 describe('ReportsController', () => {
   const reportsService = {
@@ -38,11 +37,20 @@ describe('ReportsController', () => {
       type: ReportType.ALL,
     } as ConsolidatedReportsQueryDto;
 
-    (reportsService.getConsolidated as jest.Mock).mockResolvedValue({ data: [], meta: {} });
+    (reportsService.getConsolidated as jest.Mock).mockResolvedValue({
+      data: [],
+      meta: {},
+    });
 
-    await controller.getConsolidated({ tenantId: 'tenant-1' } as JwtPayload, query);
+    await controller.getConsolidated(
+      { tenantId: 'tenant-1' } as JwtPayload,
+      query,
+    );
 
-    expect(reportsService.getConsolidated).toHaveBeenCalledWith('tenant-1', query);
+    expect(reportsService.getConsolidated).toHaveBeenCalledWith(
+      'tenant-1',
+      query,
+    );
   });
 
   it('passes the detail query dto to the service', async () => {
@@ -56,7 +64,10 @@ describe('ReportsController', () => {
       type: ReportType.CONSULTATION,
     } as DetailReportsQueryDto;
 
-    (reportsService.getDetail as jest.Mock).mockResolvedValue({ data: [], meta: {} });
+    (reportsService.getDetail as jest.Mock).mockResolvedValue({
+      data: [],
+      meta: {},
+    });
 
     await controller.getDetail({ tenantId: 'tenant-1' } as JwtPayload, query);
 
@@ -72,10 +83,19 @@ describe('ReportsController', () => {
       groupBy: ReportGroupBy.DAY,
     };
 
-    (reportsService.createJob as jest.Mock).mockResolvedValue({ jobId: 'job-1' });
+    (reportsService.createJob as jest.Mock).mockResolvedValue({
+      jobId: 'job-1',
+    });
 
-    await controller.generate({ tenantId: 'tenant-1', sub: 'user-1' } as JwtPayload, dto);
+    await controller.generate(
+      { tenantId: 'tenant-1', sub: 'user-1' } as JwtPayload,
+      dto,
+    );
 
-    expect(reportsService.createJob).toHaveBeenCalledWith('tenant-1', 'user-1', dto);
+    expect(reportsService.createJob).toHaveBeenCalledWith(
+      'tenant-1',
+      'user-1',
+      dto,
+    );
   });
 });

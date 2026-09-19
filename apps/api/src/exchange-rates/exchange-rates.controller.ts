@@ -1,10 +1,21 @@
-import { Body, Controller, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
 
 import { CreateExchangeRateDto } from './dto/create-exchange-rate.dto';
 import { ExchangeRatesService } from './exchange-rates.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser, type JwtPayload } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type JwtPayload,
+} from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
 
 import type { ExchangeRateResponseDto } from './dto/exchange-rate-response.dto';
@@ -22,7 +33,9 @@ export class ExchangeRatesController {
 
   @Get('latest')
   @RequirePermission('reports', 'read')
-  findLatest(@CurrentUser() user: JwtPayload): Promise<ExchangeRateResponseDto | null> {
+  findLatest(
+    @CurrentUser() user: JwtPayload,
+  ): Promise<ExchangeRateResponseDto | null> {
     return this.service.findLatest(user.tenantId);
   }
 

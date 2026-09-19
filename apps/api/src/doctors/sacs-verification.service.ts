@@ -21,8 +21,13 @@ export class SacsVerificationService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async verifyByDocument(documentType: string, documentId: string): Promise<SacsQueryResult> {
-    this.logger.log(`Verifying doctor by document: ${documentType}-${documentId}`);
+  async verifyByDocument(
+    documentType: string,
+    documentId: string,
+  ): Promise<SacsQueryResult> {
+    this.logger.log(
+      `Verifying doctor by document: ${documentType}-${documentId}`,
+    );
     const body = this.buildXajaxBody(documentType, documentId);
     return this.querySacs(body);
   }
@@ -60,7 +65,10 @@ export class SacsVerificationService {
 
     const now = new Date();
     try {
-      const result = await this.verifyByDocument(doctor.documentType as string, doctor.documentId);
+      const result = await this.verifyByDocument(
+        doctor.documentType as string,
+        doctor.documentId,
+      );
 
       await this.prisma.doctor.update({
         where: { id: doctorId },
@@ -146,7 +154,9 @@ export class SacsVerificationService {
         rawHtml: rawXml,
       };
     } catch (error) {
-      this.logger.error(`Failed to parse SACS response: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(
+        `Failed to parse SACS response: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return { found: false, rawHtml: rawXml };
     }
   }

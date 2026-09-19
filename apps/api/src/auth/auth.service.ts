@@ -16,7 +16,9 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async login(dto: LoginDto): Promise<{ token: string; response: AuthResponseDto }> {
+  async login(
+    dto: LoginDto,
+  ): Promise<{ token: string; response: AuthResponseDto }> {
     const where: Prisma.UserWhereInput = {
       email: dto.email,
       isActive: true,

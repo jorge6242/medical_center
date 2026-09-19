@@ -14,9 +14,21 @@ export class StatsService {
     const tomorrowStart = addDays(todayStart, 1);
     const monthStart = startOfMonth(now);
 
-    const [todayConsultations, cancelledConsultations, pendingPayments, todayExpenses, weekExpenses, monthExpenses, monthIncome] = await Promise.all([
+    const [
+      todayConsultations,
+      cancelledConsultations,
+      pendingPayments,
+      todayExpenses,
+      weekExpenses,
+      monthExpenses,
+      monthIncome,
+    ] = await Promise.all([
       this.prisma.consultation.findMany({
-        where: { tenantId, status: 'PAID', date: { gte: todayStart, lt: tomorrowStart } },
+        where: {
+          tenantId,
+          status: 'PAID',
+          date: { gte: todayStart, lt: tomorrowStart },
+        },
         select: { patientId: true, doctorId: true },
       }),
       this.prisma.consultation.findMany({
@@ -36,39 +48,78 @@ export class StatsService {
         },
       }),
       this.prisma.expense.findMany({
-        where: { tenantId, status: 'ACTIVE', createdAt: { gte: todayStart, lt: tomorrowStart } },
+        where: {
+          tenantId,
+          status: 'ACTIVE',
+          createdAt: { gte: todayStart, lt: tomorrowStart },
+        },
         select: { amountUsd: true },
       }),
       this.prisma.expense.findMany({
-        where: { tenantId, status: 'ACTIVE', createdAt: { gte: new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000), lt: tomorrowStart } },
+        where: {
+          tenantId,
+          status: 'ACTIVE',
+          createdAt: {
+            gte: new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000),
+            lt: tomorrowStart,
+          },
+        },
         select: { amountUsd: true },
       }),
       this.prisma.expense.findMany({
-        where: { tenantId, status: 'ACTIVE', createdAt: { gte: monthStart, lt: tomorrowStart } },
+        where: {
+          tenantId,
+          status: 'ACTIVE',
+          createdAt: { gte: monthStart, lt: tomorrowStart },
+        },
         select: { amountUsd: true },
       }),
       this.prisma.payment.findMany({
-        where: { tenantId, status: 'COMPLETED', createdAt: { gte: monthStart, lt: tomorrowStart } },
+        where: {
+          tenantId,
+          status: 'COMPLETED',
+          createdAt: { gte: monthStart, lt: tomorrowStart },
+        },
         select: { totalServiceUsd: true },
       }),
     ]);
 
-    const patientIds = new Set(todayConsultations.map((consultation) => consultation.patientId));
-    const doctorIdsToday = new Set(todayConsultations.map((consultation) => consultation.doctorId));
-    const cancelledDoctorIds = new Set(cancelledConsultations.map((consultation) => consultation.doctorId));
+    const patientIds = new Set(
+      todayConsultations.map((consultation) => consultation.patientId),
+    );
+    const doctorIdsToday = new Set(
+      todayConsultations.map((consultation) => consultation.doctorId),
+    );
+    const cancelledDoctorIds = new Set(
+      cancelledConsultations.map((consultation) => consultation.doctorId),
+    );
 
     const pendingPayoutDoctorIds = new Set(
-      pendingPayments.map((payment) => payment.item?.consultation?.doctorId).filter((doctorId): doctorId is string => Boolean(doctorId)),
+      pendingPayments
+        .map((payment) => payment.item?.consultation?.doctorId)
+        .filter((doctorId): doctorId is string => Boolean(doctorId)),
     );
     const pendingPayoutAmountUsd = pendingPayments.reduce(
       (sum, payment) => sum + Number(payment.doctorShareUsd),
       0,
     );
 
-    const expensesTodayTotal = todayExpenses.reduce((sum, e) => sum + Number(e.amountUsd), 0);
-    const expensesWeekTotal = weekExpenses.reduce((sum, e) => sum + Number(e.amountUsd), 0);
-    const expensesMonthTotal = monthExpenses.reduce((sum, e) => sum + Number(e.amountUsd), 0);
-    const incomeMonthTotal = monthIncome.reduce((sum, p) => sum + Number(p.totalServiceUsd), 0);
+    const expensesTodayTotal = todayExpenses.reduce(
+      (sum, e) => sum + Number(e.amountUsd),
+      0,
+    );
+    const expensesWeekTotal = weekExpenses.reduce(
+      (sum, e) => sum + Number(e.amountUsd),
+      0,
+    );
+    const expensesMonthTotal = monthExpenses.reduce(
+      (sum, e) => sum + Number(e.amountUsd),
+      0,
+    );
+    const incomeMonthTotal = monthIncome.reduce(
+      (sum, p) => sum + Number(p.totalServiceUsd),
+      0,
+    );
 
     return {
       patientsToday: patientIds.size,
@@ -139,7 +190,11 @@ function buildAlerts(
     });
   }
 
-  if (expensesMonth > 0 && incomeMonth > 0 && expensesMonth / incomeMonth > 0.8) {
+  if (
+    expensesMonth > 0 &&
+    incomeMonth > 0 &&
+    expensesMonth / incomeMonth > 0.8
+  ) {
     alerts.push({
       severity: 'error',
       title: 'Alerta de flujo',

@@ -1,5 +1,8 @@
 import type { FlatRow } from '../interfaces/export-strategy.interface';
-import type { ConsolidatedRecord, DetailRecord } from '../interfaces/report-records.interface';
+import type {
+  ConsolidatedRecord,
+  DetailRecord,
+} from '../interfaces/report-records.interface';
 
 export class ReportFlattener {
   mapConsolidated(records: ConsolidatedRecord[]): FlatRow[] {

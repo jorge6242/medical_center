@@ -1,8 +1,15 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { PrismaService } from '../database/prisma.service';
 
-import type { CreateLabTestCatalogDto, UpdateLabTestCatalogDto } from './dto/create-lab-test-catalog.dto';
+import type {
+  CreateLabTestCatalogDto,
+  UpdateLabTestCatalogDto,
+} from './dto/create-lab-test-catalog.dto';
 
 @Injectable()
 export class LabsService {
@@ -19,7 +26,8 @@ export class LabsService {
     const lab = await this.prisma.labTestCatalog.findFirst({
       where: { id, tenantId },
     });
-    if (!lab) throw new NotFoundException(`Test de laboratorio ${id} no encontrado`);
+    if (!lab)
+      throw new NotFoundException(`Test de laboratorio ${id} no encontrado`);
     return lab;
   }
 
@@ -27,7 +35,10 @@ export class LabsService {
     const existing = await this.prisma.labTestCatalog.findFirst({
       where: { tenantId, name: dto.name },
     });
-    if (existing) throw new BadRequestException(`Ya existe un test con el nombre "${dto.name}"`);
+    if (existing)
+      throw new BadRequestException(
+        `Ya existe un test con el nombre "${dto.name}"`,
+      );
 
     return this.prisma.labTestCatalog.create({
       data: {
@@ -46,7 +57,10 @@ export class LabsService {
       const existing = await this.prisma.labTestCatalog.findFirst({
         where: { tenantId, name: dto.name, id: { not: id } },
       });
-      if (existing) throw new BadRequestException(`Ya existe un test con el nombre "${dto.name}"`);
+      if (existing)
+        throw new BadRequestException(
+          `Ya existe un test con el nombre "${dto.name}"`,
+        );
     }
 
     return this.prisma.labTestCatalog.update({

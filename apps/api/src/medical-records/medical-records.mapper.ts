@@ -1,4 +1,3 @@
-
 import type { MedicalRecordResponseDto } from './dto/medical-record-response.dto';
 import type { PatientMedicalRecordResponseDto } from './dto/patient-medical-record-response.dto';
 import type { MedicalRecord, Patient } from '@prisma/client';
@@ -6,7 +5,11 @@ import type { MedicalRecord, Patient } from '@prisma/client';
 type MedicalRecordWithRelations = MedicalRecord & {
   patient: Pick<Patient, 'id' | 'name' | 'documentType' | 'documentId'>;
   doctor: { id: string; name: string };
-  consultation: { id: string; date: Date; services: Array<{ specialtyName: string }> };
+  consultation: {
+    id: string;
+    date: Date;
+    services: Array<{ specialtyName: string }>;
+  };
   createdBy: { id: string; name: string };
 };
 
@@ -14,7 +17,9 @@ function getSpecialtyName(services: Array<{ specialtyName: string }>): string {
   return services[0]?.specialtyName ?? 'Sin especialidad';
 }
 
-export function toMedicalRecordResponse(record: MedicalRecordWithRelations): MedicalRecordResponseDto {
+export function toMedicalRecordResponse(
+  record: MedicalRecordWithRelations,
+): MedicalRecordResponseDto {
   return {
     id: record.id,
     tenantId: record.tenantId,

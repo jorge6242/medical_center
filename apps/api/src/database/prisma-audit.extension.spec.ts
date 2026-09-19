@@ -12,9 +12,10 @@ describe('executeWithAudit', () => {
       },
     }) as unknown as PrismaClient;
 
-  const buildRequestContext = (
-    context?: { userId: string; tenantId: string },
-  ): jest.Mocked<Pick<RequestContextService, 'getStore'>> => ({
+  const buildRequestContext = (context?: {
+    userId: string;
+    tenantId: string;
+  }): jest.Mocked<Pick<RequestContextService, 'getStore'>> => ({
     getStore: jest.fn().mockReturnValue(context),
   });
 
@@ -56,7 +57,9 @@ describe('executeWithAudit', () => {
       model: 'Patient',
       operation: 'update',
       args: { where: { id: 'patient-1' }, data: { name: 'Ana María' } },
-      query: jest.fn().mockResolvedValue({ id: 'patient-1', name: 'Ana María' }),
+      query: jest
+        .fn()
+        .mockResolvedValue({ id: 'patient-1', name: 'Ana María' }),
     });
 
     expect(auditLog.log).not.toHaveBeenCalled();
@@ -66,7 +69,11 @@ describe('executeWithAudit', () => {
     const auditLog = buildAuditLog();
 
     await executeWithAudit({
-      prisma: buildPrisma({ id: 'patient-1', name: 'Ana', phone: '04140000000' }),
+      prisma: buildPrisma({
+        id: 'patient-1',
+        name: 'Ana',
+        phone: '04140000000',
+      }),
       requestContext: buildRequestContext({
         userId: 'user-1',
         tenantId: 'tenant-1',
@@ -78,7 +85,9 @@ describe('executeWithAudit', () => {
         where: { id: 'patient-1' },
         data: { name: 'Ana María', phone: '04140000000' },
       },
-      query: jest.fn().mockResolvedValue({ id: 'patient-1', name: 'Ana María' }),
+      query: jest
+        .fn()
+        .mockResolvedValue({ id: 'patient-1', name: 'Ana María' }),
     });
 
     expect(auditLog.log).toHaveBeenCalledWith({

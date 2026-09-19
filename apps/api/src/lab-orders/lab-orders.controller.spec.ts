@@ -47,7 +47,10 @@ describe('LabOrdersController', () => {
       { page: 1, limit: 10 } as LabOrderQueryDto,
     );
 
-    expect(labOrdersService.findAll).toHaveBeenCalledWith('tenant-1', { page: 1, limit: 10 });
+    expect(labOrdersService.findAll).toHaveBeenCalledWith('tenant-1', {
+      page: 1,
+      limit: 10,
+    });
     expect(result).toEqual(response);
     expect(result.meta.total).toBe(1);
     expect(result.meta.totalPages).toBe(1);

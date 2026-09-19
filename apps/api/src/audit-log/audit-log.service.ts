@@ -20,7 +20,9 @@ export class AuditLogService implements OnModuleInit, OnModuleDestroy {
 
   constructor(configService: ConfigService) {
     const url = configService.getOrThrow<string>('DATABASE_URL');
-    this.prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+    this.prisma = new PrismaClient({
+      adapter: new PrismaPg({ connectionString: url }),
+    });
   }
 
   async onModuleInit(): Promise<void> {
@@ -39,8 +41,10 @@ export class AuditLogService implements OnModuleInit, OnModuleDestroy {
         action: entry.action,
         entity: entry.entity,
         entityId: entry.entityId,
-        oldValues: (entry.oldValues ?? Prisma.JsonNull) as Prisma.InputJsonValue,
-        newValues: (entry.newValues ?? Prisma.JsonNull) as Prisma.InputJsonValue,
+        oldValues: (entry.oldValues ??
+          Prisma.JsonNull) as Prisma.InputJsonValue,
+        newValues: (entry.newValues ??
+          Prisma.JsonNull) as Prisma.InputJsonValue,
         changedFields: entry.changedFields ?? [],
       },
     });

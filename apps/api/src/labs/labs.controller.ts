@@ -1,10 +1,25 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 
-import { CreateLabTestCatalogDto, UpdateLabTestCatalogDto } from './dto/create-lab-test-catalog.dto';
+import {
+  CreateLabTestCatalogDto,
+  UpdateLabTestCatalogDto,
+} from './dto/create-lab-test-catalog.dto';
 import { LabsService } from './labs.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser, type JwtPayload } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type JwtPayload,
+} from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
 
 @Controller('laboratories')
@@ -20,10 +35,7 @@ export class LabsController {
 
   @Get(':id')
   @RequirePermission('laboratories', 'read')
-  findOne(
-    @CurrentUser() user: JwtPayload,
-    @Param('id') id: string,
-  ) {
+  findOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
     return this.labsService.findOne(user.tenantId, id);
   }
 
@@ -48,10 +60,7 @@ export class LabsController {
 
   @Delete(':id')
   @RequirePermission('laboratories', 'delete')
-  remove(
-    @CurrentUser() user: JwtPayload,
-    @Param('id') id: string,
-  ) {
+  remove(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
     return this.labsService.remove(user.tenantId, id);
   }
 }
