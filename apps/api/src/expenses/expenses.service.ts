@@ -4,11 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
+import { type AuditLogService } from '../audit-log/audit-log.service';
 import {
   createPaginatedResponse,
   type PaginatedResponseDto,
 } from '../common/dto/paginated-response.dto';
-import { PrismaService } from '../database/prisma.service';
+import { type PrismaService } from '../database/prisma.service';
 
 import type { CreateExpenseDto } from './dto/create-expense.dto';
 import type { ExpenseQueryDto } from './dto/expense-query.dto';
@@ -18,7 +19,10 @@ import type { ExpenseStatus, Prisma } from '@prisma/client';
 
 @Injectable()
 export class ExpensesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog?: AuditLogService,
+  ) {}
 
   async findAll(
     tenantId: string,
@@ -70,7 +74,7 @@ export class ExpensesService {
     dto: CreateExpenseDto,
   ): Promise<ExpenseResponseDto> {
     const category = await this.prisma.expenseCategory.findFirst({
-      where: { id: dto.categoryId, isActive: true },
+      where: { id: dto.categoryId, tenantId, isActive: true },
     });
     if (!category)
       throw new NotFoundException(`Categoría ${dto.categoryId} no encontrada`);
@@ -86,6 +90,16 @@ export class ExpensesService {
         status: 'ACTIVE',
       },
     });
+    await this.auditLog?.log(
+      {
+        action: 'CREATE',
+        entity: 'Expense',
+        entityId: expense.id,
+        newValues: expense,
+        changedFields: Object.keys(dto),
+      },
+      this.prisma,
+    );
     return this.toResponse(expense);
   }
 
@@ -102,16 +116,32 @@ export class ExpensesService {
     if (expense.status === 'VOIDED')
       throw new BadRequestException('Egreso ya está anulado');
 
-    const updated = await this.prisma.expense.update({
-      where: { id },
-      data: { status: 'VOIDED', voidedBy: userId, voidReason: dto.reason },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.expense.updateMany({
+        where: { id, tenantId },
+        data: { status: 'VOIDED', voidedBy: userId, voidReason: dto.reason },
+      });
+      const result = await tx.expense.findFirstOrThrow({
+        where: { id, tenantId },
+      });
+      await this.auditLog?.log(
+        {
+          action: 'VOID',
+          entity: 'Expense',
+          entityId: result.id,
+          newValues: { status: result.status, voidReason: result.voidReason },
+          changedFields: ['status', 'voidReason'],
+        },
+        tx,
+      );
+      return result;
     });
     return this.toResponse(updated);
   }
 
-  async findCategories() {
+  async findCategories(tenantId: string) {
     return this.prisma.expenseCategory.findMany({
-      where: { isActive: true },
+      where: { tenantId, isActive: true },
       orderBy: { name: 'asc' },
     });
   }

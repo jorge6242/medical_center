@@ -1,6 +1,10 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
+import { type AsyncLocalStorage } from 'node:async_hooks';
 
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 
 import { REQUEST_CONTEXT } from './request-context.interface';
 
@@ -23,5 +27,13 @@ export class RequestContextService {
 
   run<T>(context: RequestContext, callback: () => T): T {
     return this.storage.run(context, callback);
+  }
+
+  requireTenant(): RequestContext {
+    const context = this.getStore();
+    if (!context?.tenantId) {
+      throw new InternalServerErrorException('Request context not available');
+    }
+    return context;
   }
 }

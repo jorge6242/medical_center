@@ -2,7 +2,6 @@ import { DEMO_TENANT_ID } from './types';
 
 import type { PrismaClient, Specialty } from '@prisma/client';
 
-
 const SPECIALTIES = [
   {
     id: 'demo-spec-gin',
@@ -27,8 +26,16 @@ const SPECIALTIES = [
     name: 'Ginecología / Obstetricia',
     templateType: 'GYNECOLOGY_OBSTETRICS',
     services: [
-      { id: 'demo-svc-gin-obst-cons', name: 'Consulta gineco-obstétrica', price: 40 },
-      { id: 'demo-svc-gin-obst-eco', name: 'Control gineco-obstétrico + ecografía', price: 60 },
+      {
+        id: 'demo-svc-gin-obst-cons',
+        name: 'Consulta gineco-obstétrica',
+        price: 40,
+      },
+      {
+        id: 'demo-svc-gin-obst-eco',
+        name: 'Control gineco-obstétrico + ecografía',
+        price: 60,
+      },
     ],
   },
   {
@@ -60,12 +67,16 @@ const SPECIALTIES = [
   },
 ] as const;
 
-export async function seedDemoSpecialties(prisma: PrismaClient): Promise<Specialty[]> {
+export async function seedDemoSpecialties(
+  prisma: PrismaClient,
+): Promise<Specialty[]> {
   const specialties: Specialty[] = [];
 
   for (const specData of SPECIALTIES) {
     const specialty = await prisma.specialty.upsert({
-      where: { tenantId_name: { tenantId: DEMO_TENANT_ID, name: specData.name } },
+      where: {
+        tenantId_name: { tenantId: DEMO_TENANT_ID, name: specData.name },
+      },
       update: { templateType: specData.templateType ?? null },
       create: {
         id: specData.id,
@@ -78,19 +89,15 @@ export async function seedDemoSpecialties(prisma: PrismaClient): Promise<Special
     specialties.push(specialty);
 
     for (const svcData of specData.services) {
-      const service = await prisma.service.upsert({
-        where: { name: svcData.name },
+      await prisma.service.upsert({
+        where: {
+          tenantId_name: { tenantId: DEMO_TENANT_ID, name: svcData.name },
+        },
         update: {},
-        create: { id: svcData.id, name: svcData.name },
-      });
-
-      await prisma.servicePrice.upsert({
-        where: { specialtyId_serviceId: { specialtyId: specialty.id, serviceId: service.id } },
-        update: { priceUsd: svcData.price },
         create: {
-          specialtyId: specialty.id,
-          serviceId: service.id,
-          priceUsd: svcData.price,
+          id: svcData.id,
+          tenantId: DEMO_TENANT_ID,
+          name: svcData.name,
         },
       });
     }

@@ -2,7 +2,15 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { createPatient, deactivatePatient, getPatients, getPaginatedPatients, updatePatient, type GetPatientsQuery } from '../services/patients.service';
+import {
+  createPatient,
+  deactivatePatient,
+  getPatients,
+  getPaginatedPatients,
+  permanentlyDeletePatient,
+  updatePatient,
+  type GetPatientsQuery,
+} from '../services/patients.service';
 
 export function usePatients() {
   return useQuery({
@@ -48,6 +56,17 @@ export function useDeactivatePatient(onSuccess?: () => void) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['patients'] });
       onSuccess?.();
+    },
+  });
+}
+
+export function usePermanentlyDeletePatient() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: permanentlyDeletePatient,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['patients'] });
     },
   });
 }

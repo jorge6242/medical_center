@@ -1,3 +1,5 @@
+import { forwardRef } from 'react';
+
 import { cn } from '@/shared/utils/cn';
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
@@ -6,7 +8,10 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   options: Array<{ value: string; label: string }>;
 }
 
-export function Select({ className, error, label, id, options, ...props }: SelectProps) {
+export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
+  { className, error, label, id, options, ...props },
+  ref,
+) {
   return (
     <div className="flex flex-col gap-1">
       {label && (
@@ -15,6 +20,7 @@ export function Select({ className, error, label, id, options, ...props }: Selec
         </label>
       )}
       <select
+        ref={ref}
         id={id}
         className={cn(
           'h-10 rounded-lg border border-outline bg-surface px-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary',
@@ -32,4 +38,4 @@ export function Select({ className, error, label, id, options, ...props }: Selec
       {error && <p className="text-xs text-error">{error}</p>}
     </div>
   );
-}
+});

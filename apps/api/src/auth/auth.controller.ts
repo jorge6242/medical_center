@@ -10,12 +10,19 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { AuthService } from './auth.service';
-import { LoginDto } from './dto/login.dto';
+import { type AuthService } from './auth.service';
+import { type BootstrapAccessLinkDto } from './dto/bootstrap-access-link.dto';
+import { type CreateAccessLinkDto } from './dto/create-access-link.dto';
+import { type LoginDto } from './dto/login.dto';
+import { type TenantAccessContextDto } from './dto/tenant-access-context.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { type AuditLogService } from '../audit-log/audit-log.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { InternalRequest } from '../common/decorators/internal-request.decorator';
 import { Public } from '../common/decorators/public.decorator';
-import { OnboardingService } from '../doctors/onboarding.service';
+import { RequirePermission } from '../common/decorators/require-permission.decorator';
+import { type PrismaService } from '../database/prisma.service';
+import { type OnboardingService } from '../doctors/onboarding.service';
 
 import type { AuthResponseDto } from './dto/auth-response.dto';
 import type { JwtPayload } from '../common/decorators/current-user.decorator';
@@ -28,6 +35,8 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly onboardingService: OnboardingService,
+    private readonly auditLog: AuditLogService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Post('login')
@@ -49,6 +58,63 @@ export class AuthController {
     return response;
   }
 
+  @Post('access-context')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  resolveAccessContext(@Body() dto: TenantAccessContextDto) {
+    return this.authService.resolveAccessContext(dto.accessToken);
+  }
+
+  @Post('access-links/bootstrap')
+  @InternalRequest()
+  @Public()
+  bootstrapAccessLink(@Body() dto: BootstrapAccessLinkDto) {
+    return this.authService.bootstrapAccessLink(dto);
+  }
+
+  @Post('access-links')
+  @RequirePermission('tenant_access_links', 'create')
+  async createAccessLink(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CreateAccessLinkDto,
+  ) {
+    const link = await this.authService.createAccessLink(
+      user.tenantId,
+      user.sub,
+      dto,
+    );
+    await this.auditLog.log(
+      {
+        action: 'CREATE',
+        entity: 'TenantAccessLink',
+        entityId: link.id,
+        newValues: { expiresAt: link.expiresAt },
+        changedFields: ['created'],
+      },
+      this.prisma,
+    );
+    return link;
+  }
+
+  @Post('access-links/:id/revoke')
+  @RequirePermission('tenant_access_links', 'revoke')
+  async revokeAccessLink(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') linkId: string,
+  ) {
+    await this.authService.revokeAccessLink(user.tenantId, linkId);
+    await this.auditLog.log(
+      {
+        action: 'DEACTIVATE',
+        entity: 'TenantAccessLink',
+        entityId: linkId,
+        newValues: { revoked: true },
+        changedFields: ['revokedAt'],
+      },
+      this.prisma,
+    );
+  }
+
   @Get('me')
   @UseGuards(JwtAuthGuard)
   me(
@@ -67,8 +133,21 @@ export class AuthController {
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  logout(@Res({ passthrough: true }) res: Response): { message: string } {
+  async logout(
+    @CurrentUser() user: JwtPayload,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ message: string }> {
     res.clearCookie('access_token');
+    await this.auditLog.log(
+      {
+        action: 'LOGOUT',
+        entity: 'Auth',
+        entityId: user.sub,
+        newValues: { outcome: 'success' },
+        changedFields: ['session'],
+      },
+      this.prisma,
+    );
     return { message: 'Sesión cerrada' };
   }
 

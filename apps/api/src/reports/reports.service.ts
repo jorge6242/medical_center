@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
+import { type AuditLogService } from '../audit-log/audit-log.service';
 import {
   createPaginatedResponse,
   type PaginatedResponseDto,
 } from '../common/dto/paginated-response.dto';
-import { PrismaService } from '../database/prisma.service';
+import { type PrismaService } from '../database/prisma.service';
 
 import type {
   GenerateReportDto,
@@ -18,7 +19,10 @@ import type {
 
 @Injectable()
 export class ReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog?: AuditLogService,
+  ) {}
 
   async getConsolidated(
     tenantId: string,
@@ -249,6 +253,21 @@ export class ReportsService {
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h TTL
       },
     });
+    await this.auditLog?.log(
+      {
+        action: 'EXPORT',
+        entity: 'Report',
+        entityId: jobId,
+        newValues: {
+          format: dto.format,
+          type: dto.type,
+          from: dto.from,
+          to: dto.to,
+        },
+        changedFields: ['format', 'type', 'from', 'to'],
+      },
+      this.prisma,
+    );
 
     return {
       jobId,

@@ -2,7 +2,6 @@ import { DEMO_TENANT_ID } from './types';
 
 import type { PrismaClient, Doctor } from '@prisma/client';
 
-
 const DOCTORS = [
   {
     id: 'demo-doc-001',
@@ -92,7 +91,12 @@ export async function seedDemoDoctors(prisma: PrismaClient): Promise<Doctor[]> {
       });
 
       await prisma.doctorSpecialty.upsert({
-        where: { doctorId_specialtyId: { doctorId: doctor.id, specialtyId: specialty.id } },
+        where: {
+          doctorId_specialtyId: {
+            doctorId: doctor.id,
+            specialtyId: specialty.id,
+          },
+        },
         update: { isPrimary: i === 0 },
         create: {
           doctorId: doctor.id,
@@ -100,6 +104,29 @@ export async function seedDemoDoctors(prisma: PrismaClient): Promise<Doctor[]> {
           isPrimary: i === 0,
         },
       });
+
+      const services = await prisma.service.findMany({
+        where: { isActive: true },
+      });
+      for (const service of services) {
+        await prisma.doctorService.upsert({
+          where: {
+            doctorId_specialtyId_serviceId: {
+              doctorId: doctor.id,
+              specialtyId: specialty.id,
+              serviceId: service.id,
+            },
+          },
+          update: {},
+          create: {
+            tenantId: DEMO_TENANT_ID,
+            doctorId: doctor.id,
+            specialtyId: specialty.id,
+            serviceId: service.id,
+            priceUsd: 30,
+          },
+        });
+      }
     }
 
     await prisma.doctorBankAccount.upsert({

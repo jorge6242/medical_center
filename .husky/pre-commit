@@ -1,4 +1,4 @@
-npx lint-staged
+npx lint-staged --concurrent false
 
 if git diff --cached --name-only | grep -E '(^|/)(package\.json|pnpm-workspace\.yaml)$' >/dev/null; then
   make deps-sync

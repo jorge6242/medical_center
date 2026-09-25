@@ -13,7 +13,9 @@ import { seedSystemConfig } from './seeders/system-config.seeder';
 import { seedTenant } from './seeders/tenant.seeder';
 import { seedUsers } from './seeders/users.seeder';
 
-const adapter = new PrismaPg({ connectionString: process.env['DATABASE_URL'] ?? '' });
+const adapter = new PrismaPg({
+  connectionString: process.env['DATABASE_URL'] ?? '',
+});
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
@@ -26,7 +28,7 @@ async function main() {
   await seedDoctors(prisma);
   await seedPatients(prisma);
   await seedLabTests(prisma);
-  await seedExpenseCategories(prisma);
+  await seedExpenseCategories(prisma, 'tenant-demo-001');
   await seedSystemConfig(prisma);
   await seedExchangeRates(prisma);
   await seedDemo(prisma);

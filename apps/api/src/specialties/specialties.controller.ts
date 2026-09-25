@@ -8,13 +8,13 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 
-import { CreateSpecialtyDto } from './dto/create-specialty.dto';
-import { UpdateServicePriceDto } from './dto/update-service-price.dto';
-import { UpdateSpecialtyDto } from './dto/update-specialty.dto';
-import { SpecialtiesService } from './specialties.service';
+import { type CreateSpecialtyDto } from './dto/create-specialty.dto';
+import { type UpdateSpecialtyDto } from './dto/update-specialty.dto';
+import { type SpecialtiesService } from './specialties.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
@@ -22,8 +22,10 @@ import {
   type JwtPayload,
 } from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
+import { type PaginationQueryDto } from '../common/dto/pagination-query.dto';
 
 import type { SpecialtyResponseDto } from './dto/specialty-response.dto';
+import type { PaginatedResponseDto } from '../common/dto/paginated-response.dto';
 
 @Controller('specialties')
 @UseGuards(JwtAuthGuard, AclGuard)
@@ -32,8 +34,11 @@ export class SpecialtiesController {
 
   @Get()
   @RequirePermission('specialties', 'read')
-  findAll(@CurrentUser() user: JwtPayload): Promise<SpecialtyResponseDto[]> {
-    return this.specialtiesService.findAll(user.tenantId);
+  findAll(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: PaginationQueryDto,
+  ): Promise<PaginatedResponseDto<SpecialtyResponseDto>> {
+    return this.specialtiesService.findAll(user.tenantId, query);
   }
 
   @Get(':id')
@@ -64,22 +69,6 @@ export class SpecialtiesController {
     return this.specialtiesService.update(user.tenantId, id, dto);
   }
 
-  @Patch(':specialtyId/services/:servicePriceId')
-  @RequirePermission('specialties', 'update')
-  updateServicePrice(
-    @CurrentUser() user: JwtPayload,
-    @Param('specialtyId') specialtyId: string,
-    @Param('servicePriceId') servicePriceId: string,
-    @Body() dto: UpdateServicePriceDto,
-  ): Promise<SpecialtyResponseDto> {
-    return this.specialtiesService.updateServicePrice(
-      user.tenantId,
-      specialtyId,
-      servicePriceId,
-      dto,
-    );
-  }
-
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @RequirePermission('specialties', 'delete')
@@ -90,18 +79,13 @@ export class SpecialtiesController {
     return this.specialtiesService.deactivate(user.tenantId, id);
   }
 
-  @Delete(':specialtyId/services/:servicePriceId')
+  @Delete(':id/permanent')
   @HttpCode(HttpStatus.OK)
   @RequirePermission('specialties', 'delete')
-  deactivateService(
+  permanentlyDelete(
     @CurrentUser() user: JwtPayload,
-    @Param('specialtyId') specialtyId: string,
-    @Param('servicePriceId') servicePriceId: string,
-  ): Promise<SpecialtyResponseDto> {
-    return this.specialtiesService.deactivateService(
-      user.tenantId,
-      specialtyId,
-      servicePriceId,
-    );
+    @Param('id') id: string,
+  ): Promise<{ id: string }> {
+    return this.specialtiesService.permanentlyDelete(user.tenantId, id);
   }
 }

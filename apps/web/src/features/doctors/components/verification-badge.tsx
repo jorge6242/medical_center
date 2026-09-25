@@ -3,8 +3,8 @@ import { Badge } from '@/shared/components/ui/badge';
 const STATUS_CONFIG: Record<string, { label: string; variant: 'success' | 'warning' | 'error' }> = {
   VERIFIED: { label: 'Verificado', variant: 'success' },
   PENDING: { label: 'Pendiente', variant: 'warning' },
-  REJECTED: { label: 'Rechazado', variant: 'error' },
-  NOT_FOUND: { label: 'No encontrado', variant: 'error' },
+  REJECTED: { label: 'Sin registro SACS', variant: 'error' },
+  NOT_FOUND: { label: 'Cédula no encontrada', variant: 'error' },
 };
 
 interface VerificationBadgeProps {
@@ -13,5 +13,5 @@ interface VerificationBadgeProps {
 
 export function VerificationBadge({ status }: VerificationBadgeProps) {
   const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.PENDING;
-  return <Badge variant={config!.variant}>{config!.label}</Badge>;
+  return <Badge variant={config.variant}>{config.label}</Badge>;
 }

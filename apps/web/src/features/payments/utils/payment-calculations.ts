@@ -1,6 +1,6 @@
-export type PaymentCurrency = "USD" | "VES";
+export type PaymentCurrency = 'USD' | 'VES';
 
-const VES_METHODS = new Set(["POS_BS", "PAGO_MOVIL"]);
+const VES_METHODS = new Set(['POS_BS', 'PAGO_MOVIL']);
 
 export interface PaymentLineAmount {
   paymentMethod: string;
@@ -8,8 +8,21 @@ export interface PaymentLineAmount {
   amount: number;
 }
 
+export function parseDecimalInput(value: unknown, maxDecimals: number): number {
+  const normalizedValue = String(value ?? '')
+    .trim()
+    .replace(',', '.');
+  const decimalPattern = new RegExp(`^\\d+(?:\\.\\d{1,${maxDecimals}})?$`);
+
+  if (!decimalPattern.test(normalizedValue)) {
+    return Number.NaN;
+  }
+
+  return Number(normalizedValue);
+}
+
 export function getPaymentCurrency(paymentMethod: string): PaymentCurrency {
-  return VES_METHODS.has(paymentMethod) ? "VES" : "USD";
+  return VES_METHODS.has(paymentMethod) ? 'VES' : 'USD';
 }
 
 export function calculatePaidUsdEquivalent(
@@ -22,16 +35,13 @@ export function calculatePaidUsdEquivalent(
 
   const total = lines.reduce((sum, line) => {
     const amount = Number.isFinite(line.amount) ? line.amount : 0;
-    return sum + (line.currency === "VES" ? amount / bcvExchangeRate : amount);
+    return sum + (line.currency === 'VES' ? amount / bcvExchangeRate : amount);
   }, 0);
 
   return Math.round((total + Number.EPSILON) * 100) / 100;
 }
 
-export function paymentTotalsMatch(
-  paidUsdEquivalent: number,
-  expectedUsd: number,
-): boolean {
+export function paymentTotalsMatch(paidUsdEquivalent: number, expectedUsd: number): boolean {
   return Math.abs(paidUsdEquivalent - expectedUsd) < 0.005;
 }
 
@@ -50,9 +60,8 @@ export function getMaxPaymentAmount(
     bcvExchangeRate,
   );
   const remainingUsd = Math.max(totalUsd - otherLinesUsd, 0);
-  const currency = getPaymentCurrency(lines[lineIndex]?.paymentMethod ?? "");
-  const maxAmount =
-    currency === "VES" ? remainingUsd * bcvExchangeRate : remainingUsd;
+  const currency = getPaymentCurrency(lines[lineIndex]?.paymentMethod ?? '');
+  const maxAmount = currency === 'VES' ? remainingUsd * bcvExchangeRate : remainingUsd;
 
   return Math.floor((maxAmount + Number.EPSILON) * 100) / 100;
 }

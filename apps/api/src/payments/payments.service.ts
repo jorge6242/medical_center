@@ -11,13 +11,14 @@ import {
   assertPaymentMatchesService,
   calculatePaymentTotals,
 } from './payment-calculations';
+import { type AuditLogService } from '../audit-log/audit-log.service';
 import {
   createPaginatedResponse,
   type PaginatedResponseDto,
 } from '../common/dto/paginated-response.dto';
-import { PrismaService } from '../database/prisma.service';
-import { MailerService } from '../mailer/mailer.service';
-import { ReceiptsService } from '../receipts/receipts.service';
+import { type PrismaService } from '../database/prisma.service';
+import { type MailerService } from '../mailer/mailer.service';
+import { type ReceiptsService } from '../receipts/receipts.service';
 
 import type { CreatePaymentAdjustmentDto } from './dto/create-payment-adjustment.dto';
 import type { CreatePaymentDto } from './dto/create-payment.dto';
@@ -38,6 +39,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly receiptsService: ReceiptsService,
     private readonly mailerService: MailerService,
+    private readonly auditLog: AuditLogService,
   ) {}
 
   async create(
@@ -94,31 +96,187 @@ export class PaymentsService {
       );
     }
 
-    const servicePriceIds = dto.item.servicePriceIds ?? [];
-    if (servicePriceIds.length === 0) {
+    const igtfConfig = await this.prisma.systemConfig.findFirst({
+      where: { tenantId, key: 'igtf_rate' },
+    });
+    const igtfRate = parseFloat(igtfConfig?.value ?? '0') / 100;
+
+    // ── Branch A: pay an existing scheduled or attended consultation ───────
+    if (dto.item.consultationId) {
+      const existingConsultation = await this.prisma.consultation.findFirst({
+        where: {
+          id: dto.item.consultationId,
+          tenantId,
+          status: { in: ['SCHEDULED', 'PENDING'] },
+        },
+        include: {
+          services: true,
+          doctor: true,
+          patient: true,
+        },
+      });
+
+      if (!existingConsultation) {
+        throw new NotFoundException(
+          `Consulta ${dto.item.consultationId} no encontrada o no admite pago`,
+        );
+      }
+
+      const totalServiceUsd = existingConsultation.services.reduce(
+        (sum, s) => sum + parseFloat(s.priceUsd.toString()),
+        0,
+      );
+
+      const totals = calculatePaymentTotals(
+        dto.paymentLines,
+        dto.bcvExchangeRate,
+        igtfRate,
+      );
+      assertPaymentMatchesService(
+        totals.totalPaidUsdEquivalent,
+        new Prisma.Decimal(totalServiceUsd),
+        totals.totalIgtfUsd,
+      );
+
+      const splitPct =
+        parseFloat(existingConsultation.doctor.splitPercentage.toString()) /
+        100;
+      const doctorShareUsd = totalServiceUsd * splitPct;
+      const centerShareUsd = totalServiceUsd - doctorShareUsd;
+
+      await this.prisma.$transaction(async (tx) => {
+        const consultationPayment = await tx.consultationPayment.create({
+          data: {
+            idempotencyKey: dto.idempotencyKey,
+            status: 'INITIATED',
+            consultationId: existingConsultation.id,
+          },
+        });
+
+        await tx.consultationPayment.updateMany({
+          where: { id: consultationPayment.id, consultation: { tenantId } },
+          data: { status: 'PROCESSING' },
+        });
+
+        const payment = await tx.payment.create({
+          data: {
+            tenantId,
+            idempotencyKey: dto.idempotencyKey,
+            totalServiceUsd: round(totalServiceUsd),
+            bcvExchangeRate: round(dto.bcvExchangeRate, 4),
+            totalPaidUsd: totals.totalPaidUsd,
+            totalPaidUsdEquivalent:
+              totals.totalPaidUsdEquivalent.toDecimalPlaces(2),
+            totalPaidBs: totals.totalPaidBs,
+            totalIgtfUsd: totals.totalIgtfUsd.toDecimalPlaces(2),
+            doctorShareUsd: round(doctorShareUsd),
+            centerShareUsd: round(centerShareUsd),
+            status: 'COMPLETED',
+            details: {
+              createMany: {
+                data: totals.lines.map((l) => ({
+                  paymentMethod: l.paymentMethod,
+                  currency: l.currency,
+                  amount: round(l.amount),
+                  referenceNumber: l.referenceNumber,
+                  appliedIgtfAmount: l.appliedIgtfAmount.toDecimalPlaces(2),
+                })),
+              },
+            },
+          },
+          include: { details: true },
+        });
+
+        await this.auditLog?.log(
+          {
+            tenantId,
+            userId: generatedById,
+            action: 'COMPLETE',
+            entity: 'Payment',
+            entityId: payment.id,
+            newValues: {
+              status: payment.status,
+              totalServiceUsd: payment.totalServiceUsd,
+            },
+            changedFields: ['status', 'totalServiceUsd'],
+          },
+          tx,
+        );
+
+        await tx.paymentItem.create({
+          data: {
+            paymentId: payment.id,
+            itemType: 'CONSULTATION',
+            description:
+              dto.item.description ||
+              `Consulta - ${existingConsultation.services.map((s) => s.serviceName).join(', ')}`,
+            quantity: 1,
+            unitPriceUsd: round(totalServiceUsd),
+            totalPriceUsd: round(totalServiceUsd),
+            consultationId: existingConsultation.id,
+          },
+        });
+
+        await tx.consultation.updateMany({
+          where: { id: existingConsultation.id, tenantId },
+          data: { status: 'PAID', paymentId: payment.id },
+        });
+
+        await tx.consultationPayment.updateMany({
+          where: { id: consultationPayment.id, consultation: { tenantId } },
+          data: { status: 'COMPLETED', paymentId: payment.id },
+        });
+      });
+
+      const full = await this.prisma.payment.findFirstOrThrow({
+        where: { idempotencyKey: dto.idempotencyKey, tenantId },
+        include: {
+          item: { include: { consultation: { include: { services: true } } } },
+          details: true,
+          adjustments: true,
+        },
+      });
+
+      await this.processReceiptSideEffects(
+        tenantId,
+        full.id,
+        generatedById,
+        existingConsultation.doctor.email ?? undefined,
+      );
+
+      return this.buildResponse(full);
+    }
+
+    // ── Branch B: create a new consultation on the fly ──────────────────────
+    const doctorServiceIds = dto.item.doctorServiceIds ?? [];
+    if (doctorServiceIds.length === 0) {
       throw new BadRequestException(
         'Se requieren servicios para una consulta médica',
       );
     }
 
-    const [servicePrices, patient, igtfConfig] = await Promise.all([
-      this.prisma.servicePrice.findMany({
+    const doctorId = dto.item.doctorId;
+    if (!doctorId) {
+      throw new BadRequestException(
+        'Se requiere doctorId para pagos de consulta médica',
+      );
+    }
+
+    const [doctorServices, patient] = await Promise.all([
+      this.prisma.doctorService.findMany({
         where: {
-          id: { in: servicePriceIds },
-          isActive: true,
-          specialty: { tenantId, isActive: true },
+          id: { in: doctorServiceIds },
+          tenantId,
+          doctorId: dto.item.doctorId,
         },
         include: { service: true, specialty: true },
       }),
       this.prisma.patient.findFirst({
         where: { id: dto.patientId, tenantId, isActive: true },
       }),
-      this.prisma.systemConfig.findFirst({
-        where: { tenantId, key: 'igtf_rate' },
-      }),
     ]);
 
-    if (servicePrices.length !== servicePriceIds.length) {
+    if (doctorServices.length !== doctorServiceIds.length) {
       throw new BadRequestException(
         'Uno o más servicios no son válidos o están inactivos',
       );
@@ -126,8 +284,7 @@ export class PaymentsService {
     if (!patient)
       throw new NotFoundException(`Paciente ${dto.patientId} no encontrado`);
 
-    const igtfRate = parseFloat(igtfConfig?.value ?? '0') / 100;
-    const totalServiceUsd = servicePrices.reduce(
+    const totalServiceUsd = doctorServices.reduce(
       (sum, sp) => sum + parseFloat(sp.priceUsd.toString()),
       0,
     );
@@ -143,32 +300,12 @@ export class PaymentsService {
       totals.totalIgtfUsd,
     );
 
-    const doctorId = dto.item.doctorId;
-    if (!doctorId) {
-      throw new BadRequestException(
-        'Se requiere doctorId para pagos de consulta médica',
-      );
-    }
-
     const doctorRecord = await this.prisma.doctor.findFirst({
       where: { id: doctorId, tenantId, isActive: true },
-      include: { specialties: true },
     });
 
     if (!doctorRecord)
       throw new NotFoundException(`Doctor ${doctorId} no encontrado`);
-
-    const doctorSpecialtyIds = new Set(
-      doctorRecord.specialties.map((ds) => ds.specialtyId),
-    );
-    const invalidService = servicePrices.find(
-      (sp) => !doctorSpecialtyIds.has(sp.specialtyId),
-    );
-    if (invalidService) {
-      throw new BadRequestException(
-        `Servicio "${invalidService.service.name}" no corresponde a especialidades del doctor`,
-      );
-    }
 
     const splitPct = parseFloat(doctorRecord.splitPercentage.toString()) / 100;
     const doctorShareUsd = totalServiceUsd * splitPct;
@@ -180,12 +317,29 @@ export class PaymentsService {
           tenantId,
           patientId: dto.patientId,
           doctorId: doctorRecord.id,
+          date: dto.consultationDate ?? new Date(),
           status: 'PENDING',
         },
       });
+      await this.auditLog?.log(
+        {
+          tenantId,
+          userId: generatedById,
+          action: 'CREATE',
+          entity: 'Consultation',
+          entityId: consultation.id,
+          newValues: {
+            status: consultation.status,
+            patientId: consultation.patientId,
+            doctorId: consultation.doctorId,
+          },
+          changedFields: ['status', 'patientId', 'doctorId'],
+        },
+        tx,
+      );
 
       await tx.consultationService.createMany({
-        data: servicePrices.map((sp) => ({
+        data: doctorServices.map((sp) => ({
           consultationId: consultation.id,
           serviceId: sp.serviceId,
           specialtyId: sp.specialtyId,
@@ -203,8 +357,8 @@ export class PaymentsService {
         },
       });
 
-      await tx.consultationPayment.update({
-        where: { id: consultationPayment.id },
+      await tx.consultationPayment.updateMany({
+        where: { id: consultationPayment.id, consultation: { tenantId } },
         data: { status: 'PROCESSING' },
       });
 
@@ -236,6 +390,21 @@ export class PaymentsService {
         },
         include: { details: true },
       });
+      await this.auditLog?.log(
+        {
+          tenantId,
+          userId: generatedById,
+          action: 'COMPLETE',
+          entity: 'Payment',
+          entityId: payment.id,
+          newValues: {
+            status: payment.status,
+            totalServiceUsd: payment.totalServiceUsd,
+          },
+          changedFields: ['status', 'totalServiceUsd'],
+        },
+        tx,
+      );
 
       await tx.paymentItem.create({
         data: {
@@ -243,7 +412,7 @@ export class PaymentsService {
           itemType: 'CONSULTATION',
           description:
             dto.item.description ||
-            `Consulta - ${servicePrices.map((s) => s.service.name).join(', ')}`,
+            `Consulta - ${doctorServices.map((s) => s.service.name).join(', ')}`,
           quantity: 1,
           unitPriceUsd: round(totalServiceUsd),
           totalPriceUsd: round(totalServiceUsd),
@@ -251,13 +420,13 @@ export class PaymentsService {
         },
       });
 
-      await tx.consultation.update({
-        where: { id: consultation.id },
+      await tx.consultation.updateMany({
+        where: { id: consultation.id, tenantId },
         data: { status: 'PAID', paymentId: payment.id },
       });
 
-      await tx.consultationPayment.update({
-        where: { id: consultationPayment.id },
+      await tx.consultationPayment.updateMany({
+        where: { id: consultationPayment.id, consultation: { tenantId } },
         data: { status: 'COMPLETED', paymentId: payment.id },
       });
     });
@@ -283,7 +452,7 @@ export class PaymentsService {
 
   private async createLabPayment(
     tenantId: string,
-    _generatedById: string,
+    generatedById: string,
     dto: CreatePaymentDto,
   ): Promise<PaymentResponseDto> {
     const labOrderId = dto.item.labOrderId;
@@ -369,6 +538,21 @@ export class PaymentsService {
         },
         include: { details: true },
       });
+      await this.auditLog?.log(
+        {
+          tenantId,
+          userId: generatedById,
+          action: 'COMPLETE',
+          entity: 'Payment',
+          entityId: payment.id,
+          newValues: {
+            status: payment.status,
+            totalServiceUsd: payment.totalServiceUsd,
+          },
+          changedFields: ['status', 'totalServiceUsd'],
+        },
+        tx,
+      );
 
       await tx.paymentItem.create({
         data: {
@@ -384,8 +568,8 @@ export class PaymentsService {
         },
       });
 
-      await tx.labOrder.update({
-        where: { id: labOrder.id },
+      await tx.labOrder.updateMany({
+        where: { id: labOrder.id, tenantId },
         data: { status: 'PAID' },
       });
     });
@@ -502,6 +686,7 @@ export class PaymentsService {
 
   async voidPayment(
     tenantId: string,
+    userId: string,
     paymentId: string,
   ): Promise<PaymentResponseDto> {
     const payment = await this.prisma.payment.findFirst({
@@ -517,28 +702,61 @@ export class PaymentsService {
       throw new BadRequestException('Pago ya está anulado');
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.payment.update({
-        where: { id: paymentId },
+      await tx.payment.updateMany({
+        where: { id: paymentId, tenantId },
         data: { status: 'VOIDED' },
       });
+      const updated = await tx.payment.findFirstOrThrow({
+        where: { id: paymentId, tenantId },
+      });
+      await this.auditLog?.log(
+        {
+          tenantId,
+          userId,
+          action: 'VOID',
+          entity: 'Payment',
+          entityId: updated.id,
+          newValues: { status: updated.status },
+          changedFields: ['status'],
+        },
+        tx,
+      );
 
       if (payment.consultationPayment) {
-        await tx.consultationPayment.update({
-          where: { id: payment.consultationPayment.id },
+        await tx.consultationPayment.updateMany({
+          where: {
+            id: payment.consultationPayment.id,
+            consultation: { tenantId },
+          },
           data: { status: 'VOIDED' },
         });
       }
 
       if (payment.item?.consultationId) {
-        await tx.consultation.update({
-          where: { id: payment.item.consultationId },
+        await tx.consultation.updateMany({
+          where: { id: payment.item.consultationId, tenantId },
           data: { status: 'VOIDED' },
         });
+        const consultation = await tx.consultation.findFirstOrThrow({
+          where: { id: payment.item.consultationId, tenantId },
+        });
+        await this.auditLog?.log(
+          {
+            tenantId,
+            userId,
+            action: 'VOID',
+            entity: 'Consultation',
+            entityId: consultation.id,
+            newValues: { status: consultation.status },
+            changedFields: ['status'],
+          },
+          tx,
+        );
       }
 
       if (payment.item?.labOrderId) {
-        await tx.labOrder.update({
-          where: { id: payment.item.labOrderId },
+        await tx.labOrder.updateMany({
+          where: { id: payment.item.labOrderId, tenantId },
           data: { status: 'VOIDED' },
         });
       }
@@ -549,6 +767,7 @@ export class PaymentsService {
 
   async addAdjustment(
     tenantId: string,
+    userId: string,
     paymentId: string,
     dto: CreatePaymentAdjustmentDto,
   ): Promise<PaymentResponseDto> {
@@ -562,13 +781,30 @@ export class PaymentsService {
     if (payment.status === 'VOIDED')
       throw new BadRequestException('Pago anulado no admite ajustes');
 
-    await this.prisma.paymentAdjustment.create({
-      data: {
-        paymentId,
-        paymentDetailId: dto.paymentDetailId ?? null,
-        description: dto.description,
-        amountUsd: round(dto.amountUsd),
-      },
+    await this.prisma.$transaction(async (tx) => {
+      const adjustment = await tx.paymentAdjustment.create({
+        data: {
+          paymentId,
+          paymentDetailId: dto.paymentDetailId ?? null,
+          description: dto.description,
+          amountUsd: round(dto.amountUsd),
+        },
+      });
+      await this.auditLog?.log(
+        {
+          tenantId,
+          userId,
+          action: 'ADJUSTMENT',
+          entity: 'Payment',
+          entityId: payment.id,
+          newValues: {
+            adjustmentId: adjustment.id,
+            amountUsd: adjustment.amountUsd,
+          },
+          changedFields: ['adjustments'],
+        },
+        tx,
+      );
     });
 
     return this.findOne(tenantId, paymentId);

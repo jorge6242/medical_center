@@ -12,7 +12,9 @@ import { databaseConfig } from './config/database.config';
 import { envValidationSchema } from './config/env.validation';
 import { jwtConfig } from './config/jwt.config';
 import { mailerConfig } from './config/mailer.config';
+import { ConsultationsModule } from './consultations/consultations.module';
 import { PrismaModule } from './database/prisma.module';
+import { DoctorPayoutsModule } from './doctor-payouts/doctor-payouts.module';
 import { DoctorsModule } from './doctors/doctors.module';
 import { ExchangeRatesModule } from './exchange-rates/exchange-rates.module';
 import { ExpensesModule } from './expenses/expenses.module';
@@ -28,6 +30,7 @@ import { ReportsModule } from './reports/reports.module';
 import { RolesModule } from './roles/roles.module';
 import { SpecialtiesModule } from './specialties/specialties.module';
 import { StatsModule } from './stats/stats.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -51,6 +54,8 @@ import { StatsModule } from './stats/stats.module';
     PatientsModule,
     SpecialtiesModule,
     DoctorsModule,
+    DoctorPayoutsModule,
+    ConsultationsModule,
     PaymentsModule,
     ExpensesModule,
     ExchangeRatesModule,
@@ -64,6 +69,7 @@ import { StatsModule } from './stats/stats.module';
     LabOrdersModule,
     CatalogModule,
     ReportsModule,
+    UsersModule,
   ],
   controllers: [HealthController],
 })

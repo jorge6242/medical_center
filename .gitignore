@@ -17,6 +17,7 @@ coverage/
 
 # Prisma
 apps/api/prisma/migrations/*.sql.bak
+apps/api/prisma/*.temp
 
 # OS
 .DS_Store

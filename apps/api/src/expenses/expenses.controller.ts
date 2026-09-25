@@ -10,10 +10,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { CreateExpenseDto } from './dto/create-expense.dto';
-import { ExpenseQueryDto } from './dto/expense-query.dto';
-import { VoidExpenseDto } from './dto/void-expense.dto';
-import { ExpensesService } from './expenses.service';
+import { type CreateExpenseDto } from './dto/create-expense.dto';
+import { type ExpenseQueryDto } from './dto/expense-query.dto';
+import { type VoidExpenseDto } from './dto/void-expense.dto';
+import { type ExpensesService } from './expenses.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
@@ -32,8 +32,8 @@ export class ExpensesController {
 
   @Get('categories')
   @RequirePermission('expenses', 'read')
-  findCategories() {
-    return this.expensesService.findCategories();
+  findCategories(@CurrentUser() user: JwtPayload) {
+    return this.expensesService.findCategories(user.tenantId);
   }
 
   @Get()

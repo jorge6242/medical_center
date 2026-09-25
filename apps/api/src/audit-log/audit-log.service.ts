@@ -1,10 +1,11 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Injectable } from '@nestjs/common';
+import { type Prisma, type PrismaClient } from '@prisma/client';
+
+import { type AuditWriter } from './audit-writer';
+import { type RequestContextService } from '../common/context';
 
 export interface AuditLogEntry {
-  tenantId: string;
+  tenantId?: string;
   userId?: string;
   action: string;
   entity: string;
@@ -12,41 +13,30 @@ export interface AuditLogEntry {
   oldValues?: Record<string, unknown>;
   newValues?: Record<string, unknown>;
   changedFields?: string[];
+  result?: 'SUCCESS' | 'FAILURE';
+  correlationId?: string;
+  requestId?: string;
+  metadata?: Record<string, unknown>;
 }
 
 @Injectable()
-export class AuditLogService implements OnModuleInit, OnModuleDestroy {
-  private readonly prisma: PrismaClient;
+export class AuditLogService {
+  constructor(
+    private readonly writer: AuditWriter,
+    private readonly requestContext: RequestContextService,
+  ) {}
 
-  constructor(configService: ConfigService) {
-    const url = configService.getOrThrow<string>('DATABASE_URL');
-    this.prisma = new PrismaClient({
-      adapter: new PrismaPg({ connectionString: url }),
-    });
-  }
-
-  async onModuleInit(): Promise<void> {
-    await this.prisma.$connect();
-  }
-
-  async onModuleDestroy(): Promise<void> {
-    await this.prisma.$disconnect();
-  }
-
-  async log(entry: AuditLogEntry): Promise<void> {
-    await this.prisma.auditLog.create({
-      data: {
-        tenantId: entry.tenantId,
-        userId: entry.userId ?? null,
-        action: entry.action,
-        entity: entry.entity,
-        entityId: entry.entityId,
-        oldValues: (entry.oldValues ??
-          Prisma.JsonNull) as Prisma.InputJsonValue,
-        newValues: (entry.newValues ??
-          Prisma.JsonNull) as Prisma.InputJsonValue,
-        changedFields: entry.changedFields ?? [],
+  log(entry: AuditLogEntry, db?: Prisma.TransactionClient | PrismaClient) {
+    const context = this.requestContext.getStore();
+    return this.writer.write(
+      {
+        ...entry,
+        tenantId: context?.tenantId ?? entry.tenantId,
+        userId: entry.userId ?? context?.userId,
+        correlationId: entry.correlationId ?? context?.correlationId,
+        requestId: entry.requestId ?? context?.requestId,
       },
-    });
+      db,
+    );
   }
 }

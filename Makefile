@@ -1,12 +1,14 @@
 .PHONY: setup dev down down-v restart restart-api restart-web \
         logs logs-api logs-web logs-db shell-api shell-web shell-db \
         db-migrate db-deploy db-seed db-studio deps-sync \
-        docker-build-api docker-build-web docker-build docker-push-api docker-push-web docker-push
+        tenant-provision \
+        docker-build-api docker-build-web docker-build docker-push-api docker-push-web docker-push \
+        docker-release-api docker-release-web
 
-DOCKERHUB_USER ?= jgomezfreelancer
+DOCKERHUB_USER ?= jorge6242
 IMAGE_TAG ?= railway-mvp
 DOCKER_PLATFORM ?= linux/amd64
-NEXT_PUBLIC_API_URL ?= http://localhost:3001
+NEXT_PUBLIC_API_URL ?= https://centromedicoapi-production.up.railway.app
 API_IMAGE := $(DOCKERHUB_USER)/centro-medico-api:$(IMAGE_TAG)
 WEB_IMAGE := $(DOCKERHUB_USER)/centro-medico-web:$(IMAGE_TAG)
 
@@ -83,7 +85,9 @@ shell-db: ## psql dentro del container DB
 	docker compose -f docker-compose.dev.yml exec db psql -U postgres -d centro_medico
 
 deps-sync: ## Regenera pnpm-lock.yaml dentro de Docker
-	docker compose -f docker-compose.dev.yml exec -T api pnpm install --lockfile-only --ignore-scripts
+	# pnpm writes lockfiles atomically (temp file + rename), which cannot replace a bind mount.
+	# Resolve from a minimal temporary workspace, then overwrite the mounted lockfile in place.
+	docker compose -f docker-compose.dev.yml run --rm --no-deps api sh -ceu 'workspace=$$(mktemp -d); trap "rm -rf $$workspace" EXIT; mkdir -p "$$workspace/apps/api" "$$workspace/apps/web" "$$workspace/packages/shared"; cp /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml "$$workspace"; cp /app/apps/api/package.json "$$workspace/apps/api"; cp /app/apps/web/package.json "$$workspace/apps/web"; cp /app/packages/shared/package.json "$$workspace/packages/shared"; cd "$$workspace"; pnpm install --lockfile-only --ignore-scripts; cat pnpm-lock.yaml > /app/pnpm-lock.yaml'
 
 # ── Prisma ────────────────────────────────────────────────────────────────────
 
@@ -102,6 +106,22 @@ db-seed: ## Corre prisma/seed.ts
 db-studio: ## Abre Prisma Studio (UI explorador de DB)
 	docker compose -f docker-compose.dev.yml exec api pnpm run db:studio
 
+tenant-provision: ## Crea un tenant nuevo sin datos demo; requiere variables TENANT_* y ADMIN_*
+	docker compose -f docker-compose.dev.yml exec -T \
+		-e TENANT_NAME="$(TENANT_NAME)" \
+		-e TENANT_SLUG="$(TENANT_SLUG)" \
+		-e TENANT_LOGO_URL="$(TENANT_LOGO_URL)" \
+		-e ADMIN_NAME="$(ADMIN_NAME)" \
+		-e ADMIN_LAST_NAME="$(ADMIN_LAST_NAME)" \
+		-e ADMIN_IDENTIFICATION_NUMBER="$(ADMIN_IDENTIFICATION_NUMBER)" \
+		-e ADMIN_EMAIL="$(ADMIN_EMAIL)" \
+		-e ADMIN_PASSWORD="$(ADMIN_PASSWORD)" \
+		-e RESET_ADMIN_PASSWORD="$(RESET_ADMIN_PASSWORD)" \
+		-e INITIAL_IGTF_RATE="$(INITIAL_IGTF_RATE)" \
+		-e INITIAL_BCV_RATE="$(INITIAL_BCV_RATE)" \
+		-e ACCESS_LINK_DAYS="$(ACCESS_LINK_DAYS)" \
+		api pnpm run tenant:provision
+
 # ── Docker Hub Images ─────────────────────────────────────────────────────────
 
 docker-build-api: ## Build imagen API para Docker Hub
@@ -119,3 +139,7 @@ docker-push-web: ## Push imagen Web a Docker Hub
 	docker push $(WEB_IMAGE)
 
 docker-push: docker-push-api docker-push-web ## Push API + Web
+
+docker-release-api: docker-build-api docker-push-api ## Build + push API para Railway/Docker Hub
+
+docker-release-web: docker-build-web docker-push-web ## Build + push Web para Railway/Docker Hub

@@ -35,10 +35,15 @@ describe('JwtAuthGuard', () => {
     const result = guard.handleRequest(null, user);
 
     expect(result).toBe(user);
-    expect(requestContext.enterWith).toHaveBeenCalledWith({
-      userId: 'user-1',
-      tenantId: 'tenant-1',
-    });
+    expect(requestContext.enterWith).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-1',
+        tenantId: 'tenant-1',
+        email: 'admin@example.com',
+        role: 'ADMIN',
+        correlationId: expect.any(String),
+      }),
+    );
   });
 
   it('throws unauthorized when user is missing', () => {

@@ -88,12 +88,13 @@ export interface PatientConsultation {
 export interface PaidConsultation {
   id: string;
   date: string;
-  status: 'PAID';
+  status: 'SCHEDULED' | 'PAID';
   patientId: string;
   patientName: string;
   patientDocument: string;
   doctorId: string;
   doctorName: string;
+  doctorDocument: string;
   services: Array<PatientConsultationService & { priceUsd: string }>;
   medicalRecordId: string | null;
   canCreateMedicalRecord: boolean;
@@ -117,11 +118,12 @@ export interface PaidConsultationsQuery {
   search?: string;
 }
 
-export const getPatientMedicalRecords = (patientId: string): Promise<PatientMedicalRecordsResponse> =>
-  apiJson(`/patients/${patientId}/medical-records`);
+export const getPatientMedicalRecords = (
+  patientId: string,
+): Promise<PatientMedicalRecordsResponse> => apiJson(`/patients/${patientId}/medical-records`);
 
 export const getMedicalRecord = (id: string): Promise<MedicalRecordDetail> =>
-  apiJson(`/medical-records/${id}`);
+  apiJson(`/medical-records/${id}`, { cache: 'no-store' });
 
 export const createMedicalRecord = (dto: CreateMedicalRecordDto): Promise<MedicalRecordDetail> =>
   apiJson('/medical-records', { method: 'POST', body: JSON.stringify(dto) });
@@ -141,5 +143,7 @@ export const getPaidConsultations = (
   return apiJson(`/medical-records/paid-consultations${queryString ? `?${queryString}` : ''}`);
 };
 
-export const getConsultationTemplateType = (consultationId: string): Promise<ConsultationTemplateResponse> =>
+export const getConsultationTemplateType = (
+  consultationId: string,
+): Promise<ConsultationTemplateResponse> =>
   apiJson(`/medical-records/template-type?consultationId=${consultationId}`);

@@ -2,6 +2,7 @@ import { Currency, ItemType, PaymentMethod } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsDate,
   ArrayMinSize,
   IsEnum,
   IsNumber,
@@ -37,15 +38,23 @@ export class PaymentItemDto {
   @IsString()
   declare description: string;
 
-  @ValidateIf((o) => o.itemType === 'CONSULTATION')
+  @ValidateIf(
+    (o: PaymentItemDto) => o.itemType === 'CONSULTATION' && !o.consultationId,
+  )
   @IsString()
   declare doctorId?: string;
 
-  @ValidateIf((o) => o.itemType === 'CONSULTATION')
+  @ValidateIf(
+    (o: PaymentItemDto) => o.itemType === 'CONSULTATION' && !o.consultationId,
+  )
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })
-  declare servicePriceIds?: string[];
+  declare doctorServiceIds?: string[];
+
+  @IsOptional()
+  @IsUUID('4')
+  declare consultationId?: string;
 
   @ValidateIf((o) => o.itemType === 'LAB')
   @IsString()
@@ -62,6 +71,11 @@ export class CreatePaymentDto {
   @IsNumber({ maxDecimalPlaces: 4 })
   @IsPositive()
   declare bcvExchangeRate: number;
+
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  declare consultationDate?: Date;
 
   @ValidateNested()
   @Type(() => PaymentItemDto)

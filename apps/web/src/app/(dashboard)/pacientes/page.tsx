@@ -7,12 +7,17 @@ import { Plus } from 'lucide-react';
 import { PatientForm } from '@/features/patients/components/patient-form';
 import { getPatientColumns } from '@/features/patients/components/patient-columns';
 import { PatientToolbar } from '@/features/patients/components/patient-toolbar';
-import { useDeactivatePatient, usePaginatedPatients } from '@/features/patients/hooks/use-patients';
+import {
+  useDeactivatePatient,
+  usePaginatedPatients,
+  usePermanentlyDeletePatient,
+} from '@/features/patients/hooks/use-patients';
 import type { PatientResponse } from '@/features/patients/services/patients.service';
 import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
 import { DataTable } from '@/shared/components/ui/data-table';
 import { Modal } from '@/shared/components/ui/modal';
+import { useNotification } from '@/shared/hooks/use-notification';
 
 export default function PacientesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -31,6 +36,23 @@ export default function PacientesPage() {
   const deactivatePatient = useDeactivatePatient(() => {
     // Refetch is handled by the hook
   });
+  const permanentlyDeletePatient = usePermanentlyDeletePatient();
+  const notification = useNotification();
+
+  const handlePermanentDelete = (patient: PatientResponse) => {
+    const shouldDelete = window.confirm(
+      `¿Eliminar definitivamente a ${patient.name}? Solo es posible si no tiene movimientos.`,
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    permanentlyDeletePatient.mutate(patient.id, {
+      onError: (error) => notification.error(error.message),
+      onSuccess: () => notification.success('Paciente eliminado definitivamente'),
+    });
+  };
 
   const patients = data?.data ?? [];
   const meta = data?.meta;
@@ -61,11 +83,16 @@ export default function PacientesPage() {
               setShowEditModal(true);
             },
             onDeactivate: (id: string) => deactivatePatient.mutate(id),
+            onPermanentDelete: handlePermanentDelete,
           }}
         />
       </Card>
 
-      <Modal open={showCreateModal} onClose={() => setShowCreateModal(false)} title="Nuevo paciente">
+      <Modal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Nuevo paciente"
+      >
         <PatientForm onClose={() => setShowCreateModal(false)} />
       </Modal>
 

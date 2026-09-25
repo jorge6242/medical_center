@@ -3,3 +3,4 @@ export * from './interfaces';
 export * from './dtos';
 export * from './queues';
 export * from './medical-records';
+export * from './audit-log';

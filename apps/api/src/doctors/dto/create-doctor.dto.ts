@@ -1,6 +1,8 @@
 import { AccountType, DocumentType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsEmail,
   IsEnum,
@@ -14,6 +16,19 @@ import {
   ValidateNested,
 } from 'class-validator';
 
+export class DoctorServiceDto {
+  @IsUUID('4')
+  declare specialtyId: string;
+
+  @IsString()
+  @Length(2, 100)
+  declare serviceName: string;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  declare priceUsd: number;
+}
+
 export class CreateBankAccountDto {
   @IsString()
   @Length(2, 100)
@@ -23,11 +38,11 @@ export class CreateBankAccountDto {
   declare accountType: AccountType;
 
   @IsString()
+  @IsOptional()
   @Length(10, 30)
-  declare accountNumber: string;
+  declare accountNumber?: string;
 
   @IsString()
-  @Length(6, 12)
   declare documentId: string;
 
   @IsOptional()
@@ -66,8 +81,15 @@ export class CreateDoctorDto {
   declare medicalLicenseNumber?: string;
 
   @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(1)
   @IsUUID('4', { each: true })
   declare specialtyIds: string[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DoctorServiceDto)
+  declare services: DoctorServiceDto[];
 
   @ValidateNested()
   @Type(() => CreateBankAccountDto)

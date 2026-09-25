@@ -9,9 +9,7 @@
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
     "paths": {
-      "@/*": ["./src/*"],
-      "@centro-medico/shared": ["../../packages/shared/dist/src/index"],
-      "@centro-medico/shared/*": ["../../packages/shared/dist/src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src/**/*", "prisma/**/*", "test/**/*"],

@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createDoctor,
   deactivateDoctor,
+  getDoctorAdmin,
   getDoctorsAdmin,
   getDoctorOnboardingStatus,
   sendDoctorOnboarding,
@@ -12,6 +13,7 @@ import {
   verifyDoctor,
   verifyDocument,
   type CreateDoctorDto,
+  type DoctorAdminResponse,
   type GetDoctorsQuery,
   type UpdateDoctorDto,
   type VerifyDocumentDto,
@@ -25,26 +27,41 @@ export function useDoctorsAdmin(query?: GetDoctorsQuery) {
   });
 }
 
-export function useCreateDoctor(onSuccess?: () => void) {
+export function useDoctorAdmin(id: string) {
+  return useQuery({
+    queryKey: ['doctor-admin', id],
+    queryFn: () => getDoctorAdmin(id),
+    enabled: Boolean(id),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+}
+
+export function useCreateDoctor(onSuccess?: (doctor: DoctorAdminResponse) => void) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (dto: CreateDoctorDto) => createDoctor(dto),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['doctors-admin'] });
-      void qc.invalidateQueries({ queryKey: ['doctors'] });
-      onSuccess?.();
+    onSuccess: async (doctor) => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['doctors-admin'] }),
+        qc.invalidateQueries({ queryKey: ['doctors'] }),
+      ]);
+      onSuccess?.(doctor);
     },
   });
 }
 
-export function useUpdateDoctor(id: string, onSuccess?: () => void) {
+export function useUpdateDoctor(id: string, onSuccess?: (doctor: DoctorAdminResponse) => void) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (dto: UpdateDoctorDto) => updateDoctor(id, dto),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['doctors-admin'] });
-      void qc.invalidateQueries({ queryKey: ['doctors'] });
-      onSuccess?.();
+    onSuccess: async (doctor) => {
+      qc.setQueryData(['doctor-admin', id], doctor);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['doctors-admin'] }),
+        qc.invalidateQueries({ queryKey: ['doctors'] }),
+      ]);
+      onSuccess?.(doctor);
     },
   });
 }

@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { PrismaService } from '../database/prisma.service';
+import { type PrismaService } from '../database/prisma.service';
 
 import type { CreateExchangeRateDto } from './dto/create-exchange-rate.dto';
 import type { ExchangeRateResponseDto } from './dto/exchange-rate-response.dto';
@@ -60,9 +60,12 @@ export class ExchangeRatesService {
     });
     if (!existing) throw new NotFoundException(`Tasa ${id} no encontrada`);
 
-    const updated = await this.prisma.exchangeRate.update({
-      where: { id },
+    await this.prisma.exchangeRate.updateMany({
+      where: { id, tenantId },
       data: { rate: dto.rate, date: new Date(dto.date) },
+    });
+    const updated = await this.prisma.exchangeRate.findFirstOrThrow({
+      where: { id, tenantId },
     });
     return this.toResponse(updated);
   }

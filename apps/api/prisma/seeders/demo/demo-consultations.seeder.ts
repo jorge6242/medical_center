@@ -1,7 +1,12 @@
 import { DEMO_TENANT_ID } from './types';
 
-import type { Doctor, Patient, PrismaClient, User, Consultation } from '@prisma/client';
-
+import type {
+  Doctor,
+  Patient,
+  PrismaClient,
+  User,
+  Consultation,
+} from '@prisma/client';
 
 export async function seedDemoConsultations(
   prisma: PrismaClient,
@@ -9,13 +14,27 @@ export async function seedDemoConsultations(
   patients: Patient[],
   users: { admin: User; reception: User },
 ): Promise<Consultation[]> {
-  await prisma.medicalRecord.deleteMany({ where: { tenantId: DEMO_TENANT_ID } });
-  await prisma.consultationService.deleteMany({ where: { consultation: { tenantId: DEMO_TENANT_ID } } });
-  await prisma.doctorReceipt.deleteMany({ where: { payment: { tenantId: DEMO_TENANT_ID } } });
-  await prisma.paymentAdjustment.deleteMany({ where: { payment: { tenantId: DEMO_TENANT_ID } } });
-  await prisma.paymentDetail.deleteMany({ where: { payment: { tenantId: DEMO_TENANT_ID } } });
-  await prisma.paymentItem.deleteMany({ where: { payment: { tenantId: DEMO_TENANT_ID } } });
-  await prisma.consultationPayment.deleteMany({ where: { consultation: { tenantId: DEMO_TENANT_ID } } });
+  await prisma.medicalRecord.deleteMany({
+    where: { tenantId: DEMO_TENANT_ID },
+  });
+  await prisma.consultationService.deleteMany({
+    where: { consultation: { tenantId: DEMO_TENANT_ID } },
+  });
+  await prisma.doctorReceipt.deleteMany({
+    where: { payment: { tenantId: DEMO_TENANT_ID } },
+  });
+  await prisma.paymentAdjustment.deleteMany({
+    where: { payment: { tenantId: DEMO_TENANT_ID } },
+  });
+  await prisma.paymentDetail.deleteMany({
+    where: { payment: { tenantId: DEMO_TENANT_ID } },
+  });
+  await prisma.paymentItem.deleteMany({
+    where: { payment: { tenantId: DEMO_TENANT_ID } },
+  });
+  await prisma.consultationPayment.deleteMany({
+    where: { consultation: { tenantId: DEMO_TENANT_ID } },
+  });
   await prisma.payment.deleteMany({ where: { tenantId: DEMO_TENANT_ID } });
   await prisma.consultation.deleteMany({ where: { tenantId: DEMO_TENANT_ID } });
 
@@ -24,12 +43,34 @@ export async function seedDemoConsultations(
   const consultations: Consultation[] = [];
 
   const [doctor1, doctor2, doctor3, doctor4] = doctors;
-  const [patient1, patient2, patient3, patient4, patient5, patient6, patient7, patient8, patient9, patient10] = patients;
+  const [
+    patient1,
+    patient2,
+    patient3,
+    patient4,
+    patient5,
+    patient6,
+    patient7,
+    patient8,
+    patient9,
+    patient10,
+  ] = patients;
 
   if (!doctor1 || !doctor2 || !doctor3 || !doctor4) {
     throw new Error('Demo doctors insufficientes');
   }
-  if (!patient1 || !patient2 || !patient3 || !patient4 || !patient5 || !patient6 || !patient7 || !patient8 || !patient9 || !patient10) {
+  if (
+    !patient1 ||
+    !patient2 ||
+    !patient3 ||
+    !patient4 ||
+    !patient5 ||
+    !patient6 ||
+    !patient7 ||
+    !patient8 ||
+    !patient9 ||
+    !patient10
+  ) {
     throw new Error('Demo patients insufficientes');
   }
 
@@ -106,17 +147,23 @@ export async function seedDemoConsultations(
       where: {
         doctorId: doctor.id,
         ...(item.specialtyName
-          ? { specialty: { is: { tenantId: DEMO_TENANT_ID, name: item.specialtyName } } }
+          ? {
+              specialty: {
+                is: { tenantId: DEMO_TENANT_ID, name: item.specialtyName },
+              },
+            }
           : {}),
       },
       include: { specialty: true },
       orderBy: { isPrimary: 'desc' },
     });
-    const servicePrice = await prisma.servicePrice.findFirstOrThrow({
+    const doctorService = await prisma.doctorService.findFirstOrThrow({
       where: {
+        doctorId: doctor.id,
         specialtyId: specialty.specialtyId,
-        isActive: true,
-        ...(item.serviceName ? { service: { is: { name: item.serviceName } } } : {}),
+        ...(item.serviceName
+          ? { service: { is: { name: item.serviceName } } }
+          : {}),
       },
       include: { service: true, specialty: true },
     });
@@ -124,17 +171,17 @@ export async function seedDemoConsultations(
     await prisma.consultationService.create({
       data: {
         consultationId: consultation.id,
-        serviceId: servicePrice.serviceId,
-        specialtyId: servicePrice.specialtyId,
-        serviceName: servicePrice.service.name,
-        specialtyName: servicePrice.specialty.name,
-        priceUsd: servicePrice.priceUsd,
+        serviceId: doctorService.serviceId,
+        specialtyId: doctorService.specialtyId,
+        serviceName: doctorService.service.name,
+        specialtyName: doctorService.specialty.name,
+        priceUsd: doctorService.priceUsd,
       },
     });
 
     if (item.status === 'PAID') {
-      const total = Number(servicePrice.priceUsd);
-      const doctorShare = round(total * Number(doctor.splitPercentage) / 100);
+      const total = Number(doctorService.priceUsd);
+      const doctorShare = round((total * Number(doctor.splitPercentage)) / 100);
       const centerShare = round(total - doctorShare);
 
       const idempotencyKey = `demo-${index}-${now.getTime()}`;
@@ -167,7 +214,7 @@ export async function seedDemoConsultations(
         data: {
           paymentId: payment.id,
           itemType: 'CONSULTATION',
-          description: `Consulta demo - ${servicePrice.service.name}`,
+          description: `Consulta demo - ${doctorService.service.name}`,
           quantity: 1,
           unitPriceUsd: total,
           totalPriceUsd: total,

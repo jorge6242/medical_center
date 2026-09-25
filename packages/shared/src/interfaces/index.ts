@@ -113,7 +113,7 @@ export interface DoctorReceipt {
   doctorName: string;
   doctorDocument: string;
   bankName: string;
-  accountNumber: string;
+  accountNumber: string | null;
   splitPercentage: string;
   totalConsultation: string;
   doctorShare: string;

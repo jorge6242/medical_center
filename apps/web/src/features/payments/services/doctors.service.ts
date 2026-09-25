@@ -12,7 +12,7 @@ export interface DoctorResponse {
   }>;
 }
 
-export interface ServicePriceResponse {
+export interface DoctorServiceResponse {
   id: string;
   specialtyId: string;
   specialtyName: string;
@@ -28,5 +28,5 @@ interface PaginatedResponse<T> {
 export const getDoctors = (): Promise<DoctorResponse[]> =>
   apiJson<PaginatedResponse<DoctorResponse>>('/doctors').then((res) => res.data);
 
-export const getDoctorServicePrices = (doctorId: string): Promise<ServicePriceResponse[]> =>
-  apiJson(`/doctors/${doctorId}/service-prices`);
+export const getDoctorServices = (doctorId: string): Promise<DoctorServiceResponse[]> =>
+  apiJson(`/doctors/${doctorId}/services`);

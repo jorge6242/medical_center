@@ -22,13 +22,17 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   });
 
   if (!isServer && res.status === 401) {
-    window.location.href = '/login';
+    const redirect = encodeURIComponent(window.location.pathname);
+    window.location.href = `/login?redirect=${redirect}`;
   }
 
   return res;
 }
 
-export async function apiJson<T>(path: string, init?: RequestInit & { responseType?: 'json' | 'blob' }): Promise<T> {
+export async function apiJson<T>(
+  path: string,
+  init?: RequestInit & { responseType?: 'json' | 'blob' },
+): Promise<T> {
   const res = await apiFetch(path, init);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

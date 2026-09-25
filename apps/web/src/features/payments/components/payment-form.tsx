@@ -13,7 +13,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Select } from '@/shared/components/ui/select';
 import { formatUsd } from '@/shared/utils/format';
 
-import { useDoctorServicePrices, useDoctors, useCreatePayment } from '../hooks/use-payments';
+import { useDoctorServices, useDoctors, useCreatePayment } from '../hooks/use-payments';
 
 const PAYMENT_METHODS = [
   { value: 'CASH_USD', label: 'Efectivo USD' },
@@ -40,7 +40,8 @@ const schema = z.object({
   patientId: z.string().min(1, 'Selecciona un paciente'),
   doctorId: z.string().min(1, 'Selecciona un doctor'),
   bcvExchangeRate: z.number().positive('Tasa BCV requerida'),
-  servicePriceIds: z.array(z.string()).min(1, 'Selecciona al menos un servicio'),
+  doctorServiceIds: z.array(z.string()).min(1, 'Selecciona al menos un servicio'),
+  consultationDate: z.string().min(1, 'Indica la fecha y hora de la consulta'),
   paymentLines: z.array(lineSchema).min(1, 'Agrega al menos una línea de pago'),
 });
 
@@ -48,6 +49,12 @@ type FormData = z.infer<typeof schema>;
 
 function generateUUID(): string {
   return crypto.randomUUID();
+}
+
+function currentDateTimeLocal(): string {
+  const date = new Date();
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 16);
 }
 
 export function PaymentForm({ onClose }: { readonly onClose: () => void }) {
@@ -67,15 +74,16 @@ export function PaymentForm({ onClose }: { readonly onClose: () => void }) {
     mode: 'onChange',
     defaultValues: {
       paymentLines: [{ paymentMethod: 'CASH_USD', currency: 'USD', amount: 0 }],
-      servicePriceIds: [],
+      doctorServiceIds: [],
+      consultationDate: currentDateTimeLocal(),
     },
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: 'paymentLines' });
   const selectedDoctorId = watch('doctorId');
-  const selectedServiceIds = watch('servicePriceIds');
+  const selectedServiceIds = watch('doctorServiceIds');
 
-  const { data: servicePrices = [] } = useDoctorServicePrices(selectedDoctorId || null);
+  const { data: servicePrices = [] } = useDoctorServices(selectedDoctorId || null);
 
   const [totalService, setTotalService] = useState(0);
 
@@ -89,22 +97,23 @@ export function PaymentForm({ onClose }: { readonly onClose: () => void }) {
   const toggleService = (id: string) => {
     const current = selectedServiceIds;
     const next = current.includes(id) ? current.filter((s) => s !== id) : [...current, id];
-    setValue('servicePriceIds', next, { shouldValidate: true });
+    setValue('doctorServiceIds', next, { shouldValidate: true });
   };
 
   const onSubmit = (data: FormData) => {
-    const selectedServices = servicePrices.filter((sp) => data.servicePriceIds.includes(sp.id));
+    const selectedServices = servicePrices.filter((sp) => data.doctorServiceIds.includes(sp.id));
     const serviceNames = selectedServices.map((s) => s.serviceName).join(', ');
 
     mutate({
       patientId: data.patientId,
       bcvExchangeRate: data.bcvExchangeRate,
+      consultationDate: new Date(data.consultationDate).toISOString(),
       idempotencyKey: generateUUID(),
       item: {
         itemType: 'CONSULTATION' as const,
         description: `Consulta - ${serviceNames}`,
         doctorId: data.doctorId,
-        servicePriceIds: data.servicePriceIds,
+        doctorServiceIds: data.doctorServiceIds,
       },
       paymentLines: data.paymentLines,
     });
@@ -147,7 +156,9 @@ export function PaymentForm({ onClose }: { readonly onClose: () => void }) {
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium text-on-surface">Servicios</p>
           {servicePrices.length === 0 ? (
-            <p className="text-sm text-on-surface-variant">No hay servicios disponibles para este doctor</p>
+            <p className="text-sm text-on-surface-variant">
+              No hay servicios disponibles para este doctor
+            </p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {servicePrices.map((sp) => {
@@ -169,8 +180,8 @@ export function PaymentForm({ onClose }: { readonly onClose: () => void }) {
               })}
             </div>
           )}
-          {errors.servicePriceIds && (
-            <p className="text-xs text-error">{errors.servicePriceIds.message}</p>
+          {errors.doctorServiceIds && (
+            <p className="text-xs text-error">{errors.doctorServiceIds.message}</p>
           )}
           {totalService > 0 && (
             <p className="text-sm font-medium text-on-surface">
@@ -179,6 +190,14 @@ export function PaymentForm({ onClose }: { readonly onClose: () => void }) {
           )}
         </div>
       )}
+
+      <Input
+        {...register('consultationDate')}
+        id="consultationDate"
+        label="Fecha y hora de la consulta"
+        type="datetime-local"
+        error={errors.consultationDate?.message}
+      />
 
       {/* BCV Rate */}
       <Input
@@ -246,9 +265,7 @@ export function PaymentForm({ onClose }: { readonly onClose: () => void }) {
             )}
           </div>
         ))}
-        {errors.paymentLines && (
-          <p className="text-xs text-error">{errors.paymentLines.message}</p>
-        )}
+        {errors.paymentLines && <p className="text-xs text-error">{errors.paymentLines.message}</p>}
       </div>
 
       {error && (

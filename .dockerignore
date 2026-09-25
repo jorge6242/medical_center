@@ -9,6 +9,8 @@ node_modules
 
 dist
 **/dist
+*.tsbuildinfo
+**/*.tsbuildinfo
 .next
 **/.next
 coverage

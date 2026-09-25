@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
-import { PrismaService } from '../database/prisma.service';
+import { type PrismaService } from '../database/prisma.service';
 
 import type { HomeStatsAlertDto, HomeStatsDto } from './dto/home-stats.dto';
 
@@ -38,9 +39,9 @@ export class StatsService {
       this.prisma.payment.findMany({
         where: {
           status: 'COMPLETED',
-          createdAt: { gte: monthStart },
           tenantId,
           item: { itemType: 'CONSULTATION' },
+          doctorPayoutItems: { none: { payout: { status: 'COMPLETED' } } },
         },
         select: {
           doctorShareUsd: true,
@@ -99,10 +100,13 @@ export class StatsService {
         .map((payment) => payment.item?.consultation?.doctorId)
         .filter((doctorId): doctorId is string => Boolean(doctorId)),
     );
-    const pendingPayoutAmountUsd = pendingPayments.reduce(
-      (sum, payment) => sum + Number(payment.doctorShareUsd),
-      0,
-    );
+    const pendingPayoutAmountUsd = pendingPayments
+      .reduce(
+        (sum, payment) => sum.plus(payment.doctorShareUsd),
+        new Prisma.Decimal(0),
+      )
+      .toDecimalPlaces(2)
+      .toNumber();
 
     const expensesTodayTotal = todayExpenses.reduce(
       (sum, e) => sum + Number(e.amountUsd),
@@ -177,8 +181,8 @@ function buildAlerts(
   if (pendingPayoutDoctors > 0) {
     alerts.push({
       severity: 'warning',
-      title: 'Pendientes por pagar',
-      message: `${pendingPayoutDoctors} doctor(es) y $${pendingPayoutAmountUsd.toFixed(2)} pendientes por liquidar.`,
+      title: 'Honorarios pendientes',
+      message: `${pendingPayoutDoctors} doctor(es) y USD ${pendingPayoutAmountUsd.toFixed(2)} pendientes de pago de honorarios.`,
     });
   }
 

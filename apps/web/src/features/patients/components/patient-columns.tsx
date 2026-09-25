@@ -1,7 +1,7 @@
 'use client';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { Pencil, UserX, FileText } from 'lucide-react';
+import { Pencil, UserX, FileText, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 import { Badge } from '@/shared/components/ui/badge';
@@ -14,9 +14,7 @@ export function getPatientColumns(): ColumnDef<PatientResponse>[] {
     {
       accessorKey: 'name',
       header: 'Nombre',
-      cell: ({ row }) => (
-        <span className="font-medium text-on-surface">{row.original.name}</span>
-      ),
+      cell: ({ row }) => <span className="font-medium text-on-surface">{row.original.name}</span>,
     },
     {
       accessorKey: 'documentId',
@@ -51,7 +49,11 @@ export function getPatientColumns(): ColumnDef<PatientResponse>[] {
       header: '',
       cell: ({ row, table }) => {
         const meta = table.options.meta as
-          | { onEdit?: (patient: PatientResponse) => void; onDeactivate?: (id: string) => void }
+          | {
+              onEdit?: (patient: PatientResponse) => void;
+              onDeactivate?: (id: string) => void;
+              onPermanentDelete?: (patient: PatientResponse) => void;
+            }
           | undefined;
 
         return (
@@ -62,24 +64,32 @@ export function getPatientColumns(): ColumnDef<PatientResponse>[] {
             >
               <FileText className="h-4 w-4" />
             </Link>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => meta?.onEdit?.(row.original)}
-            >
+            <Button variant="ghost" size="sm" onClick={() => meta?.onEdit?.(row.original)}>
               <Pencil className="h-4 w-4" />
             </Button>
             {row.original.isActive && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-error hover:text-error"
-                onClick={() => meta?.onDeactivate?.(row.original.id)}
-                title="Desactivar paciente"
-              >
-                <UserX className="h-4 w-4" />
-                Desactivar
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-error hover:text-error"
+                  onClick={() => meta?.onDeactivate?.(row.original.id)}
+                  title="Desactivar paciente"
+                >
+                  <UserX className="h-4 w-4" />
+                  Desactivar
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-error hover:text-error"
+                  onClick={() => meta?.onPermanentDelete?.(row.original)}
+                  title="Eliminar paciente sin movimientos"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Eliminar
+                </Button>
+              </>
             )}
           </div>
         );

@@ -24,6 +24,7 @@
     "db:migrate": "prisma migrate dev --config prisma/prisma.config.ts",
     "db:deploy": "prisma migrate deploy --config prisma/prisma.config.ts",
     "db:seed": "prisma db seed --config prisma/prisma.config.ts",
+    "tenant:provision": "ts-node --project tsconfig.json --transpile-only prisma/provision-tenant.ts",
     "db:studio": "prisma studio --config prisma/prisma.config.ts"
   },
   "dependencies": {

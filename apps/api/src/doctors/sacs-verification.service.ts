@@ -3,10 +3,12 @@ import * as zlib from 'node:zlib';
 
 import { Injectable, Logger } from '@nestjs/common';
 
-import { PrismaService } from '../database/prisma.service';
+import { type AuditLogService } from '../audit-log/audit-log.service';
+import { type PrismaService } from '../database/prisma.service';
 
 export interface SacsQueryResult {
   found: boolean;
+  verificationStatus: 'VERIFIED' | 'REJECTED' | 'NOT_FOUND';
   doctorName?: string;
   specialty?: string;
   licenseNumber?: string;
@@ -19,7 +21,10 @@ const SACS_ENDPOINT = 'https://sistemas.sacs.gob.ve/consultas/prfsnal_salud';
 export class SacsVerificationService {
   private readonly logger = new Logger(SacsVerificationService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog?: AuditLogService,
+  ) {}
 
   async verifyByDocument(
     documentType: string,
@@ -38,7 +43,7 @@ export class SacsVerificationService {
     this.logger.warn(
       'verifyByLicense not supported by SACS — use verifyByDocument instead',
     );
-    return Promise.resolve({ found: false });
+    return Promise.resolve({ found: false, verificationStatus: 'NOT_FOUND' });
   }
 
   async verifyDoctor(doctorId: string): Promise<void> {
@@ -53,13 +58,25 @@ export class SacsVerificationService {
 
     if (!doctor.documentId) {
       this.logger.warn(`Doctor ${doctorId} has no documentId — cannot verify`);
-      await this.prisma.doctor.update({
-        where: { id: doctorId },
+      await this.prisma.doctor.updateMany({
+        where: { id: doctorId, tenantId: doctor.tenantId },
         data: {
           verificationStatus: 'PENDING',
           lastVerifiedAt: new Date(),
         },
       });
+      await this.auditLog?.log(
+        {
+          action: 'VERIFY',
+          entity: 'Doctor',
+          entityId: doctorId,
+          tenantId: doctor.tenantId,
+          result: 'FAILURE',
+          newValues: { outcome: 'missing_document' },
+          changedFields: ['verificationStatus'],
+        },
+        this.prisma,
+      );
       return;
     }
 
@@ -70,15 +87,26 @@ export class SacsVerificationService {
         doctor.documentId,
       );
 
-      await this.prisma.doctor.update({
-        where: { id: doctorId },
+      await this.prisma.doctor.updateMany({
+        where: { id: doctorId, tenantId: doctor.tenantId },
         data: {
-          verificationStatus: result.found ? 'VERIFIED' : 'NOT_FOUND',
+          verificationStatus: result.verificationStatus,
           verifiedAt: result.found ? now : undefined,
           lastVerifiedAt: now,
           lastSacsResponse: result.rawHtml ?? null,
         },
       });
+      await this.auditLog?.log(
+        {
+          action: 'VERIFY',
+          entity: 'Doctor',
+          entityId: doctorId,
+          tenantId: doctor.tenantId,
+          newValues: { outcome: result.verificationStatus },
+          changedFields: ['verificationStatus'],
+        },
+        this.prisma,
+      );
 
       this.logger.log(
         `Doctor ${doctorId} verification: ${result.found ? 'VERIFIED' : 'NOT_FOUND'}`,
@@ -87,14 +115,26 @@ export class SacsVerificationService {
       this.logger.error(
         `SACS verification failed for doctor ${doctorId}: ${error instanceof Error ? error.message : String(error)}`,
       );
-      await this.prisma.doctor.update({
-        where: { id: doctorId },
+      await this.prisma.doctor.updateMany({
+        where: { id: doctorId, tenantId: doctor.tenantId },
         data: {
           verificationStatus: 'PENDING',
           lastVerifiedAt: now,
           lastSacsResponse: `ERROR: ${error instanceof Error ? error.message : String(error)}`,
         },
       });
+      await this.auditLog?.log(
+        {
+          action: 'VERIFY',
+          entity: 'Doctor',
+          entityId: doctorId,
+          tenantId: doctor.tenantId,
+          result: 'FAILURE',
+          newValues: { outcome: 'ERROR' },
+          changedFields: ['verificationStatus'],
+        },
+        this.prisma,
+      );
     }
   }
 
@@ -111,12 +151,17 @@ export class SacsVerificationService {
       const profMatch = rawXml.match(/xajax_tableProfesion\('([^']+)'\)/);
 
       if (!userMatch && !profMatch) {
-        return { found: false, rawHtml: rawXml };
+        return {
+          found: false,
+          verificationStatus: 'NOT_FOUND',
+          rawHtml: rawXml,
+        };
       }
 
       let doctorName: string | undefined;
       let specialty: string | undefined;
       let licenseNumber: string | undefined;
+      let hasProfessionalRegistration = false;
 
       if (userMatch && userMatch[1]) {
         try {
@@ -135,6 +180,7 @@ export class SacsVerificationService {
         try {
           const profData = JSON.parse(profMatch[1]);
           if (Array.isArray(profData) && profData.length > 0) {
+            hasProfessionalRegistration = true;
             const prof = profData[0];
             specialty = prof.profesion || undefined;
             licenseNumber = prof.licencia || undefined;
@@ -144,10 +190,15 @@ export class SacsVerificationService {
         }
       }
 
-      const found = !!doctorName || !!specialty;
+      const verificationStatus = hasProfessionalRegistration
+        ? 'VERIFIED'
+        : userMatch
+          ? 'REJECTED'
+          : 'NOT_FOUND';
 
       return {
-        found,
+        found: hasProfessionalRegistration,
+        verificationStatus,
         doctorName,
         specialty,
         licenseNumber,
@@ -157,14 +208,13 @@ export class SacsVerificationService {
       this.logger.error(
         `Failed to parse SACS response: ${error instanceof Error ? error.message : String(error)}`,
       );
-      return { found: false, rawHtml: rawXml };
+      return { found: false, verificationStatus: 'NOT_FOUND', rawHtml: rawXml };
     }
   }
 
   private async querySacs(body: string): Promise<SacsQueryResult> {
     const cookies = await this.getSessionCookies();
 
-    this.logger.log('body ', body);
     return new Promise((resolve, reject) => {
       const url = new URL(SACS_ENDPOINT);
       const options: https.RequestOptions = {
@@ -181,22 +231,37 @@ export class SacsVerificationService {
           Origin: 'https://sistemas.sacs.gob.ve',
           Referer: 'https://sistemas.sacs.gob.ve/consultas/prfsnal_salud',
           Accept: '*/*',
-          'Accept-Encoding': 'gzip, deflate, br',
+          'Accept-Encoding': 'gzip, deflate',
           'Accept-Language': 'es-VE,es;q=0.9,en-US;q=0.8,en;q=0.7',
         },
         timeout: 15_000,
-        rejectUnauthorized: false,
       };
 
       const req = https.request(options, (res) => {
+        if (!res.statusCode || res.statusCode >= 400) {
+          res.resume();
+          reject(
+            new Error(
+              `SACS responded with HTTP ${res.statusCode ?? 'unknown'}`,
+            ),
+          );
+          return;
+        }
+
         const chunks: Buffer[] = [];
         res.on('data', (chunk) => chunks.push(chunk));
         res.on('end', () => {
           const buffer = Buffer.concat(chunks);
           const encoding = res.headers['content-encoding'];
 
-          if (encoding === 'gzip') {
-            zlib.gunzip(buffer, (err, decoded) => {
+          const decompress =
+            encoding === 'gzip'
+              ? zlib.gunzip
+              : encoding === 'deflate'
+                ? zlib.inflate
+                : undefined;
+          if (decompress) {
+            decompress(buffer, (err, decoded) => {
               if (err) {
                 this.logger.error(
                   `Failed to decompress SACS response: ${err.message}`,

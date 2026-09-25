@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useAuthStore } from '@/stores/auth.store';
 
@@ -13,11 +13,13 @@ export function useLogin() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: login,
     onSuccess: (data) => {
       setAuth(data);
+      void queryClient.invalidateQueries({ queryKey: ['config', 'init'] });
       router.replace(searchParams.get('redirect') ?? '/inicio');
     },
   });

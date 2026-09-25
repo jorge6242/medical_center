@@ -5,13 +5,23 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createSpecialty,
   deactivateSpecialty,
+  getPaginatedSpecialties,
   getSpecialties,
-  updateServicePrice,
+  permanentlyDeleteSpecialty,
+  updateSpecialty,
   type CreateSpecialtyDto,
+  type GetSpecialtiesQuery,
 } from '../services/specialties.service';
 
 export function useSpecialties() {
   return useQuery({ queryKey: ['specialties'], queryFn: getSpecialties });
+}
+
+export function usePaginatedSpecialties(query?: GetSpecialtiesQuery) {
+  return useQuery({
+    queryKey: ['specialties', query?.page, query?.limit, query?.search],
+    queryFn: () => getPaginatedSpecialties(query),
+  });
 }
 
 export function useCreateSpecialty(onSuccess?: () => void) {
@@ -33,18 +43,21 @@ export function useDeactivateSpecialty() {
   });
 }
 
-export function useUpdateServicePrice() {
+export function useUpdateSpecialty(id: string, onSuccess?: () => void) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      specialtyId,
-      servicePriceId,
-      priceUsd,
-    }: {
-      specialtyId: string;
-      servicePriceId: string;
-      priceUsd: number;
-    }) => updateServicePrice(specialtyId, servicePriceId, priceUsd),
+    mutationFn: (dto: Parameters<typeof updateSpecialty>[1]) => updateSpecialty(id, dto),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['specialties'] });
+      onSuccess?.();
+    },
+  });
+}
+
+export function usePermanentlyDeleteSpecialty() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: permanentlyDeleteSpecialty,
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['specialties'] }),
   });
 }

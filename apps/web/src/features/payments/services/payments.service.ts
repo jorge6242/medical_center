@@ -93,7 +93,8 @@ export interface PaymentItemDto {
   itemType: 'CONSULTATION' | 'LAB';
   description: string;
   doctorId?: string;
-  servicePriceIds?: string[];
+  doctorServiceIds?: string[];
+  consultationId?: string;
   labOrderId?: string;
 }
 
@@ -101,6 +102,7 @@ export interface CreatePaymentDto {
   idempotencyKey: string;
   patientId: string;
   bcvExchangeRate: number;
+  consultationDate?: string;
   item: PaymentItemDto;
   paymentLines: PaymentLineDto[];
 }
@@ -108,7 +110,9 @@ export interface CreatePaymentDto {
 export const getPayments = (): Promise<PaymentResponse[]> =>
   apiJson<PaginatedResponse<PaymentResponse>>('/payments').then((res) => res.data);
 
-export const getPaginatedPayments = (query?: GetPaymentsQuery): Promise<PaginatedResponse<PaymentResponse>> => {
+export const getPaginatedPayments = (
+  query?: GetPaymentsQuery,
+): Promise<PaginatedResponse<PaymentResponse>> => {
   const params = new URLSearchParams();
   if (query?.page) params.append('page', String(query.page));
   if (query?.limit) params.append('limit', String(query.limit));
@@ -134,4 +138,5 @@ export interface CreatePaymentAdjustmentDto {
 export const createPaymentAdjustment = (
   id: string,
   dto: CreatePaymentAdjustmentDto,
-): Promise<PaymentResponse> => apiJson(`/payments/${id}/adjustments`, { method: 'POST', body: JSON.stringify(dto) });
+): Promise<PaymentResponse> =>
+  apiJson(`/payments/${id}/adjustments`, { method: 'POST', body: JSON.stringify(dto) });

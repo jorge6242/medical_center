@@ -13,9 +13,7 @@ export function getDoctorColumns(): ColumnDef<DoctorAdminResponse>[] {
     {
       accessorKey: 'name',
       header: 'Nombre',
-      cell: ({ row }) => (
-        <span className="font-medium text-on-surface">{row.original.name}</span>
-      ),
+      cell: ({ row }) => <span className="font-medium text-on-surface">{row.original.name}</span>,
     },
     {
       accessorKey: 'documentId',
@@ -62,7 +60,7 @@ export function getDoctorColumns(): ColumnDef<DoctorAdminResponse>[] {
       cell: ({ row, table }) => {
         const meta = table.options.meta as
           | {
-              onEdit?: (doctor: DoctorAdminResponse) => void;
+              onEdit?: (id: string) => void;
               onVerify?: (id: string) => void;
               onDeactivate?: (id: string) => void;
               onSendOnboarding?: (id: string) => void;
@@ -97,11 +95,7 @@ export function getDoctorColumns(): ColumnDef<DoctorAdminResponse>[] {
             >
               <RefreshCw className={`h-4 w-4 ${meta?.isVerifying ? 'animate-spin' : ''}`} />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => meta?.onEdit?.(doctor)}
-            >
+            <Button variant="ghost" size="sm" onClick={() => meta?.onEdit?.(doctor.id)}>
               <Pencil className="h-4 w-4" />
               Editar
             </Button>

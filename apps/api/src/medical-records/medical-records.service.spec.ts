@@ -449,16 +449,17 @@ describe('MedicalRecordsService', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('lists paid consultations with report state for the consultations view', async () => {
+  it('lists paid and scheduled consultations with report state for the consultations view', async () => {
     (prisma.consultation.count as jest.Mock).mockResolvedValue(2);
     (prisma.consultation.findMany as jest.Mock).mockResolvedValue([
       {
         id: 'consult-2',
         date: new Date('2026-01-03T10:00:00.000Z'),
+        status: 'PAID',
         patientId: 'patient-2',
         doctorId: 'doctor-1',
         patient: { documentType: 'V', documentId: '456', name: 'Ana Perez' },
-        doctor: { name: 'Dr. Gomez' },
+        doctor: { name: 'Dr. Gomez', documentType: 'V', documentId: '987' },
         services: [
           {
             serviceName: 'Consulta obstétrica',
@@ -471,10 +472,11 @@ describe('MedicalRecordsService', () => {
       {
         id: 'consult-1',
         date: new Date('2026-01-02T10:00:00.000Z'),
+        status: 'SCHEDULED',
         patientId: 'patient-1',
         doctorId: 'doctor-1',
         patient: { documentType: 'V', documentId: '123', name: 'Maria Lopez' },
-        doctor: { name: 'Dr. Gomez' },
+        doctor: { name: 'Dr. Gomez', documentType: 'V', documentId: '987' },
         services: [
           {
             serviceName: 'Consulta ginecológica',
@@ -502,7 +504,7 @@ describe('MedicalRecordsService', () => {
     expect(prisma.consultation.count).toHaveBeenCalledWith({
       where: expect.objectContaining({
         tenantId: 'tenant-1',
-        status: 'PAID',
+        status: { in: ['SCHEDULED', 'PAID'] },
       }),
     });
     expect(prisma.consultation.findMany).toHaveBeenCalledWith(
@@ -520,15 +522,17 @@ describe('MedicalRecordsService', () => {
           patientName: 'Ana Perez',
           patientDocument: 'V-456',
           doctorName: 'Dr. Gomez',
+          doctorDocument: 'V-987',
           medicalRecordId: 'record-2',
           canCreateMedicalRecord: false,
         }),
         expect.objectContaining({
           id: 'consult-1',
+          status: 'SCHEDULED',
           patientName: 'Maria Lopez',
           patientDocument: 'V-123',
           medicalRecordId: null,
-          canCreateMedicalRecord: true,
+          canCreateMedicalRecord: false,
         }),
       ],
       meta: {

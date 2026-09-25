@@ -13,11 +13,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { DoctorsService } from './doctors.service';
-import { CreateDoctorDto } from './dto/create-doctor.dto';
-import { UpdateDoctorDto } from './dto/update-doctor.dto';
-import { VerifyDocumentDto } from './dto/verify-document.dto';
-import { OnboardingService } from './onboarding.service';
+import { type DoctorsService } from './doctors.service';
+import { type CreateDoctorDto } from './dto/create-doctor.dto';
+import { type UpdateDoctorDto } from './dto/update-doctor.dto';
+import { type VerifyDocumentDto } from './dto/verify-document.dto';
+import { type OnboardingService } from './onboarding.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
@@ -25,8 +25,8 @@ import {
   type JwtPayload,
 } from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
-import { LookupQueryDto } from '../common/dto/lookup-query.dto';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { type LookupQueryDto } from '../common/dto/lookup-query.dto';
+import { type PaginationQueryDto } from '../common/dto/pagination-query.dto';
 
 import type { DoctorResponseDto } from './dto/doctor-response.dto';
 import type { SacsQueryResult } from './sacs-verification.service';
@@ -48,6 +48,15 @@ export class DoctorsController {
     @Query() query: LookupQueryDto,
   ): Promise<LookupResponseDto> {
     return this.doctorsService.lookup(user.tenantId, query);
+  }
+
+  @Get('by-specialty/:specialtyId')
+  @RequirePermission('doctors', 'read')
+  findBySpecialty(
+    @CurrentUser() user: JwtPayload,
+    @Param('specialtyId') specialtyId: string,
+  ) {
+    return this.doctorsService.findBySpecialty(user.tenantId, specialtyId);
   }
 
   @Get()
@@ -114,10 +123,10 @@ export class DoctorsController {
     }
   }
 
-  @Get(':id/service-prices')
+  @Get(':id/services')
   @RequirePermission('doctors', 'read')
-  getServicePrices(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
-    return this.doctorsService.getServicePrices(user.tenantId, id);
+  getDoctorServices(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.doctorsService.getDoctorServices(user.tenantId, id);
   }
 
   @Delete(':id')

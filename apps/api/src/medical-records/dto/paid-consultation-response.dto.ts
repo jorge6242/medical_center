@@ -7,12 +7,13 @@ export class PaidConsultationServiceResponseDto {
 export class PaidConsultationResponseDto {
   declare id: string;
   declare date: Date;
-  declare status: 'PAID';
+  declare status: 'SCHEDULED' | 'PAID';
   declare patientId: string;
   declare patientName: string;
   declare patientDocument: string;
   declare doctorId: string;
   declare doctorName: string;
+  declare doctorDocument: string;
   declare services: PaidConsultationServiceResponseDto[];
   declare medicalRecordId: string | null;
   declare canCreateMedicalRecord: boolean;

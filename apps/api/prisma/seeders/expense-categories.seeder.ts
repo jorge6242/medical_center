@@ -10,12 +10,15 @@ const CATEGORIES = [
   'Otro',
 ];
 
-export async function seedExpenseCategories(prisma: PrismaClient): Promise<void> {
+export async function seedExpenseCategories(
+  prisma: PrismaClient,
+  tenantId: string,
+): Promise<void> {
   for (const name of CATEGORIES) {
     await prisma.expenseCategory.upsert({
-      where: { name },
+      where: { tenantId_name: { tenantId, name } },
       update: {},
-      create: { name },
+      create: { tenantId, name },
     });
   }
 

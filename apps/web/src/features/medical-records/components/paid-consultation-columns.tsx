@@ -30,14 +30,18 @@ export function getPaidConsultationColumns(): ColumnDef<PaidConsultation>[] {
     {
       accessorKey: 'doctorName',
       header: 'Doctor',
+      cell: ({ row }) => (
+        <div>
+          <p className="font-medium text-on-surface">{row.original.doctorName}</p>
+          <p className="text-xs text-on-surface-variant">{row.original.doctorDocument}</p>
+        </div>
+      ),
     },
     {
       id: 'specialties',
       header: 'Especialidad',
       cell: ({ row }) => {
-        const specialties = [
-          ...new Set(row.original.services.map((s) => s.specialtyName)),
-        ];
+        const specialties = [...new Set(row.original.services.map((s) => s.specialtyName))];
         return (
           <div className="flex flex-wrap gap-1">
             {specialties.map((specialty) => (
@@ -56,8 +60,11 @@ export function getPaidConsultationColumns(): ColumnDef<PaidConsultation>[] {
         const hasMultiple = row.original.services.length > 1;
         return (
           <div className="flex flex-wrap gap-1">
-            {row.original.services.map((service,i) => (
-              <Badge key={`${service.serviceName}${i}`} variant={hasMultiple ? 'secondary' : 'default'}>
+            {row.original.services.map((service, i) => (
+              <Badge
+                key={`${service.serviceName}${i}`}
+                variant={hasMultiple ? 'secondary' : 'default'}
+              >
                 {service.serviceName}
               </Badge>
             ))}
@@ -67,9 +74,20 @@ export function getPaidConsultationColumns(): ColumnDef<PaidConsultation>[] {
     },
     {
       id: 'total',
-      header: 'Total',
+      header: 'Total servicios',
       cell: ({ row }) =>
-        formatUsd(row.original.services.reduce((sum, service) => sum + Number(service.priceUsd), 0)),
+        formatUsd(
+          row.original.services.reduce((sum, service) => sum + Number(service.priceUsd), 0),
+        ),
+    },
+    {
+      accessorKey: 'status',
+      header: 'Estado',
+      cell: ({ row }) => (
+        <Badge variant={row.original.status === 'PAID' ? 'success' : 'warning'}>
+          {row.original.status === 'PAID' ? 'Pagada' : 'Agendada'}
+        </Badge>
+      ),
     },
     {
       id: 'medicalRecord',
@@ -91,25 +109,44 @@ export function getPaidConsultationColumns(): ColumnDef<PaidConsultation>[] {
           | undefined;
         const consultation = row.original;
 
+        const detailLink = (
+          <Link
+            href={`/consultas/${consultation.id}`}
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            Ver detalle
+          </Link>
+        );
+
         if (consultation.medicalRecordId) {
           return (
-            <Link
-              href={`/medical-records/${consultation.medicalRecordId}`}
-              className="text-sm font-medium text-primary hover:underline"
-            >
-              Ver informe
-            </Link>
+            <div className="flex flex-col gap-1">
+              {detailLink}
+              <Link
+                href={`/medical-records/${consultation.medicalRecordId}`}
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                Ver informe
+              </Link>
+            </div>
           );
         }
 
+        if (!consultation.canCreateMedicalRecord) {
+          return detailLink;
+        }
+
         return (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => meta?.onCreateMedicalRecord?.(consultation)}
-          >
-            Crear informe
-          </Button>
+          <div className="flex flex-col items-start gap-1">
+            {detailLink}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => meta?.onCreateMedicalRecord?.(consultation)}
+            >
+              Crear informe
+            </Button>
+          </div>
         );
       },
     },

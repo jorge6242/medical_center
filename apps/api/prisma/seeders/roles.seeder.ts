@@ -1,11 +1,11 @@
-import type { PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 
 const TENANT_ID = 'tenant-demo-001';
 
-const ROLES = [
+export const BASE_ROLES = [
   {
     name: 'admin',
-    version: 1,
+    version: 2,
     permissions: [
       { resource: 'patients', action: 'create' },
       { resource: 'patients', action: 'read' },
@@ -22,24 +22,51 @@ const ROLES = [
       { resource: 'payments', action: 'create' },
       { resource: 'payments', action: 'read' },
       { resource: 'payments', action: 'delete' },
+      { resource: 'consultations', action: 'create' },
+      { resource: 'consultations', action: 'read' },
+      { resource: 'consultations', action: 'update' },
+      { resource: 'consultations', action: 'delete' },
+      { resource: 'doctor_payouts', action: 'create' },
+      { resource: 'doctor_payouts', action: 'read' },
+      { resource: 'doctor_payouts', action: 'delete' },
       { resource: 'expenses', action: 'create' },
       { resource: 'expenses', action: 'read' },
       { resource: 'expenses', action: 'delete' },
       { resource: 'reports', action: 'read' },
+      { resource: 'audit_logs', action: 'read' },
       { resource: 'laboratories', action: 'create' },
       { resource: 'laboratories', action: 'read' },
       { resource: 'laboratories', action: 'update' },
       { resource: 'laboratories', action: 'delete' },
+      { resource: 'tenant_access_links', action: 'create' },
+      { resource: 'tenant_access_links', action: 'revoke' },
+      { resource: 'users', action: 'read' },
+      { resource: 'users', action: 'create' },
+      { resource: 'users', action: 'delete' },
     ],
   },
   {
     name: 'recepcionista',
-    version: 3,
+    version: 9,
     permissions: [
       { resource: 'patients', action: 'create' },
       { resource: 'patients', action: 'read' },
+      { resource: 'patients', action: 'delete' },
+      { resource: 'specialties', action: 'read' },
+      { resource: 'specialties', action: 'create' },
+      { resource: 'specialties', action: 'update' },
+      { resource: 'specialties', action: 'delete' },
       { resource: 'doctors', action: 'read' },
+      { resource: 'doctors', action: 'create' },
       { resource: 'payments', action: 'create' },
+      { resource: 'payments', action: 'read' },
+      { resource: 'consultations', action: 'create' },
+      { resource: 'consultations', action: 'read' },
+      { resource: 'consultations', action: 'update' },
+      { resource: 'consultations', action: 'delete' },
+      { resource: 'doctor_payouts', action: 'create' },
+      { resource: 'doctor_payouts', action: 'read' },
+      { resource: 'reports', action: 'read' },
       { resource: 'laboratories', action: 'create' },
       { resource: 'laboratories', action: 'read' },
     ],
@@ -57,14 +84,17 @@ const ROLES = [
   },
 ];
 
-export async function seedRoles(prisma: PrismaClient): Promise<void> {
-  for (const roleData of ROLES) {
+export async function seedRoles(
+  prisma: PrismaClient | Prisma.TransactionClient,
+  tenantId = TENANT_ID,
+): Promise<void> {
+  for (const roleData of BASE_ROLES) {
     const role = await prisma.role.upsert({
-      where: { tenantId_name: { tenantId: TENANT_ID, name: roleData.name } },
+      where: { tenantId_name: { tenantId, name: roleData.name } },
       update: {},
       create: {
-        id: `role-${roleData.name}-001`,
-        tenantId: TENANT_ID,
+        id: `${tenantId}-${roleData.name}`,
+        tenantId,
         name: roleData.name,
       },
     });
@@ -97,7 +127,11 @@ export async function seedRoles(prisma: PrismaClient): Promise<void> {
           },
         },
         update: {},
-        create: { roleId: role.id, resource: perm.resource, action: perm.action },
+        create: {
+          roleId: role.id,
+          resource: perm.resource,
+          action: perm.action,
+        },
       });
     }
   }

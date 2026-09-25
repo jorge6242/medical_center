@@ -19,10 +19,18 @@ export default function InicioPage() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <MetricCard label="Pacientes hoy" value={data?.patientsToday ?? 0} loading={isLoading} />
         <MetricCard label="Doctores hoy" value={data?.doctorsToday ?? 0} loading={isLoading} />
-        <MetricCard label="Cancelados mes" value={data?.canceledDoctorsThisMonth ?? 0} loading={isLoading} />
-        <MetricCard label="Pendientes pago" value={data?.pendingPayoutDoctors ?? 0} loading={isLoading} />
         <MetricCard
-          label="Monto pendiente"
+          label="Cancelados mes"
+          value={data?.canceledDoctorsThisMonth ?? 0}
+          loading={isLoading}
+        />
+        <MetricCard
+          label="Doctores por pagar"
+          value={data?.pendingPayoutDoctors ?? 0}
+          loading={isLoading}
+        />
+        <MetricCard
+          label="Honorarios pendientes"
           value={data ? formatUsd(data.pendingPayoutAmountUsd) : '$0.00'}
           loading={isLoading}
         />
@@ -68,9 +76,7 @@ function MetricCard({
   return (
     <Card>
       <p className="text-sm text-on-surface-variant">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-on-surface">
-        {loading ? '...' : value}
-      </p>
+      <p className="mt-2 text-2xl font-semibold text-on-surface">{loading ? '...' : value}</p>
     </Card>
   );
 }

@@ -9,11 +9,17 @@ describe('PatientsService', () => {
       findMany: jest.fn(),
       count: jest.fn(),
       create: jest.fn(),
+      updateMany: jest.fn(),
+      findFirstOrThrow: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
     },
     consultation: {
+      count: jest.fn(),
       findMany: jest.fn(),
     },
+    medicalRecord: { count: jest.fn() },
+    labOrder: { count: jest.fn() },
     $transaction: jest.fn(),
   } as unknown as PrismaService;
 
@@ -55,7 +61,7 @@ describe('PatientsService', () => {
     (prisma.patient.findFirst as jest.Mock).mockResolvedValue({
       id: 'patient-1',
     });
-    (prisma.patient.update as jest.Mock).mockResolvedValue({
+    (prisma.patient.findFirstOrThrow as jest.Mock).mockResolvedValue({
       id: 'patient-1',
       clinicalHistory: { antecedentesGinecologicos: { menarquiaEdad: 12 } },
     });
@@ -64,8 +70,8 @@ describe('PatientsService', () => {
       clinicalHistory: { antecedentesGinecologicos: { menarquiaEdad: 12 } },
     } as never);
 
-    expect(prisma.patient.update).toHaveBeenCalledWith({
-      where: { id: 'patient-1' },
+    expect(prisma.patient.updateMany).toHaveBeenCalledWith({
+      where: { id: 'patient-1', tenantId: 'tenant-1' },
       data: {
         name: undefined,
         phone: undefined,
@@ -170,5 +176,44 @@ describe('PatientsService', () => {
         ],
       },
     ]);
+  });
+
+  it('permanently deletes a patient with no clinical or financial movements', async () => {
+    (prisma.patient.findFirst as jest.Mock).mockResolvedValue({
+      id: 'patient-1',
+    });
+    (prisma.consultation.count as jest.Mock).mockResolvedValue(0);
+    (prisma.medicalRecord.count as jest.Mock).mockResolvedValue(0);
+    (prisma.labOrder.count as jest.Mock).mockResolvedValue(0);
+    (prisma.patient.delete as jest.Mock).mockResolvedValue({ id: 'patient-1' });
+
+    await service.permanentlyDelete('tenant-1', 'patient-1');
+
+    expect(prisma.consultation.count).toHaveBeenCalledWith({
+      where: { tenantId: 'tenant-1', patientId: 'patient-1' },
+    });
+    expect(prisma.patient.delete).toHaveBeenCalledWith({
+      where: { id: 'patient-1' },
+    });
+  });
+
+  it('rejects permanent deletion and includes the movement reason', async () => {
+    (prisma.patient.findFirst as jest.Mock).mockResolvedValue({
+      id: 'patient-1',
+    });
+    (prisma.consultation.count as jest.Mock).mockResolvedValue(2);
+    (prisma.medicalRecord.count as jest.Mock).mockResolvedValue(0);
+    (prisma.labOrder.count as jest.Mock).mockResolvedValue(0);
+
+    await expect(
+      service.permanentlyDelete('tenant-1', 'patient-1'),
+    ).rejects.toMatchObject({
+      response: {
+        message:
+          'No se puede eliminar el paciente porque tiene movimientos registrados',
+        reasons: { consultations: 2, medicalRecords: 0, labOrders: 0 },
+      },
+    });
+    expect(prisma.patient.delete).not.toHaveBeenCalled();
   });
 });

@@ -53,7 +53,9 @@ export interface GetPatientsQuery {
 export const getPatients = (): Promise<PatientResponse[]> =>
   apiJson<PaginatedResponse<PatientResponse>>('/patients').then((res) => res.data);
 
-export const getPaginatedPatients = (query?: GetPatientsQuery): Promise<PaginatedResponse<PatientResponse>> => {
+export const getPaginatedPatients = (
+  query?: GetPatientsQuery,
+): Promise<PaginatedResponse<PatientResponse>> => {
   const params = new URLSearchParams();
   if (query?.page) params.append('page', String(query.page));
   if (query?.limit) params.append('limit', String(query.limit));
@@ -63,19 +65,19 @@ export const getPaginatedPatients = (query?: GetPatientsQuery): Promise<Paginate
   return apiJson(`/patients${queryString ? `?${queryString}` : ''}`);
 };
 
-export const getPatient = (id: string): Promise<PatientResponse> =>
-  apiJson(`/patients/${id}`);
+export const getPatient = (id: string): Promise<PatientResponse> => apiJson(`/patients/${id}`);
 
 export const createPatient = (dto: CreatePatientDto): Promise<PatientResponse> =>
   apiJson('/patients', { method: 'POST', body: JSON.stringify(dto) });
 
-export const updatePatient = (
-  id: string,
-  dto: UpdatePatientDto,
-): Promise<PatientResponse> => apiJson(`/patients/${id}`, {
-  method: 'PATCH',
-  body: JSON.stringify(dto),
-});
+export const updatePatient = (id: string, dto: UpdatePatientDto): Promise<PatientResponse> =>
+  apiJson(`/patients/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(dto),
+  });
 
 export const deactivatePatient = (id: string): Promise<PatientResponse> =>
   apiJson(`/patients/${id}/deactivate`, { method: 'POST' });
+
+export const permanentlyDeletePatient = (id: string): Promise<{ id: string }> =>
+  apiJson(`/patients/${id}/permanent`, { method: 'DELETE' });

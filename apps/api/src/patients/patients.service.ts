@@ -7,23 +7,28 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, type DocumentType, type GenderType } from '@prisma/client';
+import {
+  type Prisma,
+  type DocumentType,
+  type GenderType,
+} from '@prisma/client';
 
-import { LookupQueryDto } from '../common/dto/lookup-query.dto';
+import { type AuditLogService } from '../audit-log/audit-log.service';
+import { type LookupQueryDto } from '../common/dto/lookup-query.dto';
 import {
   EntityLookupItemDto,
-  LookupResponseDto,
+  type LookupResponseDto,
 } from '../common/dto/lookup-response.dto';
 import {
   createPaginatedResponse,
   type PaginatedResponseDto,
 } from '../common/dto/paginated-response.dto';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { type PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import {
   decodeNameCursor,
   encodeNameCursor,
 } from '../common/utils/cursor-pagination.utils';
-import { PrismaService } from '../database/prisma.service';
+import { type PrismaService } from '../database/prisma.service';
 
 import type { CreatePatientDto } from './dto/create-patient.dto';
 import type { PatientConsultationResponseDto } from './dto/patient-consultation-response.dto';
@@ -32,7 +37,10 @@ import type { UpdatePatientDto } from './dto/update-patient.dto';
 
 @Injectable()
 export class PatientsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog?: AuditLogService,
+  ) {}
 
   async lookup(
     tenantId: string,
@@ -154,21 +162,30 @@ export class PatientsService {
       throw new ConflictException('Historial clínico inválido');
     }
 
-    return this.prisma.patient
-      .create({
-        data: {
-          tenantId,
-          documentType: dto.documentType,
-          documentId: dto.documentId,
-          name: dto.name,
-          phone: dto.phone,
-          email: dto.email,
-          birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
-          gender: dto.gender,
-          clinicalHistory: dto.clinicalHistory as Prisma.InputJsonValue,
-        },
-      })
-      .then(mapPatientResponse);
+    const patient = await this.prisma.patient.create({
+      data: {
+        tenantId,
+        documentType: dto.documentType,
+        documentId: dto.documentId,
+        name: dto.name,
+        phone: dto.phone,
+        email: dto.email,
+        birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+        gender: dto.gender,
+        clinicalHistory: dto.clinicalHistory as Prisma.InputJsonValue,
+      },
+    });
+    await this.auditLog?.log(
+      {
+        action: 'CREATE',
+        entity: 'Patient',
+        entityId: patient.id,
+        newValues: patient,
+        changedFields: Object.keys(dto),
+      },
+      this.prisma,
+    );
+    return mapPatientResponse(patient);
   }
 
   async update(
@@ -182,29 +199,94 @@ export class PatientsService {
       throw new ConflictException('Historial clínico inválido');
     }
 
-    return this.prisma.patient
-      .update({
-        where: { id },
-        data: {
-          name: dto.name,
-          phone: dto.phone,
-          email: dto.email,
-          birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
-          gender: dto.gender,
-          clinicalHistory: dto.clinicalHistory as Prisma.InputJsonValue,
-        },
-      })
-      .then(mapPatientResponse);
+    await this.prisma.patient.updateMany({
+      where: { id, tenantId },
+      data: {
+        name: dto.name,
+        phone: dto.phone,
+        email: dto.email,
+        birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+        gender: dto.gender,
+        clinicalHistory: dto.clinicalHistory as Prisma.InputJsonValue,
+      },
+    });
+    const patient = await this.prisma.patient.findFirstOrThrow({
+      where: { id, tenantId },
+    });
+    await this.auditLog?.log(
+      {
+        action: 'UPDATE',
+        entity: 'Patient',
+        entityId: patient.id,
+        newValues: patient,
+        changedFields: Object.keys(dto),
+      },
+      this.prisma,
+    );
+    return mapPatientResponse(patient);
   }
 
   async deactivate(tenantId: string, id: string): Promise<PatientResponseDto> {
     await this.findOne(tenantId, id);
-    return this.prisma.patient
-      .update({
-        where: { id },
-        data: { isActive: false },
-      })
-      .then(mapPatientResponse);
+    await this.prisma.patient.updateMany({
+      where: { id, tenantId },
+      data: { isActive: false },
+    });
+    const patient = await this.prisma.patient.findFirstOrThrow({
+      where: { id, tenantId },
+    });
+    await this.auditLog?.log(
+      {
+        action: 'DEACTIVATE',
+        entity: 'Patient',
+        entityId: patient.id,
+        newValues: { isActive: false },
+        changedFields: ['isActive'],
+      },
+      this.prisma,
+    );
+    return mapPatientResponse(patient);
+  }
+
+  async permanentlyDelete(
+    tenantId: string,
+    id: string,
+  ): Promise<{ id: string }> {
+    const patient = await this.prisma.patient.findFirst({
+      where: { id, tenantId, isActive: true },
+    });
+
+    if (!patient) {
+      throw new NotFoundException(`Paciente ${id} no encontrado`);
+    }
+
+    const [consultations, medicalRecords, labOrders] = await Promise.all([
+      this.prisma.consultation.count({ where: { tenantId, patientId: id } }),
+      this.prisma.medicalRecord.count({ where: { tenantId, patientId: id } }),
+      this.prisma.labOrder.count({ where: { tenantId, patientId: id } }),
+    ]);
+
+    if (consultations || medicalRecords || labOrders) {
+      throw new ConflictException({
+        message:
+          'No se puede eliminar el paciente porque tiene movimientos registrados',
+        reasons: { consultations, medicalRecords, labOrders },
+      });
+    }
+
+    await this.auditLog?.log(
+      {
+        action: 'DELETE',
+        entity: 'Patient',
+        entityId: patient.id,
+        oldValues: patient,
+        changedFields: [],
+      },
+      this.prisma,
+    );
+    await this.prisma.patient.delete({ where: { id: patient.id } });
+
+    return { id: patient.id };
   }
 
   async findConsultations(

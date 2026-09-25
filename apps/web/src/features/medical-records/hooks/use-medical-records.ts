@@ -31,7 +31,13 @@ export function usePatientConsultations(patientId: string) {
 
 export function usePaidConsultations(query?: PaidConsultationsQuery) {
   return useQuery({
-    queryKey: ['medical-records', 'paid-consultations', query?.page ?? 1, query?.limit ?? 10, query?.search ?? ''],
+    queryKey: [
+      'medical-records',
+      'paid-consultations',
+      query?.page ?? 1,
+      query?.limit ?? 10,
+      query?.search ?? '',
+    ],
     queryFn: () => getPaidConsultations(query),
     placeholderData: (previousData) => previousData,
   });
@@ -42,6 +48,10 @@ export function useMedicalRecord(id: string) {
     queryKey: ['medical-records', id],
     queryFn: () => getMedicalRecord(id),
     enabled: !!id,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
 }
 

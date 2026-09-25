@@ -1,3 +1,5 @@
+import { forwardRef } from 'react';
+
 import { cn } from '@/shared/utils/cn';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -5,7 +7,10 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
 }
 
-export function Input({ className, error, label, id, ...props }: InputProps) {
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+  { className, error, label, id, ...props },
+  ref,
+) {
   return (
     <div className="flex flex-col gap-1">
       {label && (
@@ -14,6 +19,7 @@ export function Input({ className, error, label, id, ...props }: InputProps) {
         </label>
       )}
       <input
+        ref={ref}
         id={id}
         className={cn(
           'h-10 rounded-lg border border-outline bg-surface px-3 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary',
@@ -25,4 +31,4 @@ export function Input({ className, error, label, id, ...props }: InputProps) {
       {error && <p className="text-xs text-error">{error}</p>}
     </div>
   );
-}
+});

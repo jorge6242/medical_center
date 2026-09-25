@@ -1,17 +1,22 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
-import { PrismaService } from '../database/prisma.service';
+import { type AuditLogService } from '../audit-log/audit-log.service';
+import { type PrismaService } from '../database/prisma.service';
 
 import type { ReceiptResponseDto } from './dto/receipt-response.dto';
 
 @Injectable()
 export class ReceiptsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog: AuditLogService,
+  ) {}
 
   async findByPayment(
     tenantId: string,
@@ -51,6 +56,19 @@ export class ReceiptsService {
     paymentId: string,
     generatedById: string,
   ): Promise<ReceiptResponseDto> {
+    const generatedBy = await this.prisma.user.findFirst({
+      where: {
+        id: generatedById,
+        tenantId,
+        isActive: true,
+        tenant: { isActive: true },
+      },
+      select: { id: true },
+    });
+    if (!generatedBy) {
+      throw new ForbiddenException('Usuario generador no pertenece al tenant');
+    }
+
     const existing = await this.prisma.doctorReceipt.findFirst({
       where: { paymentId, payment: { tenantId } },
       include: {
@@ -107,6 +125,10 @@ export class ReceiptsService {
       );
     }
 
+    if (doctor.tenantId !== tenantId) {
+      throw new ForbiddenException('Doctor no pertenece al tenant');
+    }
+
     const defaultAccount = doctor.bankAccounts[0];
 
     const currentYear = new Date().getFullYear();
@@ -135,6 +157,18 @@ export class ReceiptsService {
           centerShare: payment.centerShareUsd,
         },
       });
+      await this.auditLog.log(
+        {
+          action: 'CREATE',
+          entity: 'DoctorReceipt',
+          entityId: receipt.id,
+          tenantId,
+          userId: generatedById,
+          newValues: { paymentId, receiptNumber: receipt.receiptNumber },
+          changedFields: ['paymentId', 'receiptNumber'],
+        },
+        this.prisma,
+      );
 
       return this.toResponse(
         receipt,

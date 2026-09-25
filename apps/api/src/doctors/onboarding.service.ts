@@ -7,11 +7,12 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { type JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 
-import { PrismaService } from '../database/prisma.service';
-import { MailerService } from '../mailer/mailer.service';
+import { type AuditLogService } from '../audit-log/audit-log.service';
+import { type PrismaService } from '../database/prisma.service';
+import { type MailerService } from '../mailer/mailer.service';
 
 import type { OnboardingTokenStatus } from '@prisma/client';
 
@@ -32,6 +33,7 @@ export class OnboardingService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly mailerService: MailerService,
+    private readonly auditLog?: AuditLogService,
   ) {}
 
   async sendOnboarding(
@@ -46,6 +48,11 @@ export class OnboardingService {
     });
     if (!doctor) {
       throw new NotFoundException(`Doctor ${doctorId} no encontrado`);
+    }
+    if (!doctor.email) {
+      throw new BadRequestException(
+        'El doctor debe tener un email para recibir el onboarding',
+      );
     }
 
     // Find or create user
@@ -67,16 +74,15 @@ export class OnboardingService {
       user = await this.prisma.user.create({
         data: {
           tenantId,
-          email:
-            doctor.email ?? `doctor-${doctor.documentId}@centromedico.local`,
+          email: doctor.email,
           passwordHash,
           name: doctor.name,
           roleId: doctorRole.id,
         },
       });
 
-      await this.prisma.doctor.update({
-        where: { id: doctorId },
+      await this.prisma.doctor.updateMany({
+        where: { id: doctorId, tenantId },
         data: { userId: user.id },
       });
 
@@ -132,17 +138,25 @@ export class OnboardingService {
         userAgent,
       },
     });
+    await this.auditLog?.log(
+      {
+        action: 'SEND',
+        entity: 'Onboarding',
+        entityId: onboardingToken.id,
+        newValues: { outcome: 'sent' },
+        changedFields: ['status'],
+      },
+      this.prisma,
+    );
 
     // Send email (fire-and-forget)
-    this.sendOnboardingEmail(
-      doctor.name,
-      doctor.email ?? user.email,
-      token,
-    ).catch((error: unknown) => {
-      this.logger.error(
-        `Failed to send onboarding email to ${doctor.email}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    });
+    this.sendOnboardingEmail(doctor.name, doctor.email, token).catch(
+      (error: unknown) => {
+        this.logger.error(
+          `Failed to send onboarding email to ${doctor.email}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      },
+    );
 
     return { tokenId: onboardingToken.id, sentAt: onboardingToken.sentAt };
   }
@@ -173,6 +187,10 @@ export class OnboardingService {
       throw new GoneException('El enlace de activación ya no es válido');
     }
 
+    if (payload.sub !== record.userId) {
+      throw new GoneException('El enlace de activación no es válido');
+    }
+
     if (record.status === 'COMPLETED') {
       throw new GoneException('Esta invitación ya fue utilizada');
     }
@@ -189,19 +207,29 @@ export class OnboardingService {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    await this.prisma.$transaction([
-      this.prisma.user.update({
-        where: { id: userId },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.updateMany({
+        where: { id: userId, onboardingTokens: { some: { token } } },
         data: { passwordHash, isActive: true },
-      }),
-      this.prisma.onboardingToken.update({
+      });
+      await tx.onboardingToken.updateMany({
         where: { token },
         data: {
           status: 'COMPLETED' as OnboardingTokenStatus,
           completedAt: new Date(),
         },
-      }),
-    ]);
+      });
+      await this.auditLog?.log(
+        {
+          action: 'COMPLETE',
+          entity: 'Onboarding',
+          entityId: userId,
+          newValues: { outcome: 'completed' },
+          changedFields: ['status'],
+        },
+        tx,
+      );
+    });
 
     this.logger.log(`Onboarding completed for user ${userId}`);
   }

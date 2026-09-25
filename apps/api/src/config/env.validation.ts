@@ -14,4 +14,6 @@ export const envValidationSchema = Joi.object({
   MAIL_USER: Joi.string().allow('').default(''),
   MAIL_PASS: Joi.string().allow('').default(''),
   MAIL_FROM: Joi.string().min(3).default('noreply@centromedico.local'),
+  AUDIT_ENABLED: Joi.boolean().truthy('true').falsy('false').default(true),
+  TRACE_RETENTION_DAYS: Joi.number().integer().min(1).max(3650).default(30),
 });

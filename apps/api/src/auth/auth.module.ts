@@ -13,6 +13,7 @@ import { RolesModule } from '../roles/roles.module';
 import { AclGuard } from './guards/acl.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { InternalRequestGuard } from '../common/guards/internal-request.guard';
 
 @Module({
   imports: [
@@ -42,6 +43,10 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     {
       provide: APP_GUARD,
       useClass: AclGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: InternalRequestGuard,
     },
   ],
   exports: [AuthService],

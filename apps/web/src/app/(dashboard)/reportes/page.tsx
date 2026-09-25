@@ -8,7 +8,10 @@ import { type ColumnDef, type PaginationState } from '@tanstack/react-table';
 import type { OnChangeFn } from '@tanstack/react-table';
 
 import { ConsolidatedReportPDF, DetailReportPDF } from '@/features/reports/components/report-pdf';
-import { generateConsolidatedExcel, generateDetailExcel } from '@/features/reports/components/report-excel';
+import {
+  generateConsolidatedExcel,
+  generateDetailExcel,
+} from '@/features/reports/components/report-excel';
 import { useConsolidatedReports, useDetailReports } from '@/features/reports/hooks/use-reports';
 import { useReportJobsStore } from '@/stores/report-jobs.store';
 import { Button } from '@/shared/components/ui/button';
@@ -34,18 +37,61 @@ const INITIAL_TAB_STATE: Record<TabKey, TabState> = {
 
 const consolidatedColumns: ColumnDef<ConsolidatedRecord>[] = [
   { accessorKey: 'period', header: 'Período', cell: ({ row }) => row.original.period },
-  { accessorKey: 'income.consultationsUsd', header: 'Consultas', cell: ({ row }) => formatUsd(row.original.income.consultationsUsd) },
-  { accessorKey: 'income.laboratoriesUsd', header: 'Laboratorios', cell: ({ row }) => formatUsd(row.original.income.laboratoriesUsd) },
-  { accessorKey: 'income.totalUsd', header: 'Ingresos', cell: ({ row }) => formatUsd(row.original.income.totalUsd) },
-  { accessorKey: 'expenses.totalUsd', header: 'Egresos', cell: ({ row }) => formatUsd(row.original.expenses.totalUsd) },
+  {
+    accessorKey: 'income.consultationsUsd',
+    header: 'Consultas',
+    cell: ({ row }) => formatUsd(row.original.income.consultationsUsd),
+  },
+  {
+    accessorKey: 'income.laboratoriesUsd',
+    header: 'Laboratorios',
+    cell: ({ row }) => formatUsd(row.original.income.laboratoriesUsd),
+  },
+  {
+    accessorKey: 'income.totalUsd',
+    header: 'Ingresos',
+    cell: ({ row }) => formatUsd(row.original.income.totalUsd),
+  },
+  {
+    accessorKey: 'expenses.totalUsd',
+    header: 'Egresos',
+    cell: ({ row }) => formatUsd(row.original.expenses.totalUsd),
+  },
   { accessorKey: 'net.usd', header: 'Neto', cell: ({ row }) => formatUsd(row.original.net.usd) },
 ];
 
 const detailColumns: ColumnDef<DetailRecord>[] = [
   { accessorKey: 'date', header: 'Fecha', cell: ({ row }) => formatDate(row.original.date) },
-  { accessorKey: 'recordType', header: 'Tipo', cell: ({ row }) => (row.original.recordType === 'CONSULTATION' ? 'Consulta' : row.original.recordType === 'LAB' ? 'Lab' : 'Egreso') },
-  { accessorKey: 'description', header: 'Descripción', cell: ({ row }) => row.original.description },
-  { accessorKey: 'amountUsd', header: 'Monto', cell: ({ row }) => formatUsd(row.original.amountUsd) },
+  {
+    accessorKey: 'recordType',
+    header: 'Tipo',
+    cell: ({ row }) =>
+      row.original.recordType === 'CONSULTATION'
+        ? 'Consulta'
+        : row.original.recordType === 'LAB'
+          ? 'Lab'
+          : 'Egreso',
+  },
+  {
+    accessorKey: 'patientName',
+    header: 'Paciente',
+    cell: ({ row }) => row.original.patientName || '-',
+  },
+  {
+    accessorKey: 'doctorName',
+    header: 'Doctor',
+    cell: ({ row }) => row.original.doctorName || '-',
+  },
+  {
+    accessorKey: 'description',
+    header: 'Descripción',
+    cell: ({ row }) => row.original.description,
+  },
+  {
+    accessorKey: 'amountUsd',
+    header: 'Monto',
+    cell: ({ row }) => formatUsd(row.original.amountUsd),
+  },
   { accessorKey: 'status', header: 'Estado', cell: ({ row }) => row.original.status },
 ];
 
@@ -62,27 +108,34 @@ export default function ReportesPage() {
   const [groupBy, setGroupBy] = useState<'day' | 'week' | 'month'>('day');
   const [type, setType] = useState<'all' | 'consultation' | 'lab' | 'expense'>('all');
 
-  const consolidatedParams = useMemo<QueryReportsParams>(() => ({
-    from,
-    to,
-    groupBy,
-    type,
-    page: tabState.consolidado.pagination.pageIndex + 1,
-    limit: tabState.consolidado.pagination.pageSize,
-    search: tabState.consolidado.search,
-  }), [from, to, groupBy, type, tabState.consolidado]);
+  const consolidatedParams = useMemo<QueryReportsParams>(
+    () => ({
+      from,
+      to,
+      groupBy,
+      type,
+      page: tabState.consolidado.pagination.pageIndex + 1,
+      limit: tabState.consolidado.pagination.pageSize,
+      search: tabState.consolidado.search,
+    }),
+    [from, to, groupBy, type, tabState.consolidado],
+  );
 
-  const detailParams = useMemo<QueryReportsParams>(() => ({
-    from,
-    to,
-    groupBy,
-    type,
-    page: tabState.detalle.pagination.pageIndex + 1,
-    limit: tabState.detalle.pagination.pageSize,
-    search: tabState.detalle.search,
-  }), [from, to, groupBy, type, tabState.detalle]);
+  const detailParams = useMemo<QueryReportsParams>(
+    () => ({
+      from,
+      to,
+      groupBy,
+      type,
+      page: tabState.detalle.pagination.pageIndex + 1,
+      limit: tabState.detalle.pagination.pageSize,
+      search: tabState.detalle.search,
+    }),
+    [from, to, groupBy, type, tabState.detalle],
+  );
 
-  const { data: consolidatedData, isLoading: loadingConsolidated } = useConsolidatedReports(consolidatedParams);
+  const { data: consolidatedData, isLoading: loadingConsolidated } =
+    useConsolidatedReports(consolidatedParams);
   const { data: detailData, isLoading: loadingDetail } = useDetailReports(detailParams);
   const addJob = useReportJobsStore((s) => s.addJob);
   const updateJob = useReportJobsStore((s) => s.updateJob);
@@ -117,10 +170,10 @@ export default function ReportesPage() {
   const handleExportPDF = async () => {
     if (activeTab === 'consolidado' && !consolidated.length) return;
     if (activeTab === 'detalle' && !detail.length) return;
-    
+
     setIsExporting(true);
     const jobId = `local-${crypto.randomUUID()}`;
-    
+
     addJob({
       jobId,
       status: 'processing',
@@ -132,7 +185,9 @@ export default function ReportesPage() {
 
     try {
       if (activeTab === 'consolidado' && consolidated.length > 0) {
-        const blob = await pdf(<ConsolidatedReportPDF data={consolidated} periodStart={from} periodEnd={to} />).toBlob();
+        const blob = await pdf(
+          <ConsolidatedReportPDF data={consolidated} periodStart={from} periodEnd={to} />,
+        ).toBlob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -141,14 +196,16 @@ export default function ReportesPage() {
         a.click();
         a.remove();
         window.URL.revokeObjectURL(url);
-        
+
         updateJob(jobId, {
           status: 'completed',
           progress: 100,
           filename: `reporte-consolidado-${from}-al-${to}.pdf`,
         });
       } else if (activeTab === 'detalle' && detail.length > 0) {
-        const blob = await pdf(<DetailReportPDF data={detail} periodStart={from} periodEnd={to} />).toBlob();
+        const blob = await pdf(
+          <DetailReportPDF data={detail} periodStart={from} periodEnd={to} />,
+        ).toBlob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -157,7 +214,7 @@ export default function ReportesPage() {
         a.click();
         a.remove();
         window.URL.revokeObjectURL(url);
-        
+
         updateJob(jobId, {
           status: 'completed',
           progress: 100,
@@ -187,10 +244,10 @@ export default function ReportesPage() {
   const handleExportExcel = async () => {
     if (activeTab === 'consolidado' && !consolidated.length) return;
     if (activeTab === 'detalle' && !detail.length) return;
-    
+
     setIsExporting(true);
     const jobId = `local-${crypto.randomUUID()}`;
-    
+
     addJob({
       jobId,
       status: 'processing',
@@ -211,7 +268,7 @@ export default function ReportesPage() {
         a.click();
         a.remove();
         window.URL.revokeObjectURL(url);
-        
+
         updateJob(jobId, {
           status: 'completed',
           progress: 100,
@@ -227,7 +284,7 @@ export default function ReportesPage() {
         a.click();
         a.remove();
         window.URL.revokeObjectURL(url);
-        
+
         updateJob(jobId, {
           status: 'completed',
           progress: 100,
@@ -263,18 +320,32 @@ export default function ReportesPage() {
             variant="outline"
             size="sm"
             onClick={handleExportPDF}
-            disabled={isExporting || (activeTab === 'consolidado' ? consolidated.length === 0 : detail.length === 0)}
+            disabled={
+              isExporting ||
+              (activeTab === 'consolidado' ? consolidated.length === 0 : detail.length === 0)
+            }
           >
-            {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+            {isExporting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FileDown className="mr-2 h-4 w-4" />
+            )}
             PDF
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={handleExportExcel}
-            disabled={isExporting || (activeTab === 'consolidado' ? consolidated.length === 0 : detail.length === 0)}
+            disabled={
+              isExporting ||
+              (activeTab === 'consolidado' ? consolidated.length === 0 : detail.length === 0)
+            }
           >
-            {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+            {isExporting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FileDown className="mr-2 h-4 w-4" />
+            )}
             Excel
           </Button>
         </div>
@@ -357,7 +428,7 @@ export default function ReportesPage() {
           <DataTable
             data={consolidated}
             columns={consolidatedColumns}
-            toolbar={(
+            toolbar={
               <div className="flex flex-1 items-center gap-3">
                 <Input
                   value={tabState.consolidado.search}
@@ -366,7 +437,7 @@ export default function ReportesPage() {
                   className="max-w-sm"
                 />
               </div>
-            )}
+            }
             isLoading={loadingConsolidated}
             pagination={tabState.consolidado.pagination}
             onPaginationChange={handlePaginationChange}
@@ -382,7 +453,7 @@ export default function ReportesPage() {
           <DataTable
             data={detail}
             columns={detailColumns}
-            toolbar={(
+            toolbar={
               <div className="flex flex-1 items-center gap-3">
                 <Input
                   value={tabState.detalle.search}
@@ -391,7 +462,7 @@ export default function ReportesPage() {
                   className="max-w-sm"
                 />
               </div>
-            )}
+            }
             isLoading={loadingDetail}
             pagination={tabState.detalle.pagination}
             onPaginationChange={handlePaginationChange}

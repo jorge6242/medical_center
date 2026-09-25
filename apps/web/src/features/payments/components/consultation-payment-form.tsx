@@ -1,80 +1,87 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from 'react';
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2 } from "lucide-react";
-import { useFieldArray, useForm } from "react-hook-form";
-import { Controller } from "react-hook-form";
-import { z } from "zod/v4";
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Plus, Trash2 } from 'lucide-react';
+import { useFieldArray, useForm } from 'react-hook-form';
+import { Controller } from 'react-hook-form';
+import { z } from 'zod/v4';
 
-import { usePatientLookup } from "@/features/patients/hooks/use-patient-lookup";
-import { PatientForm } from "@/features/patients/components/patient-form";
-import {
-  useCreatePayment,
-  useDoctorServicePrices,
-} from "@/features/payments/hooks/use-payments";
-import { useDoctorLookup } from "@/features/payments/hooks/use-doctor-lookup";
-import { Button } from "@/shared/components/ui/button";
-import { Card } from "@/shared/components/ui/card";
-import { Input } from "@/shared/components/ui/input";
-import { LookupCombobox } from "@/shared/components/ui/lookup-combobox";
-import { Modal } from "@/shared/components/ui/modal";
-import { Select } from "@/shared/components/ui/select";
-import { formatUsd } from "@/shared/utils/format";
+import { usePatientLookup } from '@/features/patients/hooks/use-patient-lookup';
+import { PatientForm } from '@/features/patients/components/patient-form';
+import { useCreatePayment, useDoctorServices } from '@/features/payments/hooks/use-payments';
+import { useDoctorLookup } from '@/features/payments/hooks/use-doctor-lookup';
+import type { ConsultationResponse } from '@/features/consultations/services/consultations.service';
+import { Button } from '@/shared/components/ui/button';
+import { Card } from '@/shared/components/ui/card';
+import { Input } from '@/shared/components/ui/input';
+import { LookupCombobox } from '@/shared/components/ui/lookup-combobox';
+import { Modal } from '@/shared/components/ui/modal';
+import { Select } from '@/shared/components/ui/select';
+import { formatUsd } from '@/shared/utils/format';
 import {
   calculatePaidUsdEquivalent,
   getMaxPaymentAmount,
   getPaymentCurrency,
+  parseDecimalInput,
   paymentTotalsMatch,
-} from "@/features/payments/utils/payment-calculations";
+} from '@/features/payments/utils/payment-calculations';
 
 const PAYMENT_METHODS = [
-  { value: "CASH_USD", label: "Efectivo USD" },
-  { value: "ZELLE", label: "Zelle" },
-  { value: "WIRE_TRANSFER_USD", label: "Transferencia USD" },
-  { value: "POS_USD_CARD", label: "POS USD (exento IGTF)" },
-  { value: "POS_BS", label: "POS Bs" },
-  { value: "PAGO_MOVIL", label: "Pago Móvil" },
+  { value: 'CASH_USD', label: 'Efectivo USD' },
+  { value: 'ZELLE', label: 'Zelle' },
+  { value: 'WIRE_TRANSFER_USD', label: 'Transferencia USD' },
+  { value: 'POS_USD_CARD', label: 'POS USD (exento IGTF)' },
+  { value: 'POS_BS', label: 'POS Bs' },
+  { value: 'PAGO_MOVIL', label: 'Pago Móvil' },
 ];
 
 const CURRENCIES = [
-  { value: "USD", label: "USD" },
-  { value: "VES", label: "Bs" },
+  { value: 'USD', label: 'USD' },
+  { value: 'VES', label: 'Bs' },
 ];
 
 const lineSchema = z.object({
   paymentMethod: z.string().min(1),
-  currency: z.enum(["USD", "VES"]),
-  amount: z.number().positive("Monto requerido"),
+  currency: z.enum(['USD', 'VES']),
+  amount: z.number().positive('Monto requerido'),
   referenceNumber: z.string().optional(),
 });
 
 const schema = z.object({
-  patientId: z.string().min(1, "Selecciona un paciente"),
-  doctorId: z.string().min(1, "Selecciona un doctor"),
-  bcvExchangeRate: z.number().positive("Tasa BCV requerida"),
-  servicePriceIds: z
-    .array(z.string())
-    .min(1, "Selecciona al menos un servicio"),
-  paymentLines: z.array(lineSchema).min(1, "Agrega al menos una línea de pago"),
+  patientId: z.string().min(1, 'Selecciona un paciente'),
+  doctorId: z.string().min(1, 'Selecciona un doctor'),
+  bcvExchangeRate: z.number().positive('Tasa BCV requerida'),
+  doctorServiceIds: z.array(z.string()).min(1, 'Selecciona al menos un servicio'),
+  consultationDate: z.string().min(1, 'Indicá la fecha y hora de la consulta'),
+  paymentLines: z.array(lineSchema).min(1, 'Agrega al menos una línea de pago'),
 });
+
+function currentDateTimeLocal(): string {
+  const date = new Date();
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 16);
+}
 
 export type ConsultationFormData = z.infer<typeof schema>;
 
 interface ConsultationPaymentFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
+  consultation?: ConsultationResponse;
 }
 
 export function ConsultationPaymentForm({
   onSuccess,
   onCancel,
+  consultation,
 }: ConsultationPaymentFormProps) {
   const [showPatientModal, setShowPatientModal] = useState(false);
-  const [patientQuery, setPatientQuery] = useState("");
-  const [doctorQuery, setDoctorQuery] = useState("");
+  const [patientQuery, setPatientQuery] = useState('');
+  const [doctorQuery, setDoctorQuery] = useState('');
   const [success, setSuccess] = useState(false);
+  const paymentAmountRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const patientLookup = usePatientLookup(patientQuery);
   const doctorLookup = useDoctorLookup(doctorQuery);
 
@@ -97,51 +104,49 @@ export function ConsultationPaymentForm({
     formState: { errors },
   } = useForm<ConsultationFormData>({
     resolver: zodResolver(schema),
-    mode: "onChange",
+    mode: 'onChange',
     defaultValues: {
-      paymentLines: [{ paymentMethod: "CASH_USD", currency: "USD", amount: 0 }],
-      servicePriceIds: [],
+      paymentLines: [{ paymentMethod: 'CASH_USD', currency: 'USD', amount: 0 }],
+      doctorServiceIds: [],
+      consultationDate: currentDateTimeLocal(),
     },
   });
 
+  const isScheduledPayment = !!consultation;
+
   const { fields, append, remove } = useFieldArray({
     control,
-    name: "paymentLines",
+    name: 'paymentLines',
   });
-  const selectedDoctorId = watch("doctorId");
-  const selectedServiceIds = watch("servicePriceIds");
+  const selectedDoctorId = watch('doctorId');
+  const selectedServiceIds = watch('doctorServiceIds');
   const [totalService, setTotalService] = useState(0);
-  const bcvExchangeRate = watch("bcvExchangeRate");
-  const paymentLines = watch("paymentLines");
-  const totalPaidUsdEquivalent = calculatePaidUsdEquivalent(
-    paymentLines,
-    bcvExchangeRate,
-  );
-  const canRegisterPayment = paymentTotalsMatch(
-    totalPaidUsdEquivalent,
-    totalService,
-  );
-  const hasValidExchangeRate =
-    Number.isFinite(bcvExchangeRate) && bcvExchangeRate > 0;
+  const bcvExchangeRate = watch('bcvExchangeRate');
+  const paymentLines = watch('paymentLines');
+  const totalPaidUsdEquivalent = calculatePaidUsdEquivalent(paymentLines, bcvExchangeRate);
+  const canRegisterPayment = paymentTotalsMatch(totalPaidUsdEquivalent, totalService);
+  const hasValidExchangeRate = Number.isFinite(bcvExchangeRate) && bcvExchangeRate > 0;
 
   const getLineMaxAmount = (index: number) =>
     getMaxPaymentAmount(paymentLines, index, totalService, bcvExchangeRate);
 
-  const setMaximumAmount = (index: number) => {
-    setValue(`paymentLines.${index}.amount`, getLineMaxAmount(index), {
+  const setMaximumAmount = (index: number, fieldId: string) => {
+    const maximumAmount = getLineMaxAmount(index);
+    setValue(`paymentLines.${index}.amount`, maximumAmount, {
       shouldValidate: true,
       shouldDirty: true,
     });
+    const input = paymentAmountRefs.current[fieldId];
+    if (input) {
+      input.value = maximumAmount.toFixed(2).replace('.', ',');
+    }
   };
 
-  const handleAmountChange = (
-    index: number,
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const amount = Number(event.target.value);
+  const handleAmountChange = (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+    const amount = parseDecimalInput(event.target.value, 2);
     setValue(
       `paymentLines.${index}.amount`,
-      Math.min(amount, getLineMaxAmount(index)),
+      Number.isFinite(amount) ? Math.min(amount, getLineMaxAmount(index)) : Number.NaN,
       {
         shouldValidate: true,
         shouldDirty: true,
@@ -149,52 +154,68 @@ export function ConsultationPaymentForm({
     );
   };
 
-  const { data: servicePrices = [] } = useDoctorServicePrices(
-    selectedDoctorId || null,
-  );
+  const { data: servicePrices = [] } = useDoctorServices(selectedDoctorId || null);
 
   useEffect(() => {
+    if (consultation) {
+      setTotalService(Number(consultation.totalUsd));
+      return;
+    }
     const total = servicePrices
       .filter((sp) => selectedServiceIds.includes(sp.id))
       .reduce((sum, sp) => sum + parseFloat(sp.priceUsd), 0);
     setTotalService(total);
-  }, [selectedServiceIds, servicePrices]);
+  }, [consultation, selectedServiceIds, servicePrices]);
 
   useEffect(() => {
-    setValue("servicePriceIds", []);
-  }, [selectedDoctorId, setValue]);
+    if (!isScheduledPayment) {
+      setValue('doctorServiceIds', []);
+    }
+  }, [isScheduledPayment, selectedDoctorId, setValue]);
+
+  useEffect(() => {
+    if (!consultation) return;
+    setValue('patientId', consultation.patientId);
+    setValue('doctorId', consultation.doctorId);
+    setValue('doctorServiceIds', [consultation.id]);
+  }, [consultation, setValue]);
 
   const toggleService = (id: string) => {
     const current = selectedServiceIds;
-    const next = current.includes(id)
-      ? current.filter((s) => s !== id)
-      : [...current, id];
-    setValue("servicePriceIds", next, { shouldValidate: true });
+    const next = current.includes(id) ? current.filter((s) => s !== id) : [...current, id];
+    setValue('doctorServiceIds', next, { shouldValidate: true });
   };
 
   const onSubmit = (data: ConsultationFormData) => {
     if (!paymentTotalsMatch(totalPaidUsdEquivalent, totalService)) {
-      setError("paymentLines", {
-        type: "manual",
+      setError('paymentLines', {
+        type: 'manual',
         message: `El pago debe totalizar ${formatUsd(totalService)}. Equivalente recibido: ${formatUsd(totalPaidUsdEquivalent)}`,
       });
       return;
     }
 
-    const selectedServices = servicePrices.filter((sp) =>
-      data.servicePriceIds.includes(sp.id),
-    );
-    const serviceNames = selectedServices.map((s) => s.serviceName).join(", ");
+    const selectedServices = servicePrices.filter((sp) => data.doctorServiceIds.includes(sp.id));
+    const serviceNames = isScheduledPayment
+      ? consultation.services.map((service) => service.serviceName).join(', ')
+      : selectedServices.map((service) => service.serviceName).join(', ');
 
     mutate({
       patientId: data.patientId,
       bcvExchangeRate: data.bcvExchangeRate,
+      ...(!isScheduledPayment
+        ? { consultationDate: new Date(data.consultationDate).toISOString() }
+        : {}),
       idempotencyKey: crypto.randomUUID(),
       item: {
-        itemType: "CONSULTATION" as const,
+        itemType: 'CONSULTATION' as const,
         description: `Consulta - ${serviceNames}`,
-        doctorId: data.doctorId,
-        servicePriceIds: data.servicePriceIds,
+        ...(isScheduledPayment
+          ? { consultationId: consultation.id }
+          : {
+              doctorId: data.doctorId,
+              doctorServiceIds: data.doctorServiceIds,
+            }),
       },
       paymentLines: data.paymentLines,
     });
@@ -211,16 +232,10 @@ export function ConsultationPaymentForm({
             stroke="currentColor"
             strokeWidth={2}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M5 13l4 4L19 7"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <p className="text-lg font-semibold text-on-surface">
-          Pago registrado exitosamente
-        </p>
+        <p className="text-lg font-semibold text-on-surface">Pago registrado exitosamente</p>
       </div>
     );
   }
@@ -231,125 +246,151 @@ export function ConsultationPaymentForm({
         {/* Paciente */}
         <Card>
           <p className="mb-3 text-sm font-semibold text-on-surface">Paciente</p>
-          <div className="flex items-end gap-3">
-            <div className="flex-1">
-              <Controller
-                control={control}
-                name="patientId"
-                render={({ field }) => (
-                  <LookupCombobox
-                    id="patientId"
-                    label="Seleccionar paciente"
-                    value={field.value}
-                    onChange={field.onChange}
-                    items={patientLookup.items}
-                    isLoading={patientLookup.isLoading}
-                    isFetchingNextPage={patientLookup.isFetchingNextPage}
-                    hasNextPage={patientLookup.hasNextPage ?? false}
-                    fetchNextPage={patientLookup.fetchNextPage}
-                    canSearch={patientLookup.canSearch}
-                    error={errors.patientId?.message}
-                    onQueryChange={setPatientQuery}
-                  />
-                )}
-              />
+          {consultation ? (
+            <p className="text-sm text-on-surface-variant">
+              {consultation.patientName} · {consultation.patientDocument}
+            </p>
+          ) : (
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <Controller
+                  control={control}
+                  name="patientId"
+                  render={({ field }) => (
+                    <LookupCombobox
+                      id="patientId"
+                      label="Seleccionar paciente"
+                      value={field.value}
+                      onChange={field.onChange}
+                      items={patientLookup.items}
+                      isLoading={patientLookup.isLoading}
+                      isFetchingNextPage={patientLookup.isFetchingNextPage}
+                      hasNextPage={patientLookup.hasNextPage ?? false}
+                      fetchNextPage={patientLookup.fetchNextPage}
+                      canSearch={patientLookup.canSearch}
+                      error={errors.patientId?.message}
+                      onQueryChange={setPatientQuery}
+                    />
+                  )}
+                />
+              </div>
+              <Button type="button" variant="outline" onClick={() => setShowPatientModal(true)}>
+                <Plus className="h-4 w-4" /> Nuevo
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowPatientModal(true)}
-            >
-              <Plus className="h-4 w-4" /> Nuevo
-            </Button>
-          </div>
+          )}
         </Card>
 
         {/* Doctor + Servicios */}
         <Card>
-          <p className="mb-3 text-sm font-semibold text-on-surface">
-            Doctor y Servicios
-          </p>
+          <p className="mb-3 text-sm font-semibold text-on-surface">Doctor y Servicios</p>
           <div className="flex flex-col gap-4">
-            <Controller
-              control={control}
-              name="doctorId"
-              render={({ field }) => (
-                <LookupCombobox
-                  id="doctorId"
-                  label="Doctor"
-                  value={field.value}
-                  onChange={field.onChange}
-                  items={doctorLookup.items}
-                  isLoading={doctorLookup.isLoading}
-                  isFetchingNextPage={doctorLookup.isFetchingNextPage}
-                  hasNextPage={doctorLookup.hasNextPage ?? false}
-                  fetchNextPage={doctorLookup.fetchNextPage}
-                  canSearch={doctorLookup.canSearch}
-                  error={errors.doctorId?.message}
-                  onQueryChange={setDoctorQuery}
+            {consultation ? (
+              <div className="text-sm text-on-surface-variant">
+                <p>{consultation.doctorName}</p>
+                <p className="mt-2 font-medium text-on-surface">Servicios</p>
+                <ul className="mt-1 list-disc pl-5">
+                  {consultation.services.map((service) => (
+                    <li key={`${service.specialtyName}-${service.serviceName}`}>
+                      {service.serviceName} · {service.specialtyName} —{' '}
+                      {formatUsd(service.priceUsd)}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-3 font-semibold text-on-surface">
+                  Total: {formatUsd(consultation.totalUsd)}
+                </p>
+              </div>
+            ) : (
+              <>
+                <Controller
+                  control={control}
+                  name="doctorId"
+                  render={({ field }) => (
+                    <LookupCombobox
+                      id="doctorId"
+                      label="Doctor"
+                      value={field.value}
+                      onChange={field.onChange}
+                      items={doctorLookup.items}
+                      isLoading={doctorLookup.isLoading}
+                      isFetchingNextPage={doctorLookup.isFetchingNextPage}
+                      hasNextPage={doctorLookup.hasNextPage ?? false}
+                      fetchNextPage={doctorLookup.fetchNextPage}
+                      canSearch={doctorLookup.canSearch}
+                      error={errors.doctorId?.message}
+                      onQueryChange={setDoctorQuery}
+                    />
+                  )}
                 />
-              )}
-            />
 
-            {selectedDoctorId && (
-              <div className="flex flex-col gap-2">
-                <p className="text-sm font-medium text-on-surface">Servicios</p>
-                {servicePrices.length === 0 ? (
-                  <p className="text-sm text-on-surface-variant">
-                    Sin servicios disponibles para este doctor
-                  </p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {servicePrices.map((sp) => {
-                      const selected = selectedServiceIds.includes(sp.id);
-                      return (
-                        <button
-                          key={sp.id}
-                          type="button"
-                          onClick={() => toggleService(sp.id)}
-                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                            selected
-                              ? "border-primary bg-primary-container text-on-primary-container"
-                              : "border-outline bg-surface text-on-surface-variant hover:bg-surface-variant"
-                          }`}
-                        >
-                          {sp.serviceName} · {sp.specialtyName} —{" "}
-                          {formatUsd(sp.priceUsd)}
-                        </button>
-                      );
-                    })}
+                {selectedDoctorId && (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-sm font-medium text-on-surface">Servicios</p>
+                    {servicePrices.length === 0 ? (
+                      <p className="text-sm text-on-surface-variant">
+                        Sin servicios disponibles para este doctor
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {servicePrices.map((sp) => {
+                          const selected = selectedServiceIds.includes(sp.id);
+                          return (
+                            <button
+                              key={sp.id}
+                              type="button"
+                              onClick={() => toggleService(sp.id)}
+                              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                                selected
+                                  ? 'border-primary bg-primary-container text-on-primary-container'
+                                  : 'border-outline bg-surface text-on-surface-variant hover:bg-surface-variant'
+                              }`}
+                            >
+                              {sp.serviceName} · {sp.specialtyName} — {formatUsd(sp.priceUsd)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {errors.doctorServiceIds && (
+                      <p className="text-xs text-error">{errors.doctorServiceIds.message}</p>
+                    )}
+                    {totalService > 0 && (
+                      <p className="text-sm font-semibold text-on-surface">
+                        Total: <span className="text-primary">{formatUsd(totalService)}</span>
+                      </p>
+                    )}
                   </div>
                 )}
-                {errors.servicePriceIds && (
-                  <p className="text-xs text-error">
-                    {errors.servicePriceIds.message}
-                  </p>
-                )}
-                {totalService > 0 && (
-                  <p className="text-sm font-semibold text-on-surface">
-                    Total:{" "}
-                    <span className="text-primary">
-                      {formatUsd(totalService)}
-                    </span>
-                  </p>
-                )}
-              </div>
+              </>
             )}
           </div>
         </Card>
 
+        {!consultation ? (
+          <Card>
+            <Input
+              {...register('consultationDate')}
+              id="consultationDate"
+              label="Fecha y hora de la consulta"
+              type="datetime-local"
+              error={errors.consultationDate?.message}
+            />
+          </Card>
+        ) : null}
+
         {/* Tasa BCV */}
         <Card>
-          <p className="mb-3 text-sm font-semibold text-on-surface">
-            Tasa de cambio
-          </p>
+          <p className="mb-3 text-sm font-semibold text-on-surface">Tasa de cambio</p>
           <div className="max-w-xs">
             <Input
-              {...register("bcvExchangeRate", { valueAsNumber: true })}
+              {...register('bcvExchangeRate', {
+                setValueAs: (value) => parseDecimalInput(value, 4),
+              })}
               id="bcvExchangeRate"
               label="Tasa BCV (Bs/USD)"
-              type="number"
-              step="0.0001"
+              type="text"
+              inputMode="decimal"
               placeholder="36.50"
               error={errors.bcvExchangeRate?.message}
             />
@@ -359,9 +400,7 @@ export function ConsultationPaymentForm({
         {/* Líneas de pago */}
         <Card>
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-semibold text-on-surface">
-              Forma de pago
-            </p>
+            <p className="text-sm font-semibold text-on-surface">Forma de pago</p>
             <Button
               type="button"
               variant="outline"
@@ -369,8 +408,8 @@ export function ConsultationPaymentForm({
               disabled={!hasValidExchangeRate}
               onClick={() =>
                 append({
-                  paymentMethod: "CASH_USD",
-                  currency: "USD",
+                  paymentMethod: 'CASH_USD',
+                  currency: 'USD',
                   amount: 0,
                 })
               }
@@ -384,93 +423,93 @@ export function ConsultationPaymentForm({
             </p>
           )}
           <div className="flex flex-col gap-3">
-            {fields.map((field, i) => (
-              <div
-                key={field.id}
-                className="flex items-end gap-3 rounded-lg bg-surface-variant p-3"
-              >
-                <Select
-                  {...register(`paymentLines.${i}.paymentMethod`)}
-                  onChange={(event) => {
-                    const method = event.target.value;
-                    setValue(`paymentLines.${i}.paymentMethod`, method, {
-                      shouldValidate: true,
-                    });
-                    setValue(
-                      `paymentLines.${i}.currency`,
-                      getPaymentCurrency(method),
-                      {
+            {fields.map((field, i) => {
+              const amountField = register(`paymentLines.${i}.amount`, {
+                setValueAs: (value) => parseDecimalInput(value, 2),
+              });
+
+              return (
+                <div
+                  key={field.id}
+                  className="flex items-end gap-3 rounded-lg bg-surface-variant p-3"
+                >
+                  <Select
+                    {...register(`paymentLines.${i}.paymentMethod`)}
+                    onChange={(event) => {
+                      const method = event.target.value;
+                      setValue(`paymentLines.${i}.paymentMethod`, method, {
                         shouldValidate: true,
-                      },
-                    );
-                  }}
-                  label="Método"
-                  options={PAYMENT_METHODS}
-                  className="flex-1"
-                  disabled={!hasValidExchangeRate}
-                />
-                <Select
-                  {...register(`paymentLines.${i}.currency`)}
-                  label="Moneda"
-                  options={CURRENCIES}
-                  className="w-24"
-                  disabled
-                />
-                <div className="flex min-w-40 items-end gap-2">
-                  <div className="min-w-0 flex-1">
-                    <Input
-                      {...register(`paymentLines.${i}.amount`, {
-                        valueAsNumber: true,
-                      })}
-                      onChange={(event) => handleAmountChange(i, event)}
-                      label="Monto"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max={getLineMaxAmount(i)}
-                      placeholder="0.00"
-                      error={errors.paymentLines?.[i]?.amount?.message}
-                      className="w-full"
-                      disabled={!hasValidExchangeRate}
-                    />
+                      });
+                      setValue(`paymentLines.${i}.currency`, getPaymentCurrency(method), {
+                        shouldValidate: true,
+                      });
+                    }}
+                    label="Método"
+                    options={PAYMENT_METHODS}
+                    className="flex-1"
+                    disabled={!hasValidExchangeRate}
+                  />
+                  <Select
+                    {...register(`paymentLines.${i}.currency`)}
+                    label="Moneda"
+                    options={CURRENCIES}
+                    className="w-24"
+                    disabled
+                  />
+                  <div className="flex min-w-40 items-end gap-2">
+                    <div className="min-w-0 flex-1">
+                      <Input
+                        {...amountField}
+                        ref={(element) => {
+                          amountField.ref(element);
+                          paymentAmountRefs.current[field.id] = element;
+                        }}
+                        onChange={(event) => handleAmountChange(i, event)}
+                        label="Monto"
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        error={errors.paymentLines?.[i]?.amount?.message}
+                        className="w-full"
+                        disabled={!hasValidExchangeRate}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMaximumAmount(i, field.id)}
+                      disabled={!hasValidExchangeRate || getLineMaxAmount(i) <= 0}
+                      className="mb-0.5 rounded-lg border border-outline px-2 py-2 text-xs font-semibold text-primary hover:bg-primary-container disabled:text-on-surface-variant"
+                    >
+                      Max
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setMaximumAmount(i)}
-                    disabled={!hasValidExchangeRate || getLineMaxAmount(i) <= 0}
-                    className="mb-0.5 rounded-lg border border-outline px-2 py-2 text-xs font-semibold text-primary hover:bg-primary-container disabled:text-on-surface-variant"
-                  >
-                    Max
-                  </button>
+                  <Input
+                    {...register(`paymentLines.${i}.referenceNumber`)}
+                    label="Referencia"
+                    placeholder="Opcional"
+                    className="flex-1"
+                    disabled={!hasValidExchangeRate}
+                  />
+                  {fields.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => remove(i)}
+                      className="mb-0.5 rounded-lg p-2 text-on-surface-variant hover:text-error"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
-                <Input
-                  {...register(`paymentLines.${i}.referenceNumber`)}
-                  label="Referencia"
-                  placeholder="Opcional"
-                  className="flex-1"
-                  disabled={!hasValidExchangeRate}
-                />
-                {fields.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => remove(i)}
-                    className="mb-0.5 rounded-lg p-2 text-on-surface-variant hover:text-error"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-            ))}
+              );
+            })}
             {errors.paymentLines?.message && (
-              <p className="text-xs text-error">
-                {errors.paymentLines.message}
-              </p>
+              <p className="text-xs text-error">{errors.paymentLines.message}</p>
             )}
             {hasValidExchangeRate && (
               <p
-                className={`text-xs ${canRegisterPayment ? "text-success" : "text-on-surface-variant"}`}
+                className={`text-xs ${canRegisterPayment ? 'text-success' : 'text-on-surface-variant'}`}
               >
-                Equivalente recibido: {formatUsd(totalPaidUsdEquivalent)} de{" "}
+                Equivalente recibido: {formatUsd(totalPaidUsdEquivalent)} de{' '}
                 {formatUsd(totalService)}
               </p>
             )}

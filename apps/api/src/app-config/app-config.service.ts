@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
-import { PrismaService } from '../database/prisma.service';
-import { ExchangeRatesService } from '../exchange-rates/exchange-rates.service';
+import { type PrismaService } from '../database/prisma.service';
+import { type ExchangeRatesService } from '../exchange-rates/exchange-rates.service';
 
 @Injectable()
 export class AppConfigService {
@@ -23,6 +23,7 @@ export class AppConfigService {
       tenant: {
         name: tenant.name,
         slug: tenant.slug,
+        logoUrl: tenant.logoUrl,
       },
       systemConfig: {
         igtfRate: parseFloat(igtfConfig?.value ?? '0'),

@@ -14,9 +14,19 @@ const AUDITED_MODELS = new Set([
   'DoctorBankAccount',
   'ExchangeRate',
   'SystemConfig',
+  'Payment',
+  'Expense',
+  'Role',
+  'Permission',
 ]);
 
-const AUDITED_OPERATIONS = new Set(['create', 'update', 'updateMany']);
+const AUDITED_OPERATIONS = new Set([
+  'create',
+  'update',
+  'updateMany',
+  'delete',
+  'deleteMany',
+]);
 
 type MutationArgs = {
   where?: Record<string, unknown>;
@@ -141,20 +151,27 @@ export async function executeWithAudit<TArgs, TResult>(params: {
   const result = await query(args);
   const context = requestContext.getStore();
 
-  if (!context || !mutationArgs.data) {
+  if (!context?.tenantId || !mutationArgs.data) {
     return result;
   }
 
-  await auditLogService.log({
-    tenantId: context.tenantId,
-    userId: context.userId,
-    action: operation.toUpperCase(),
-    entity: model,
-    entityId: getEntityId(result),
-    oldValues,
-    newValues: mutationArgs.data,
-    changedFields: getChangedFields(oldValues, mutationArgs.data),
-  });
+  await auditLogService.log(
+    {
+      tenantId: context.tenantId,
+      userId: context.userId,
+      action:
+        operation === 'delete' || operation === 'deleteMany'
+          ? 'VOID'
+          : operation.toUpperCase(),
+      entity: model,
+      entityId: getEntityId(result),
+      oldValues,
+      newValues: mutationArgs.data,
+      changedFields: getChangedFields(oldValues, mutationArgs.data),
+      correlationId: context.correlationId,
+    },
+    prisma,
+  );
 
   return result;
 }

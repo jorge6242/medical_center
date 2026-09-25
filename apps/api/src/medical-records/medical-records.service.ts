@@ -11,12 +11,13 @@ import {
   toMedicalRecordResponse,
   toPatientMedicalRecordResponse,
 } from './medical-records.mapper';
+import { type AuditLogService } from '../audit-log/audit-log.service';
 import {
   createPaginatedResponse,
   type PaginatedResponseDto,
 } from '../common/dto/paginated-response.dto';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
-import { PrismaService } from '../database/prisma.service';
+import { type PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { type PrismaService } from '../database/prisma.service';
 
 import type { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
 import type { GenerateMedicalRecordExportDto } from './dto/generate-medical-record-export.dto';
@@ -26,7 +27,10 @@ import type { JwtPayload } from '../common/decorators/current-user.decorator';
 
 @Injectable()
 export class MedicalRecordsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog?: AuditLogService,
+  ) {}
 
   async create(tenantId: string, userId: string, dto: CreateMedicalRecordDto) {
     if (!isMedicalRecordClinicalData(dto.clinicalData)) {
@@ -148,6 +152,29 @@ export class MedicalRecordsService {
       },
     });
 
+    await this.auditLog?.log(
+      {
+        action: 'CREATE',
+        entity: 'Consultation',
+        entityId: consultation.id,
+        newValues: { medicalRecordId: record.id, status: record.status },
+        changedFields: ['medicalRecordId', 'status'],
+      },
+      this.prisma,
+    );
+    await this.auditLog?.log(
+      {
+        action: 'CREATE',
+        entity: 'MedicalRecord',
+        entityId: record.id,
+        newValues: {
+          consultationId: record.consultationId,
+          status: record.status,
+        },
+        changedFields: ['consultationId', 'status'],
+      },
+      this.prisma,
+    );
     return toMedicalRecordResponse(record as never);
   }
 
@@ -160,7 +187,7 @@ export class MedicalRecordsService {
 
     const where: Prisma.ConsultationWhereInput = {
       tenantId: user.tenantId,
-      status: 'PAID',
+      status: { in: ['SCHEDULED', 'PAID'] },
       ...(user.role === 'doctor' && user.doctorId
         ? { doctorId: user.doctorId }
         : {}),
@@ -220,6 +247,7 @@ export class MedicalRecordsService {
         select: {
           id: true,
           date: true,
+          status: true,
           patientId: true,
           doctorId: true,
           patient: {
@@ -230,7 +258,11 @@ export class MedicalRecordsService {
             },
           },
           doctor: {
-            select: { name: true },
+            select: {
+              name: true,
+              documentType: true,
+              documentId: true,
+            },
           },
           services: {
             select: {
@@ -250,19 +282,21 @@ export class MedicalRecordsService {
       consultations.map((consultation) => ({
         id: consultation.id,
         date: consultation.date,
-        status: 'PAID',
+        status: consultation.status as 'SCHEDULED' | 'PAID',
         patientId: consultation.patientId,
         patientName: consultation.patient.name,
         patientDocument: `${consultation.patient.documentType}-${consultation.patient.documentId}`,
         doctorId: consultation.doctorId,
         doctorName: consultation.doctor.name,
+        doctorDocument: `${consultation.doctor.documentType}-${consultation.doctor.documentId}`,
         services: consultation.services.map((service) => ({
           serviceName: service.serviceName,
           specialtyName: service.specialtyName,
           priceUsd: service.priceUsd.toString(),
         })),
         medicalRecordId: consultation.medicalRecord?.id ?? null,
-        canCreateMedicalRecord: !consultation.medicalRecord,
+        canCreateMedicalRecord:
+          consultation.status === 'PAID' && !consultation.medicalRecord,
       })),
       total,
       page,

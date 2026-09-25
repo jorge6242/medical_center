@@ -19,9 +19,13 @@ const SHOW_TECHNICAL_DATA = false;
 
 interface MedicalRecordDetailPanelProps {
   medicalRecordId: string;
+  showActions?: boolean;
 }
 
-export function MedicalRecordDetailPanel({ medicalRecordId }: MedicalRecordDetailPanelProps) {
+export function MedicalRecordDetailPanel({
+  medicalRecordId,
+  showActions = true,
+}: MedicalRecordDetailPanelProps) {
   const { data, isLoading } = useMedicalRecord(medicalRecordId);
   const [exportError, setExportError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -38,21 +42,23 @@ export function MedicalRecordDetailPanel({ medicalRecordId }: MedicalRecordDetai
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end print:hidden">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => void handleDownloadPdf(data, setExportError, setIsExporting)}
-          className="mr-2"
-          isLoading={isExporting}
-        >
-          Descargar PDF
-        </Button>
-        <Button type="button" variant="outline" onClick={handlePrint}>
-          <Printer className="mr-2 h-4 w-4" />
-          Imprimir
-        </Button>
-      </div>
+      {showActions ? (
+        <div className="flex justify-end print:hidden">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void handleDownloadPdf(data, setExportError, setIsExporting)}
+            className="mr-2"
+            isLoading={isExporting}
+          >
+            Descargar PDF
+          </Button>
+          <Button type="button" variant="outline" onClick={handlePrint}>
+            <Printer className="mr-2 h-4 w-4" />
+            Imprimir
+          </Button>
+        </div>
+      ) : null}
 
       {exportError && (
         <Card className="border-error bg-error-container p-3 text-sm text-on-error-container print:hidden">
@@ -64,7 +70,9 @@ export function MedicalRecordDetailPanel({ medicalRecordId }: MedicalRecordDetai
         <h1 className="text-2xl font-bold text-on-surface">Informe médico</h1>
         <p className="text-sm text-on-surface-variant">Consulta: {data.consultationId}</p>
         <p className="text-sm text-on-surface-variant">Especialidad: {data.specialtyName}</p>
-        <p className="text-sm text-on-surface-variant">Plantilla: {data.templateType} (v{data.templateVersion})</p>
+        <p className="text-sm text-on-surface-variant">
+          Plantilla: {data.templateType} (v{data.templateVersion})
+        </p>
         <p className="text-sm text-on-surface-variant">Estado: {data.status}</p>
         <p className="text-sm text-on-surface-variant">Fecha: {formatDate(data.recordedAt)}</p>
       </Card>
@@ -83,7 +91,9 @@ export function MedicalRecordDetailPanel({ medicalRecordId }: MedicalRecordDetai
 
       {SHOW_TECHNICAL_DATA && (
         <details className="rounded-lg border border-outline p-4 print:hidden">
-          <summary className="cursor-pointer text-sm font-medium text-on-surface-variant">Ver datos técnicos</summary>
+          <summary className="cursor-pointer text-sm font-medium text-on-surface-variant">
+            Ver datos técnicos
+          </summary>
           <pre className="mt-3 overflow-auto rounded-lg bg-surface-container-high p-3 text-sm">
             {JSON.stringify(data.clinicalData, null, 2)}
           </pre>
@@ -98,7 +108,9 @@ function FieldValue({ field, value }: { field: MedicalRecordField; value: unknow
 
   return (
     <div className="rounded-lg border border-outline p-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">{field.label}</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-on-surface-variant">
+        {field.label}
+      </p>
       <p className="mt-1 whitespace-pre-wrap text-sm text-on-surface">{displayValue}</p>
     </div>
   );

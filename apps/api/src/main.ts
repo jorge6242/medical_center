@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
@@ -5,13 +7,34 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 
 import { AppModule } from './app.module';
+import { RequestContextService } from './common/context';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+
+import type { NextFunction, Request, Response } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.use(helmet());
   app.use(cookieParser());
+  const requestContext = app.get(RequestContextService);
+  app.use((req: Request, _res: Response, next: NextFunction) => {
+    const header = req.headers['x-correlation-id'];
+    const correlationId = (
+      typeof header === 'string' ? header : randomUUID()
+    ).slice(0, 128);
+    requestContext.run(
+      {
+        correlationId,
+        requestId: correlationId,
+        method: req.method,
+        route: req.path,
+        ip: req.ip,
+        userAgent: req.get('user-agent')?.slice(0, 256),
+      },
+      next,
+    );
+  });
 
   app.enableCors({
     origin: process.env['FRONTEND_URL'] ?? 'http://localhost:3000',

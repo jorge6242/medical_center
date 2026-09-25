@@ -27,7 +27,7 @@ export interface CreateDoctorDto {
   bankAccounts?: Array<{
     bankName: string;
     accountType: string;
-    accountNumber: string;
+    accountNumber?: string;
     documentId: string;
     phone?: string;
     isDefault: boolean;

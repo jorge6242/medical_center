@@ -1,32 +1,49 @@
 import { Injectable } from '@nestjs/common';
 
-import { PrismaService } from '../database/prisma.service';
+import { type PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class CatalogService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findServices(tenantId: string) {
-    const specialties = await this.prisma.specialty.findMany({
-      where: { tenantId, isActive: true },
-      include: {
-        services: {
-          where: { isActive: true },
-          include: { service: true },
-        },
+    const doctorServices = await this.prisma.doctorService.findMany({
+      where: {
+        tenantId,
+        doctor: { isActive: true },
+        specialty: { isActive: true },
+        service: { isActive: true },
       },
-      orderBy: { name: 'asc' },
+      include: { service: true, specialty: true },
+      distinct: ['specialtyId', 'serviceId'],
+      orderBy: [{ specialty: { name: 'asc' } }, { service: { name: 'asc' } }],
     });
-
-    return specialties.map((s) => ({
-      specialtyId: s.id,
-      specialtyName: s.name,
-      services: s.services.map((sp) => ({
-        serviceId: sp.serviceId,
-        serviceName: sp.service.name,
-        priceUsd: sp.priceUsd.toString(),
-      })),
-    }));
+    const grouped = new Map<
+      string,
+      {
+        specialtyId: string;
+        specialtyName: string;
+        services: Array<{
+          serviceId: string;
+          serviceName: string;
+          priceUsd: string;
+        }>;
+      }
+    >();
+    for (const item of doctorServices) {
+      const group = grouped.get(item.specialtyId) ?? {
+        specialtyId: item.specialtyId,
+        specialtyName: item.specialty.name,
+        services: [],
+      };
+      group.services.push({
+        serviceId: item.serviceId,
+        serviceName: item.service.name,
+        priceUsd: item.priceUsd.toString(),
+      });
+      grouped.set(item.specialtyId, group);
+    }
+    return [...grouped.values()];
   }
 
   async findLaboratoryTests(tenantId: string) {

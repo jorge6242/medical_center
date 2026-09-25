@@ -12,9 +12,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { CreatePatientDto } from './dto/create-patient.dto';
-import { UpdatePatientDto } from './dto/update-patient.dto';
-import { PatientsService } from './patients.service';
+import { type CreatePatientDto } from './dto/create-patient.dto';
+import { type UpdatePatientDto } from './dto/update-patient.dto';
+import { type PatientsService } from './patients.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
@@ -22,8 +22,8 @@ import {
   type JwtPayload,
 } from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
-import { LookupQueryDto } from '../common/dto/lookup-query.dto';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { type LookupQueryDto } from '../common/dto/lookup-query.dto';
+import { type PaginationQueryDto } from '../common/dto/pagination-query.dto';
 
 import type { PatientConsultationResponseDto } from './dto/patient-consultation-response.dto';
 import type { PatientResponseDto } from './dto/patient-response.dto';
@@ -98,5 +98,23 @@ export class PatientsController {
     @Param('id') id: string,
   ): Promise<PatientResponseDto> {
     return this.patientsService.deactivate(user.tenantId, id);
+  }
+
+  @Post(':id/deactivate')
+  @RequirePermission('patients', 'delete')
+  deactivateWithExplicitRoute(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ): Promise<PatientResponseDto> {
+    return this.patientsService.deactivate(user.tenantId, id);
+  }
+
+  @Delete(':id/permanent')
+  @RequirePermission('patients', 'delete')
+  permanentlyDelete(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ): Promise<{ id: string }> {
+    return this.patientsService.permanentlyDelete(user.tenantId, id);
   }
 }

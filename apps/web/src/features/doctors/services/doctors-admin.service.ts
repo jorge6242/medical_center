@@ -4,7 +4,7 @@ export interface DoctorBankAccountResponse {
   id: string;
   bankName: string;
   accountType: string;
-  accountNumber: string;
+  accountNumber: string | null;
   documentId: string;
   phone: string | null;
   isDefault: boolean;
@@ -14,6 +14,15 @@ export interface DoctorSpecialtyResponse {
   specialtyId: string;
   specialtyName: string;
   isPrimary: boolean;
+}
+
+export interface DoctorServiceResponse {
+  id: string;
+  specialtyId: string;
+  specialtyName: string;
+  serviceId: string;
+  serviceName: string;
+  priceUsd: string;
 }
 
 export interface DoctorAdminResponse {
@@ -26,6 +35,7 @@ export interface DoctorAdminResponse {
   splitPercentage: string;
   isActive: boolean;
   specialties: DoctorSpecialtyResponse[];
+  services: DoctorServiceResponse[];
   bankAccounts: DoctorBankAccountResponse[];
   medicalLicenseNumber: string | null;
   verificationStatus: string;
@@ -41,10 +51,11 @@ export interface CreateDoctorDto {
   phone?: string;
   splitPercentage: number;
   specialtyIds: string[];
+  services: Array<{ specialtyId: string; serviceName: string; priceUsd: number }>;
   bankAccount: {
     bankName: string;
     accountType: string;
-    accountNumber: string;
+    accountNumber?: string;
     documentId: string;
     phone?: string;
   };
@@ -52,11 +63,22 @@ export interface CreateDoctorDto {
 }
 
 export interface UpdateDoctorDto {
+  documentType?: string;
+  documentId?: string;
   name?: string;
-  email?: string;
-  phone?: string;
+  email?: string | null;
+  phone?: string | null;
   splitPercentage?: number;
-  medicalLicenseNumber?: string;
+  specialtyIds?: string[];
+  medicalLicenseNumber?: string | null;
+  services?: Array<{ specialtyId: string; serviceName: string; priceUsd: number }>;
+  bankAccount?: {
+    bankName?: string;
+    accountType?: string;
+    accountNumber?: string | null;
+    documentId?: string;
+    phone?: string | null;
+  };
 }
 
 export interface PaginatedResponse<T> {
@@ -77,7 +99,9 @@ export interface GetDoctorsQuery {
   search?: string;
 }
 
-export const getDoctorsAdmin = (query?: GetDoctorsQuery): Promise<PaginatedResponse<DoctorAdminResponse>> => {
+export const getDoctorsAdmin = (
+  query?: GetDoctorsQuery,
+): Promise<PaginatedResponse<DoctorAdminResponse>> => {
   const params = new URLSearchParams();
   if (query?.page) params.append('page', String(query.page));
   if (query?.limit) params.append('limit', String(query.limit));
@@ -86,13 +110,13 @@ export const getDoctorsAdmin = (query?: GetDoctorsQuery): Promise<PaginatedRespo
   return apiJson(`/doctors${qs ? `?${qs}` : ''}`);
 };
 
+export const getDoctorAdmin = (id: string): Promise<DoctorAdminResponse> =>
+  apiJson(`/doctors/${id}`);
+
 export const createDoctor = (dto: CreateDoctorDto): Promise<DoctorAdminResponse> =>
   apiJson('/doctors', { method: 'POST', body: JSON.stringify(dto) });
 
-export const updateDoctor = (
-  id: string,
-  dto: UpdateDoctorDto,
-): Promise<DoctorAdminResponse> =>
+export const updateDoctor = (id: string, dto: UpdateDoctorDto): Promise<DoctorAdminResponse> =>
   apiJson(`/doctors/${id}`, { method: 'PATCH', body: JSON.stringify(dto) });
 
 export const deactivateDoctor = (id: string): Promise<DoctorAdminResponse> =>
@@ -108,14 +132,13 @@ export interface VerifyDocumentDto {
 
 export interface SacsVerificationResult {
   found: boolean;
+  verificationStatus: 'VERIFIED' | 'REJECTED' | 'NOT_FOUND';
   doctorName?: string;
   specialty?: string;
   licenseNumber?: string;
 }
 
-export const verifyDocument = (
-  dto: VerifyDocumentDto,
-): Promise<SacsVerificationResult> =>
+export const verifyDocument = (dto: VerifyDocumentDto): Promise<SacsVerificationResult> =>
   apiJson('/doctors/verify-document', {
     method: 'POST',
     body: JSON.stringify({
@@ -133,5 +156,7 @@ export interface OnboardingStatusResponse {
 export const getDoctorOnboardingStatus = (id: string): Promise<OnboardingStatusResponse> =>
   apiJson(`/doctors/${id}/onboarding-status`);
 
-export const sendDoctorOnboarding = (id: string): Promise<{ message: string; tokenId: string; sentAt: string }> =>
+export const sendDoctorOnboarding = (
+  id: string,
+): Promise<{ message: string; tokenId: string; sentAt: string }> =>
   apiJson(`/doctors/${id}/send-onboarding`, { method: 'POST' });

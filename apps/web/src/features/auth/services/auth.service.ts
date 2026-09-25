@@ -3,7 +3,12 @@ import { apiJson } from '@/config/api';
 export interface LoginDto {
   email: string;
   password: string;
-  tenantSlug: string;
+  contextToken: string;
+}
+
+export interface TenantAccessContext {
+  contextToken: string;
+  tenant: { name: string; slug: string; logoUrl: string | null };
 }
 
 export interface LoginResponse {
@@ -21,5 +26,10 @@ export const login = (dto: LoginDto): Promise<LoginResponse> =>
     body: JSON.stringify(dto),
   });
 
-export const logout = (): Promise<void> =>
-  apiJson('/auth/logout', { method: 'POST' });
+export const resolveAccessContext = (accessToken: string): Promise<TenantAccessContext> =>
+  apiJson('/auth/access-context', {
+    method: 'POST',
+    body: JSON.stringify({ accessToken }),
+  });
+
+export const logout = (): Promise<void> => apiJson('/auth/logout', { method: 'POST' });

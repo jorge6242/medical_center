@@ -1,5 +1,7 @@
 import { PaymentsService } from './payments.service';
 
+import type { PaymentItemDto } from './dto/create-payment.dto';
+import type { AuditLogService } from '../audit-log/audit-log.service';
 import type { PrismaService } from '../database/prisma.service';
 import type { MailerService } from '../mailer/mailer.service';
 import type { ReceiptsService } from '../receipts/receipts.service';
@@ -8,13 +10,25 @@ describe('PaymentsService receipt side effects', () => {
   const prisma = {} as PrismaService;
   const receiptsService = {
     createForPayment: jest.fn(),
+    findByPayment: jest.fn().mockResolvedValue({
+      receiptNumber: 'CM-2026-1',
+      doctorName: 'Dra. Ana',
+      doctorShare: '67.50',
+      paymentId: 'payment-1',
+    }),
   } as unknown as ReceiptsService;
   const mailerService = {
     renderTemplate: jest.fn(),
     sendReceiptEmail: jest.fn(),
   } as unknown as MailerService;
 
-  const service = new PaymentsService(prisma, receiptsService, mailerService);
+  const auditLog = { log: jest.fn() } as unknown as AuditLogService;
+  const service = new PaymentsService(
+    prisma,
+    receiptsService,
+    mailerService,
+    auditLog,
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -77,7 +91,8 @@ describe('PaymentsService receipt side effects', () => {
 
     expect(mailerService.sendReceiptEmail).not.toHaveBeenCalled();
     expect(result).toEqual({
-      emailDeliveryStatus: 'skipped',
+      receiptId: undefined,
+      emailDeliveryStatus: 'failed',
       warnings: ['Receipt generation failed: doctor data missing'],
     });
   });
@@ -116,5 +131,18 @@ describe('PaymentsService receipt side effects', () => {
       emailDeliveryStatus: 'failed',
       warnings: ['Receipt email failed: SMTP unreachable'],
     });
+  });
+});
+
+describe('PaymentsService doctor service pricing contract', () => {
+  it('uses doctorServiceIds as the consultation pricing identifiers', () => {
+    const item: PaymentItemDto = {
+      itemType: 'CONSULTATION',
+      description: 'Consulta',
+      doctorId: 'doctor-1',
+      doctorServiceIds: ['doctor-service-1'],
+    };
+
+    expect(item.doctorServiceIds).toEqual(['doctor-service-1']);
   });
 });

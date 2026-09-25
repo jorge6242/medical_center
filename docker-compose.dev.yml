@@ -33,11 +33,6 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/centro_medico?schema=public
       - API_INTERNAL_SECRET=dev_internal_secret_minimo_32_caracteres
-      - MAIL_HOST=${MAIL_HOST:-smtp.ethereal.email}
-      - MAIL_PORT=${MAIL_PORT:-587}
-      - MAIL_USER=${MAIL_USER:-}
-      - MAIL_PASS=${MAIL_PASS:-}
-      - MAIL_FROM=${MAIL_FROM:-noreply@centromedico.local}
     ports:
       - "3001:3001"
     volumes:
@@ -46,6 +41,7 @@ services:
       - ./package.json:/app/package.json
       - ./tsconfig.base.json:/app/tsconfig.base.json
       - ./apps/api/package.json:/app/apps/api/package.json
+      - ./apps/web/package.json:/app/apps/web/package.json
       # Hot reload: mount source only — node_modules stays in container
       - ./apps/api/src:/app/apps/api/src
       - ./apps/api/test:/app/apps/api/test
@@ -55,6 +51,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    command: >-
+      sh -c "cd /app/apps/api && npx prisma generate --config prisma/prisma.config.ts
+      && pnpm run start:dev"
     networks:
       - backend-net
       - frontend-net

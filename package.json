@@ -10,23 +10,9 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,json,md,css}\"",
     "typecheck": "pnpm -r run typecheck",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check",
+    "release": "bash ./scripts/release.sh",
+    "release:dry-run": "bash ./scripts/release.sh --dry-run",
     "prepare": "husky"
-  },
-  "lint-staged": {
-    "apps/api/**/*.ts": [
-      "eslint --fix --max-warnings 0",
-      "prettier --write"
-    ],
-    "apps/web/**/*.{ts,tsx}": [
-      "eslint --fix --max-warnings 0",
-      "prettier --write"
-    ],
-    "packages/shared/**/*.ts": [
-      "prettier --write"
-    ],
-    "*.{json,md,css}": [
-      "prettier --write"
-    ]
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -44,6 +30,7 @@
     "@commitlint/config-conventional": "^19.0.0",
     "husky": "^9.0.0",
     "lint-staged": "^15.0.0",
+    "eslint": "^9.39.4",
     "prettier": "^3.0.0"
   }
 }

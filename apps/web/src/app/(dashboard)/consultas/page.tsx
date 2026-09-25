@@ -32,7 +32,7 @@ export default function ConsultasPage() {
       <div>
         <h1 className="text-2xl font-bold text-on-surface">Consultas</h1>
         <p className="text-sm text-on-surface-variant">
-          Consultas pagadas para crear o revisar informes médicos.
+          Reporte de consultas agendadas y pagadas, con paciente, profesional y total de servicios.
         </p>
       </div>
 
@@ -80,9 +80,7 @@ export default function ConsultasPage() {
             onSuccess={() => setSelectedConsultation(null)}
             doctorName={selectedConsultation.doctorName}
             patientName={selectedConsultation.patientName}
-            specialties={[
-              ...new Set(selectedConsultation.services.map((s) => s.specialtyName)),
-            ]}
+            specialties={[...new Set(selectedConsultation.services.map((s) => s.specialtyName))]}
           />
         ) : null}
       </Modal>

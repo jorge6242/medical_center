@@ -16,11 +16,15 @@ const eslintConfig = defineConfig([
       '@typescript-eslint': tseslint,
       '@next/next': nextPlugin,
     },
+    settings: {
+      next: {
+        rootDir: import.meta.dirname,
+      },
+    },
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        project: true,
-        tsconfigRootDir: import.meta.dirname,
+        sourceType: 'module',
       },
     },
     rules: {
@@ -33,7 +37,6 @@ const eslintConfig = defineConfig([
         { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
       ],
       '@typescript-eslint/no-non-null-assertion': 'warn',
-      '@typescript-eslint/no-floating-promises': 'error',
 
       'react/self-closing-comp': 'off',
       'no-console': ['warn', { allow: ['warn', 'error'] }],

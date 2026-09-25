@@ -1,0 +1,1 @@
+ALTER TYPE "ConsultationStatus" ADD VALUE IF NOT EXISTS 'SCHEDULED';

@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { PrismaService } from '../database/prisma.service';
+import { type PrismaService } from '../database/prisma.service';
 
 import type {
   CreateLabTestCatalogDto,
@@ -63,21 +63,23 @@ export class LabsService {
         );
     }
 
-    return this.prisma.labTestCatalog.update({
-      where: { id },
+    await this.prisma.labTestCatalog.updateMany({
+      where: { id, tenantId },
       data: {
         ...(dto.name && { name: dto.name }),
         ...(dto.priceUsd !== undefined && { priceUsd: dto.priceUsd }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       },
     });
+    return this.findOne(tenantId, id);
   }
 
   async remove(tenantId: string, id: string) {
     await this.findOne(tenantId, id);
-    return this.prisma.labTestCatalog.update({
-      where: { id },
+    await this.prisma.labTestCatalog.updateMany({
+      where: { id, tenantId },
       data: { isActive: false },
     });
+    return this.findOne(tenantId, id);
   }
 }

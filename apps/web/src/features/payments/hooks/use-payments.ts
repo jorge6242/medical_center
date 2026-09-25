@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { getDoctors, getDoctorServicePrices } from '../services/doctors.service';
+import { getDoctors, getDoctorServices } from '../services/doctors.service';
 import {
   createPayment,
   createPaymentAdjustment,
@@ -27,12 +27,12 @@ export function useDoctors() {
   return useQuery({ queryKey: ['doctors'], queryFn: getDoctors });
 }
 
-export function useDoctorServicePrices(doctorId: string | null) {
+export function useDoctorServices(doctorId: string | null) {
   return useQuery({
     queryKey: ['doctor-service-prices', doctorId],
     queryFn: () => {
       if (!doctorId) throw new Error('doctorId required');
-      return getDoctorServicePrices(doctorId);
+      return getDoctorServices(doctorId);
     },
     enabled: !!doctorId,
   });
@@ -44,6 +44,7 @@ export function useCreatePayment(onSuccess?: () => void) {
     mutationFn: createPayment,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['payments'] });
+      void queryClient.invalidateQueries({ queryKey: ['consultations'] });
       onSuccess?.();
     },
   });

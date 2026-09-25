@@ -1,12 +1,14 @@
+import { randomUUID } from 'node:crypto';
+
 import {
-  ExecutionContext,
+  type ExecutionContext,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
+import { type Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 
-import { RequestContextService } from '../../common/context';
+import { type RequestContextService } from '../../common/context';
 import { INTERNAL_REQUEST_KEY } from '../../common/decorators/internal-request.decorator';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator';
 
@@ -46,6 +48,10 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     this.requestContext.enterWith({
       userId: user.sub,
       tenantId: user.tenantId,
+      email: user.email,
+      role: user.role,
+      correlationId:
+        this.requestContext.getStore?.()?.correlationId ?? randomUUID(),
     });
     return user;
   }

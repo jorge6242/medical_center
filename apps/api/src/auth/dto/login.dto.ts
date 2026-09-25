@@ -9,5 +9,6 @@ export class LoginDto {
   declare password: string;
 
   @IsString()
-  declare tenantSlug: string;
+  @MinLength(32)
+  declare contextToken: string;
 }

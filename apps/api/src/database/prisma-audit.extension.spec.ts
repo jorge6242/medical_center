@@ -67,13 +67,14 @@ describe('executeWithAudit', () => {
 
   it('logs audited update with changed fields and request context', async () => {
     const auditLog = buildAuditLog();
+    const prisma = buildPrisma({
+      id: 'patient-1',
+      name: 'Ana',
+      phone: '04140000000',
+    });
 
     await executeWithAudit({
-      prisma: buildPrisma({
-        id: 'patient-1',
-        name: 'Ana',
-        phone: '04140000000',
-      }),
+      prisma,
       requestContext: buildRequestContext({
         userId: 'user-1',
         tenantId: 'tenant-1',
@@ -90,23 +91,28 @@ describe('executeWithAudit', () => {
         .mockResolvedValue({ id: 'patient-1', name: 'Ana María' }),
     });
 
-    expect(auditLog.log).toHaveBeenCalledWith({
-      tenantId: 'tenant-1',
-      userId: 'user-1',
-      action: 'UPDATE',
-      entity: 'Patient',
-      entityId: 'patient-1',
-      oldValues: { id: 'patient-1', name: 'Ana', phone: '04140000000' },
-      newValues: { name: 'Ana María', phone: '04140000000' },
-      changedFields: ['name'],
-    });
+    expect(auditLog.log).toHaveBeenCalledWith(
+      {
+        tenantId: 'tenant-1',
+        userId: 'user-1',
+        action: 'UPDATE',
+        entity: 'Patient',
+        entityId: 'patient-1',
+        oldValues: { id: 'patient-1', name: 'Ana', phone: '04140000000' },
+        newValues: { name: 'Ana María', phone: '04140000000' },
+        changedFields: ['name'],
+        correlationId: undefined,
+      },
+      prisma,
+    );
   });
 
   it('logs Service mutations with the acting request tenant', async () => {
     const auditLog = buildAuditLog();
+    const prisma = buildPrisma();
 
     await executeWithAudit({
-      prisma: buildPrisma(),
+      prisma,
       requestContext: buildRequestContext({
         userId: 'user-1',
         tenantId: 'tenant-1',
@@ -125,6 +131,48 @@ describe('executeWithAudit', () => {
         entity: 'Service',
         entityId: 'service-1',
       }),
+      prisma,
+    );
+  });
+
+  it('covers tenant-scoped role and permission baseline mutations', async () => {
+    const auditLog = buildAuditLog();
+    const prisma = buildPrisma();
+
+    await executeWithAudit({
+      prisma,
+      requestContext: buildRequestContext({
+        userId: 'user-1',
+        tenantId: 'tenant-1',
+      }) as unknown as RequestContextService,
+      auditLogService: auditLog as unknown as AuditLogService,
+      model: 'Role',
+      operation: 'create',
+      args: { data: { name: 'auditor' } },
+      query: jest.fn().mockResolvedValue({ id: 'role-1', name: 'auditor' }),
+    });
+
+    expect(auditLog.log).toHaveBeenCalledWith(
+      expect.objectContaining({ entity: 'Role', tenantId: 'tenant-1' }),
+      prisma,
+    );
+
+    await executeWithAudit({
+      prisma,
+      requestContext: buildRequestContext({
+        userId: 'user-1',
+        tenantId: 'tenant-1',
+      }) as unknown as RequestContextService,
+      auditLogService: auditLog as unknown as AuditLogService,
+      model: 'User',
+      operation: 'update',
+      args: { where: { id: 'user-2' }, data: { isActive: false } },
+      query: jest.fn().mockResolvedValue({ id: 'user-2', isActive: false }),
+    });
+
+    expect(auditLog.log).toHaveBeenCalledWith(
+      expect.objectContaining({ entity: 'User', tenantId: 'tenant-1' }),
+      prisma,
     );
   });
 });

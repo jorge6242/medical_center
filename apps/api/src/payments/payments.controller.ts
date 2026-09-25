@@ -10,10 +10,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { CreatePaymentAdjustmentDto } from './dto/create-payment-adjustment.dto';
-import { CreatePaymentDto } from './dto/create-payment.dto';
-import { PaymentQueryDto } from './dto/payment-query.dto';
-import { PaymentsService } from './payments.service';
+import { type CreatePaymentAdjustmentDto } from './dto/create-payment-adjustment.dto';
+import { type CreatePaymentDto } from './dto/create-payment.dto';
+import { type PaymentQueryDto } from './dto/payment-query.dto';
+import { type PaymentsService } from './payments.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
@@ -64,7 +64,7 @@ export class PaymentsController {
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
   ): Promise<PaymentResponseDto> {
-    return this.paymentsService.voidPayment(user.tenantId, id);
+    return this.paymentsService.voidPayment(user.tenantId, user.sub, id);
   }
 
   @Post(':id/adjustments')
@@ -75,6 +75,6 @@ export class PaymentsController {
     @Param('id') id: string,
     @Body() dto: CreatePaymentAdjustmentDto,
   ): Promise<PaymentResponseDto> {
-    return this.paymentsService.addAdjustment(user.tenantId, id, dto);
+    return this.paymentsService.addAdjustment(user.tenantId, user.sub, id, dto);
   }
 }
