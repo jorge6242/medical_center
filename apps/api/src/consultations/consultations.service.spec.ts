@@ -20,6 +20,7 @@ const PATIENT_ID = 'patient-1';
 const DOCTOR_ID = 'doctor-1';
 const DS_ID_1 = 'ds-1';
 const CONSULTATION_ID = 'consultation-1';
+const CENTER_NAME = 'Centro Médico Virgen del Rosario';
 
 const activePatient = {
   id: PATIENT_ID,
@@ -101,6 +102,9 @@ function buildPrisma(overrides: Record<string, unknown> = {}): PrismaService {
     systemConfig: {
       findFirst: jest.fn().mockResolvedValue(null),
     },
+    tenant: {
+      findUnique: jest.fn().mockResolvedValue({ name: CENTER_NAME }),
+    },
     $transaction: jest
       .fn()
       .mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) =>
@@ -177,6 +181,7 @@ describe('ConsultationsService.createScheduled', () => {
       1,
       'appointmentDoctorEmail',
       expect.objectContaining({
+        centerName: CENTER_NAME,
         doctorName: 'Dr. García',
         patientName: 'Ana Pérez',
         scheduledDate: '1/10/2026',
@@ -187,6 +192,7 @@ describe('ConsultationsService.createScheduled', () => {
       2,
       'appointmentPatientEmail',
       expect.objectContaining({
+        centerName: CENTER_NAME,
         doctorName: 'Dr. García',
         patientName: 'Ana Pérez',
         scheduledDate: '1/10/2026',

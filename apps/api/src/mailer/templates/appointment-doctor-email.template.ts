@@ -24,7 +24,7 @@ export const appointmentDoctorEmailTemplate: TemplateDefinition<AppointmentDocto
     version: 1,
     category: 'notification',
     audience: 'doctor',
-    subject: 'Nueva cita agendada — {{scheduledDate}} {{scheduledTime}}',
+    subject: '{{centerName}} — Nueva cita agendada',
     render: (context) =>
       renderTemplateString(appointmentDoctorEmailTemplateHtml, context),
   };

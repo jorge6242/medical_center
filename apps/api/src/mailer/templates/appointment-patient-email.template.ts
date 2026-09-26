@@ -25,7 +25,7 @@ export const appointmentPatientEmailTemplate: TemplateDefinition<AppointmentPati
     version: 1,
     category: 'notification',
     audience: 'patient',
-    subject: 'Cita médica agendada — {{scheduledDate}} {{scheduledTime}}',
+    subject: '{{centerName}} — Cita médica agendada',
     render: (context) =>
       renderTemplateString(appointmentPatientEmailTemplateHtml, context),
   };

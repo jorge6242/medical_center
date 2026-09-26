@@ -159,6 +159,7 @@ export class ConsultationsService {
 
     if (dto.sendEmailNotification) {
       await this.notifyScheduledConsultation(
+        tenantId,
         consultation.id,
         doctor,
         patient,
@@ -184,14 +185,19 @@ export class ConsultationsService {
   }
 
   private async notifyScheduledConsultation(
+    tenantId: string,
     consultationId: string,
     doctor: Pick<Doctor, 'name' | 'email'>,
     patient: Pick<Patient, 'name' | 'email'>,
     date: Date,
     services: string[],
   ): Promise<void> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true },
+    });
     const context = {
-      centerName: 'Centro Médico',
+      centerName: tenant?.name ?? 'Centro Médico',
       doctorName: doctor.name,
       patientName: patient.name,
       scheduledDate: date.toLocaleDateString('es-VE', {
@@ -269,6 +275,7 @@ export class ConsultationsService {
     }
 
     await this.notifyScheduledConsultation(
+      tenantId,
       consultation.id,
       consultation.doctor,
       consultation.patient,
