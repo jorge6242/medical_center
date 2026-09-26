@@ -6,10 +6,10 @@ import {
 } from '@nestjs/common';
 
 import {
-  type SacsVerificationService,
+  SacsVerificationService,
   type SacsQueryResult,
 } from './sacs-verification.service';
-import { type AuditLogService } from '../audit-log/audit-log.service';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { type LookupQueryDto } from '../common/dto/lookup-query.dto';
 import {
   EntityLookupItemDto,
@@ -24,7 +24,7 @@ import {
   decodeNameCursor,
   encodeNameCursor,
 } from '../common/utils/cursor-pagination.utils';
-import { type PrismaService } from '../database/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 
 import type {
   CreateDoctorDto,

@@ -1,6 +1,6 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 
-import { type RolesService } from './roles.service';
+import { RolesService } from './roles.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {

@@ -5,8 +5,8 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 
-import { type AuditLogService } from '../audit-log/audit-log.service';
-import { type PrismaService } from '../database/prisma.service';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { PrismaService } from '../database/prisma.service';
 import { MANAGED_USER_ROLE_NAMES } from '../roles/managed-roles';
 
 import type { CreateUserDto } from './dto/create-user.dto';

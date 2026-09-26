@@ -3,8 +3,8 @@ import * as zlib from 'node:zlib';
 
 import { Injectable, Logger } from '@nestjs/common';
 
-import { type AuditLogService } from '../audit-log/audit-log.service';
-import { type PrismaService } from '../database/prisma.service';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { PrismaService } from '../database/prisma.service';
 
 export interface SacsQueryResult {
   found: boolean;

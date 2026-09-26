@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
-import { type PrismaService } from '../database/prisma.service';
-import { type ExchangeRatesService } from '../exchange-rates/exchange-rates.service';
+import { PrismaService } from '../database/prisma.service';
+import { ExchangeRatesService } from '../exchange-rates/exchange-rates.service';
 
 @Injectable()
 export class AppConfigService {

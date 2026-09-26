@@ -13,11 +13,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { type DoctorsService } from './doctors.service';
+import { DoctorsService } from './doctors.service';
 import { type CreateDoctorDto } from './dto/create-doctor.dto';
 import { type UpdateDoctorDto } from './dto/update-doctor.dto';
 import { type VerifyDocumentDto } from './dto/verify-document.dto';
-import { type OnboardingService } from './onboarding.service';
+import { OnboardingService } from './onboarding.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {

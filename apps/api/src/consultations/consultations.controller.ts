@@ -12,7 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { type ConsultationsService } from './consultations.service';
+import { ConsultationsService } from './consultations.service';
 import { type ConsultationQueryDto } from './dto/consultation-query.dto';
 import { type CreateScheduledConsultationDto } from './dto/create-scheduled-consultation.dto';
 import { type UpdateScheduledConsultationDto } from './dto/update-scheduled-consultation.dto';

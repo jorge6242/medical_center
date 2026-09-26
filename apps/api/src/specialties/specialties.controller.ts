@@ -14,7 +14,7 @@ import {
 
 import { type CreateSpecialtyDto } from './dto/create-specialty.dto';
 import { type UpdateSpecialtyDto } from './dto/update-specialty.dto';
-import { type SpecialtiesService } from './specialties.service';
+import { SpecialtiesService } from './specialties.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {

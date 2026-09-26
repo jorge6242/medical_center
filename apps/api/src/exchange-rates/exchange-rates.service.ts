@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { type PrismaService } from '../database/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 
 import type { CreateExchangeRateDto } from './dto/create-exchange-rate.dto';
 import type { ExchangeRateResponseDto } from './dto/exchange-rate-response.dto';

@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { MANAGED_USER_ROLE_NAMES } from './managed-roles';
-import { type PrismaService } from '../database/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 
 interface RoleVersionCache {
   version: number;

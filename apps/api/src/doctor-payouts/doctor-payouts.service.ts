@@ -7,9 +7,9 @@ import { Prisma } from '@prisma/client';
 
 import { type CreateDoctorPayoutDto } from './dto/create-doctor-payout.dto';
 import { type DoctorPayoutQueryDto } from './dto/doctor-payout-query.dto';
-import { type AuditLogService } from '../audit-log/audit-log.service';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { createPaginatedResponse } from '../common/dto/paginated-response.dto';
-import { type PrismaService } from '../database/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class DoctorPayoutsService {

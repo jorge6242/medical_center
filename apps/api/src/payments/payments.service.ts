@@ -11,14 +11,14 @@ import {
   assertPaymentMatchesService,
   calculatePaymentTotals,
 } from './payment-calculations';
-import { type AuditLogService } from '../audit-log/audit-log.service';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import {
   createPaginatedResponse,
   type PaginatedResponseDto,
 } from '../common/dto/paginated-response.dto';
-import { type PrismaService } from '../database/prisma.service';
-import { type MailerService } from '../mailer/mailer.service';
-import { type ReceiptsService } from '../receipts/receipts.service';
+import { PrismaService } from '../database/prisma.service';
+import { MailerService } from '../mailer/mailer.service';
+import { ReceiptsService } from '../receipts/receipts.service';
 
 import type { CreatePaymentAdjustmentDto } from './dto/create-payment-adjustment.dto';
 import type { CreatePaymentDto } from './dto/create-payment.dto';

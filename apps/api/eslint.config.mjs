@@ -67,5 +67,19 @@ export default [
     },
   },
 
+  {
+    files: [
+      '**/src/**/*.service.ts',
+      '**/src/**/*.controller.ts',
+      '**/src/**/*.guard.ts',
+      '**/src/**/*.strategy.ts',
+    ],
+    rules: {
+      // Nest resolves constructor dependencies at runtime through reflection.
+      // Injectable classes must retain value imports for those dependencies.
+      '@typescript-eslint/consistent-type-imports': 'off',
+    },
+  },
+
   prettier,
 ];

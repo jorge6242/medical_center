@@ -1,6 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 
-import { type AuditLogQueryService } from './audit-log-query.service';
+import { AuditLogQueryService } from './audit-log-query.service';
 import { type AuditLogQueryDto } from './dto/audit-log-query.dto';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
 

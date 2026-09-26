@@ -11,13 +11,13 @@ import {
   toMedicalRecordResponse,
   toPatientMedicalRecordResponse,
 } from './medical-records.mapper';
-import { type AuditLogService } from '../audit-log/audit-log.service';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import {
   createPaginatedResponse,
   type PaginatedResponseDto,
 } from '../common/dto/paginated-response.dto';
 import { type PaginationQueryDto } from '../common/dto/pagination-query.dto';
-import { type PrismaService } from '../database/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 
 import type { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
 import type { GenerateMedicalRecordExportDto } from './dto/generate-medical-record-export.dto';

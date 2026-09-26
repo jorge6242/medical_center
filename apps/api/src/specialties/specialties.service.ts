@@ -5,13 +5,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { type AuditLogService } from '../audit-log/audit-log.service';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import {
   createPaginatedResponse,
   type PaginatedResponseDto,
 } from '../common/dto/paginated-response.dto';
 import { type PaginationQueryDto } from '../common/dto/pagination-query.dto';
-import { type PrismaService } from '../database/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 
 import type { CreateSpecialtyDto } from './dto/create-specialty.dto';
 import type { SpecialtyResponseDto } from './dto/specialty-response.dto';

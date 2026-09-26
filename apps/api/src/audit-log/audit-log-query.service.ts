@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { type Prisma } from '@prisma/client';
 
-import { type RequestContextService } from '../common/context';
-import { type PrismaService } from '../database/prisma.service';
+import { RequestContextService } from '../common/context';
+import { PrismaService } from '../database/prisma.service';
 
 import type { AuditLogQueryDto } from './dto/audit-log-query.dto';
 

@@ -13,7 +13,7 @@ import {
 import { type CreatePaymentAdjustmentDto } from './dto/create-payment-adjustment.dto';
 import { type CreatePaymentDto } from './dto/create-payment.dto';
 import { type PaymentQueryDto } from './dto/payment-query.dto';
-import { type PaymentsService } from './payments.service';
+import { PaymentsService } from './payments.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {

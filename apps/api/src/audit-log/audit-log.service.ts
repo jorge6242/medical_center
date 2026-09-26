@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { type Prisma, type PrismaClient } from '@prisma/client';
 
-import { type AuditWriter } from './audit-writer';
-import { type RequestContextService } from '../common/context';
+import { AuditWriter } from './audit-writer';
+import { RequestContextService } from '../common/context';
 
 export interface AuditLogEntry {
   tenantId?: string;

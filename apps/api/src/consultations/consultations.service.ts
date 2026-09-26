@@ -13,13 +13,13 @@ import {
   type Doctor,
 } from '@prisma/client';
 
-import { type AuditLogService } from '../audit-log/audit-log.service';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import {
   createPaginatedResponse,
   type PaginatedResponseDto,
 } from '../common/dto/paginated-response.dto';
-import { type PrismaService } from '../database/prisma.service';
-import { type MailerService } from '../mailer/mailer.service';
+import { PrismaService } from '../database/prisma.service';
+import { MailerService } from '../mailer/mailer.service';
 
 import type { ConsultationDetailResponseDto } from './dto/consultation-detail-response.dto';
 import type { ConsultationQueryDto } from './dto/consultation-query.dto';

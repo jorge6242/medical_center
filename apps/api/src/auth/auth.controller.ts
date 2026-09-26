@@ -10,19 +10,19 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { type AuthService } from './auth.service';
+import { AuthService } from './auth.service';
 import { type BootstrapAccessLinkDto } from './dto/bootstrap-access-link.dto';
 import { type CreateAccessLinkDto } from './dto/create-access-link.dto';
 import { type LoginDto } from './dto/login.dto';
 import { type TenantAccessContextDto } from './dto/tenant-access-context.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { type AuditLogService } from '../audit-log/audit-log.service';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { InternalRequest } from '../common/decorators/internal-request.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
-import { type PrismaService } from '../database/prisma.service';
-import { type OnboardingService } from '../doctors/onboarding.service';
+import { PrismaService } from '../database/prisma.service';
+import { OnboardingService } from '../doctors/onboarding.service';
 
 import type { AuthResponseDto } from './dto/auth-response.dto';
 import type { JwtPayload } from '../common/decorators/current-user.decorator';

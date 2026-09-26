@@ -5,12 +5,12 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { type JwtService } from '@nestjs/jwt';
+import { JwtService } from '@nestjs/jwt';
 import { type Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
-import { type TraceWriter } from '../audit-log/trace-writer';
-import { type PrismaService } from '../database/prisma.service';
+import { TraceWriter } from '../audit-log/trace-writer';
+import { PrismaService } from '../database/prisma.service';
 
 import type { AuthResponseDto } from './dto/auth-response.dto';
 import type { BootstrapAccessLinkDto } from './dto/bootstrap-access-link.dto';

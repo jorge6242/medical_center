@@ -6,8 +6,8 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
-import { type AuditLogService } from '../audit-log/audit-log.service';
-import { type PrismaService } from '../database/prisma.service';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { PrismaService } from '../database/prisma.service';
 
 import type { ReceiptResponseDto } from './dto/receipt-response.dto';
 

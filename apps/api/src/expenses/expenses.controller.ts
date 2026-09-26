@@ -13,7 +13,7 @@ import {
 import { type CreateExpenseDto } from './dto/create-expense.dto';
 import { type ExpenseQueryDto } from './dto/expense-query.dto';
 import { type VoidExpenseDto } from './dto/void-expense.dto';
-import { type ExpensesService } from './expenses.service';
+import { ExpensesService } from './expenses.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {

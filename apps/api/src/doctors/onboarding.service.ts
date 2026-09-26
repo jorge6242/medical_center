@@ -7,12 +7,12 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { type JwtService } from '@nestjs/jwt';
+import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 
-import { type AuditLogService } from '../audit-log/audit-log.service';
-import { type PrismaService } from '../database/prisma.service';
-import { type MailerService } from '../mailer/mailer.service';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { PrismaService } from '../database/prisma.service';
+import { MailerService } from '../mailer/mailer.service';
 
 import type { OnboardingTokenStatus } from '@prisma/client';
 

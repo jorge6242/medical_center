@@ -13,7 +13,7 @@ import {
   type GenderType,
 } from '@prisma/client';
 
-import { type AuditLogService } from '../audit-log/audit-log.service';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { type LookupQueryDto } from '../common/dto/lookup-query.dto';
 import {
   EntityLookupItemDto,
@@ -28,7 +28,7 @@ import {
   decodeNameCursor,
   encodeNameCursor,
 } from '../common/utils/cursor-pagination.utils';
-import { type PrismaService } from '../database/prisma.service';
+import { PrismaService } from '../database/prisma.service';
 
 import type { CreatePatientDto } from './dto/create-patient.dto';
 import type { PatientConsultationResponseDto } from './dto/patient-consultation-response.dto';

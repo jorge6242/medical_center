@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { type DoctorPayoutsService } from './doctor-payouts.service';
+import { DoctorPayoutsService } from './doctor-payouts.service';
 import { type CreateDoctorPayoutDto } from './dto/create-doctor-payout.dto';
 import { type DoctorPayoutQueryDto } from './dto/doctor-payout-query.dto';
 import { type VoidDoctorPayoutDto } from './dto/void-doctor-payout.dto';

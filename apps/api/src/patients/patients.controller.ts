@@ -14,7 +14,7 @@ import {
 
 import { type CreatePatientDto } from './dto/create-patient.dto';
 import { type UpdatePatientDto } from './dto/update-patient.dto';
-import { type PatientsService } from './patients.service';
+import { PatientsService } from './patients.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
