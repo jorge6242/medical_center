@@ -14,9 +14,9 @@ import {
 } from '@nestjs/common';
 
 import { DoctorsService } from './doctors.service';
-import { type CreateDoctorDto } from './dto/create-doctor.dto';
-import { type UpdateDoctorDto } from './dto/update-doctor.dto';
-import { type VerifyDocumentDto } from './dto/verify-document.dto';
+import { CreateDoctorDto } from './dto/create-doctor.dto';
+import { UpdateDoctorDto } from './dto/update-doctor.dto';
+import { VerifyDocumentDto } from './dto/verify-document.dto';
 import { OnboardingService } from './onboarding.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -25,8 +25,8 @@ import {
   type JwtPayload,
 } from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
-import { type LookupQueryDto } from '../common/dto/lookup-query.dto';
-import { type PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { LookupQueryDto } from '../common/dto/lookup-query.dto';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 
 import type { DoctorResponseDto } from './dto/doctor-response.dto';
 import type { SacsQueryResult } from './sacs-verification.service';

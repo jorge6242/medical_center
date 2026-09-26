@@ -12,8 +12,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { type CreateSpecialtyDto } from './dto/create-specialty.dto';
-import { type UpdateSpecialtyDto } from './dto/update-specialty.dto';
+import { CreateSpecialtyDto } from './dto/create-specialty.dto';
+import { UpdateSpecialtyDto } from './dto/update-specialty.dto';
 import { SpecialtiesService } from './specialties.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -22,7 +22,7 @@ import {
   type JwtPayload,
 } from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
-import { type PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 
 import type { SpecialtyResponseDto } from './dto/specialty-response.dto';
 import type { PaginatedResponseDto } from '../common/dto/paginated-response.dto';

@@ -10,9 +10,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { type CreateExpenseDto } from './dto/create-expense.dto';
-import { type ExpenseQueryDto } from './dto/expense-query.dto';
-import { type VoidExpenseDto } from './dto/void-expense.dto';
+import { CreateExpenseDto } from './dto/create-expense.dto';
+import { ExpenseQueryDto } from './dto/expense-query.dto';
+import { VoidExpenseDto } from './dto/void-expense.dto';
 import { ExpensesService } from './expenses.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';

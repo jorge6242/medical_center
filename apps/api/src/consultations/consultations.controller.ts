@@ -13,10 +13,10 @@ import {
 } from '@nestjs/common';
 
 import { ConsultationsService } from './consultations.service';
-import { type ConsultationQueryDto } from './dto/consultation-query.dto';
-import { type CreateScheduledConsultationDto } from './dto/create-scheduled-consultation.dto';
-import { type UpdateScheduledConsultationDto } from './dto/update-scheduled-consultation.dto';
-import { type VoidConsultationDto } from './dto/void-consultation.dto';
+import { ConsultationQueryDto } from './dto/consultation-query.dto';
+import { CreateScheduledConsultationDto } from './dto/create-scheduled-consultation.dto';
+import { UpdateScheduledConsultationDto } from './dto/update-scheduled-consultation.dto';
+import { VoidConsultationDto } from './dto/void-consultation.dto';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {

@@ -10,9 +10,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { type CreatePaymentAdjustmentDto } from './dto/create-payment-adjustment.dto';
-import { type CreatePaymentDto } from './dto/create-payment.dto';
-import { type PaymentQueryDto } from './dto/payment-query.dto';
+import { CreatePaymentAdjustmentDto } from './dto/create-payment-adjustment.dto';
+import { CreatePaymentDto } from './dto/create-payment.dto';
+import { PaymentQueryDto } from './dto/payment-query.dto';
 import { PaymentsService } from './payments.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';

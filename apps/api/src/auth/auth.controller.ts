@@ -11,10 +11,10 @@ import {
 } from '@nestjs/common';
 
 import { AuthService } from './auth.service';
-import { type BootstrapAccessLinkDto } from './dto/bootstrap-access-link.dto';
-import { type CreateAccessLinkDto } from './dto/create-access-link.dto';
-import { type LoginDto } from './dto/login.dto';
-import { type TenantAccessContextDto } from './dto/tenant-access-context.dto';
+import { BootstrapAccessLinkDto } from './dto/bootstrap-access-link.dto';
+import { CreateAccessLinkDto } from './dto/create-access-link.dto';
+import { LoginDto } from './dto/login.dto';
+import { TenantAccessContextDto } from './dto/tenant-access-context.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';

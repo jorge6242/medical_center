@@ -11,9 +11,9 @@ import {
 } from '@nestjs/common';
 
 import { DoctorPayoutsService } from './doctor-payouts.service';
-import { type CreateDoctorPayoutDto } from './dto/create-doctor-payout.dto';
-import { type DoctorPayoutQueryDto } from './dto/doctor-payout-query.dto';
-import { type VoidDoctorPayoutDto } from './dto/void-doctor-payout.dto';
+import { CreateDoctorPayoutDto } from './dto/create-doctor-payout.dto';
+import { DoctorPayoutQueryDto } from './dto/doctor-payout-query.dto';
+import { VoidDoctorPayoutDto } from './dto/void-doctor-payout.dto';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
