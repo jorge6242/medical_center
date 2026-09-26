@@ -29,6 +29,7 @@ describe('StatsService.getHomeStats', () => {
     const result = await service.getHomeStats('tenant-1');
 
     const pendingPaymentsWhere = paymentFindMany.mock.calls[0][0].where;
+    expect(consultationFindMany).toHaveBeenCalledTimes(1);
     expect(pendingPaymentsWhere).toMatchObject({
       tenantId: 'tenant-1',
       status: 'COMPLETED',

@@ -20,12 +20,7 @@ export default function InicioPage() {
         <MetricCard label="Pacientes hoy" value={data?.patientsToday ?? 0} loading={isLoading} />
         <MetricCard label="Doctores hoy" value={data?.doctorsToday ?? 0} loading={isLoading} />
         <MetricCard
-          label="Cancelados mes"
-          value={data?.canceledDoctorsThisMonth ?? 0}
-          loading={isLoading}
-        />
-        <MetricCard
-          label="Doctores por pagar"
+          label="Doctores con honorarios pendientes"
           value={data?.pendingPayoutDoctors ?? 0}
           loading={isLoading}
         />

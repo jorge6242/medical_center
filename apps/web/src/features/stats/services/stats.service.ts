@@ -9,7 +9,6 @@ export interface HomeStatsAlert {
 export interface HomeStats {
   patientsToday: number;
   doctorsToday: number;
-  canceledDoctorsThisMonth: number;
   pendingPayoutDoctors: number;
   pendingPayoutAmountUsd: string;
   alerts: HomeStatsAlert[];

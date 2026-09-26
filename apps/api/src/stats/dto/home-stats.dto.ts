@@ -7,7 +7,6 @@ export class HomeStatsAlertDto {
 export class HomeStatsDto {
   declare patientsToday: number;
   declare doctorsToday: number;
-  declare canceledDoctorsThisMonth: number;
   declare pendingPayoutDoctors: number;
   declare pendingPayoutAmountUsd: string;
   declare expensesToday: number;

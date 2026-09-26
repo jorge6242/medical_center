@@ -17,7 +17,6 @@ export class StatsService {
 
     const [
       todayConsultations,
-      cancelledConsultations,
       pendingPayments,
       todayExpenses,
       weekExpenses,
@@ -31,10 +30,6 @@ export class StatsService {
           date: { gte: todayStart, lt: tomorrowStart },
         },
         select: { patientId: true, doctorId: true },
-      }),
-      this.prisma.consultation.findMany({
-        where: { tenantId, status: 'VOIDED', updatedAt: { gte: monthStart } },
-        select: { doctorId: true },
       }),
       this.prisma.payment.findMany({
         where: {
@@ -91,10 +86,6 @@ export class StatsService {
     const doctorIdsToday = new Set(
       todayConsultations.map((consultation) => consultation.doctorId),
     );
-    const cancelledDoctorIds = new Set(
-      cancelledConsultations.map((consultation) => consultation.doctorId),
-    );
-
     const pendingPayoutDoctorIds = new Set(
       pendingPayments
         .map((payment) => payment.item?.consultation?.doctorId)
@@ -128,7 +119,6 @@ export class StatsService {
     return {
       patientsToday: patientIds.size,
       doctorsToday: doctorIdsToday.size,
-      canceledDoctorsThisMonth: cancelledDoctorIds.size,
       pendingPayoutDoctors: pendingPayoutDoctorIds.size,
       pendingPayoutAmountUsd: pendingPayoutAmountUsd.toFixed(2),
       expensesToday: expensesTodayTotal,
@@ -139,7 +129,6 @@ export class StatsService {
       alerts: buildAlerts(
         patientIds.size,
         doctorIdsToday.size,
-        cancelledDoctorIds.size,
         pendingPayoutDoctorIds.size,
         pendingPayoutAmountUsd,
         expensesTodayTotal,
@@ -153,7 +142,6 @@ export class StatsService {
 function buildAlerts(
   patientsToday: number,
   doctorsToday: number,
-  canceledDoctorsThisMonth: number,
   pendingPayoutDoctors: number,
   pendingPayoutAmountUsd: number,
   expensesToday: number,
@@ -167,14 +155,6 @@ function buildAlerts(
       severity: 'info',
       title: 'Actividad de hoy',
       message: `${patientsToday} paciente(s) atendido(s) y ${doctorsToday} doctor(es) con consultas culminadas hoy.`,
-    });
-  }
-
-  if (canceledDoctorsThisMonth > 0) {
-    alerts.push({
-      severity: 'warning',
-      title: 'Cancelaciones del mes',
-      message: `${canceledDoctorsThisMonth} doctor(es) con consultas canceladas este mes.`,
     });
   }
 
