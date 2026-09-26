@@ -8,6 +8,7 @@ import {
   getConsultations,
   getTodayConsultations,
   markConsultationAsAttended,
+  resendScheduledNotifications,
   voidConsultation,
   updateScheduledConsultation,
   type ConsultationQuery,
@@ -60,6 +61,10 @@ export function useMarkConsultationAsAttended() {
       void queryClient.invalidateQueries({ queryKey: consultationsRootKey });
     },
   });
+}
+
+export function useResendScheduledNotifications() {
+  return useMutation({ mutationFn: resendScheduledNotifications });
 }
 
 export function useVoidConsultation() {

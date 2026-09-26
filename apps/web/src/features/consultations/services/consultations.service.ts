@@ -70,6 +70,9 @@ export const createScheduledConsultation = (
 export const markConsultationAsAttended = (id: string): Promise<ConsultationResponse> =>
   apiJson(`/consultations/${id}/attend`, { method: 'PATCH' });
 
+export const resendScheduledNotifications = (id: string): Promise<{ message: string }> =>
+  apiJson(`/consultations/${id}/resend-notifications`, { method: 'POST' });
+
 export const voidConsultation = (id: string, reason: string): Promise<ConsultationResponse> =>
   apiJson(`/consultations/${id}`, {
     method: 'DELETE',

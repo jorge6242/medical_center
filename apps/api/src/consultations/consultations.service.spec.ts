@@ -58,7 +58,7 @@ const scheduledConsultation = {
   tenantId: TENANT_ID,
   patientId: PATIENT_ID,
   doctorId: DOCTOR_ID,
-  date: new Date('2026-10-01T09:00:00.000Z'),
+  date: new Date('2026-10-01T13:00:00.000Z'),
   status: 'SCHEDULED' as const,
   notes: 'Revisión anual',
   paymentId: null,
@@ -299,6 +299,66 @@ describe('ConsultationsService.createScheduled', () => {
     await expect(
       service.createScheduled(TENANT_ID, USER_ID, dto),
     ).rejects.toThrow(BadRequestException);
+  });
+});
+
+describe('ConsultationsService.resendScheduledNotifications', () => {
+  it('resends recipient-specific emails only while the consultation is scheduled', async () => {
+    const prisma = buildPrisma({
+      consultation: {
+        findFirst: jest.fn().mockResolvedValue(scheduledConsultation),
+      },
+    });
+    const mailer = buildMailer();
+    const auditLog = buildAuditLog();
+    const service = new ConsultationsService(prisma, mailer, auditLog);
+
+    await service.resendScheduledNotifications(
+      TENANT_ID,
+      CONSULTATION_ID,
+      USER_ID,
+    );
+
+    expect(mailer.sendEmail).toHaveBeenCalledWith(
+      'doctor@clinic.com',
+      'Cita médica agendada',
+      '<p>Cita</p>',
+    );
+    expect(mailer.sendEmail).toHaveBeenCalledWith(
+      'ana@example.com',
+      'Cita médica agendada',
+      '<p>Cita</p>',
+    );
+    expect(auditLog.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: TENANT_ID,
+        userId: USER_ID,
+        action: 'SEND',
+        entity: 'Consultation',
+        entityId: CONSULTATION_ID,
+      }),
+    );
+  });
+
+  it('rejects notification resend after the patient arrival is confirmed', async () => {
+    const prisma = buildPrisma({
+      consultation: {
+        findFirst: jest.fn().mockResolvedValue({
+          ...scheduledConsultation,
+          status: 'PENDING',
+          attendedAt: new Date(),
+        }),
+      },
+    });
+    const service = new ConsultationsService(
+      prisma,
+      buildMailer(),
+      buildAuditLog(),
+    );
+
+    await expect(
+      service.resendScheduledNotifications(TENANT_ID, CONSULTATION_ID, USER_ID),
+    ).rejects.toThrow('Solo se pueden reenviar correos de consultas agendadas');
   });
 });
 

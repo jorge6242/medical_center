@@ -47,6 +47,20 @@ export class ConsultationsController {
     );
   }
 
+  @Post(':id/resend-notifications')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermission('consultations', 'update')
+  resendNotifications(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ): Promise<{ message: string }> {
+    return this.consultationsService.resendScheduledNotifications(
+      user.tenantId,
+      id,
+      user.sub,
+    );
+  }
+
   @Get('today')
   @RequirePermission('consultations', 'read')
   findToday(

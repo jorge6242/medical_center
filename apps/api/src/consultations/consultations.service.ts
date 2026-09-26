@@ -244,6 +244,50 @@ export class ConsultationsService {
     }
   }
 
+  async resendScheduledNotifications(
+    tenantId: string,
+    consultationId: string,
+    userId: string,
+  ): Promise<{ message: string }> {
+    const consultation = await this.prisma.consultation.findFirst({
+      where: { id: consultationId, tenantId },
+      include: {
+        patient: { select: { name: true, email: true } },
+        doctor: { select: { name: true, email: true } },
+        services: { select: { serviceName: true } },
+      },
+    });
+
+    if (!consultation) {
+      throw new NotFoundException(`Consulta ${consultationId} no encontrada`);
+    }
+
+    if (consultation.status !== 'SCHEDULED') {
+      throw new BadRequestException(
+        'Solo se pueden reenviar correos de consultas agendadas',
+      );
+    }
+
+    await this.notifyScheduledConsultation(
+      consultation.id,
+      consultation.doctor,
+      consultation.patient,
+      consultation.date,
+      consultation.services.map((service) => service.serviceName),
+    );
+    await this.auditLog.log({
+      tenantId,
+      userId,
+      action: 'SEND',
+      entity: 'Consultation',
+      entityId: consultationId,
+      newValues: { recipients: ['doctor', 'patient'] },
+      changedFields: ['emailNotifications'],
+    });
+
+    return { message: 'Correos reenviados' };
+  }
+
   // ─── markAsAttended ───────────────────────────────────────────────────────
 
   async markAsAttended(

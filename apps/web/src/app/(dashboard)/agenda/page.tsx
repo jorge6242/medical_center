@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import type { ColumnDef, PaginationState } from '@tanstack/react-table';
-import { CalendarPlus, CheckCircle2, CreditCard, Pencil, XCircle } from 'lucide-react';
+import { CalendarPlus, CheckCircle2, CreditCard, Pencil, Send, XCircle } from 'lucide-react';
 
 import { ScheduleConsultationForm } from '@/features/consultations/components/schedule-consultation-form';
 import {
   useConsultations,
   useMarkConsultationAsAttended,
+  useResendScheduledNotifications,
   useUpdateScheduledConsultation,
   useVoidConsultation,
 } from '@/features/consultations/hooks/use-consultations';
@@ -51,6 +52,7 @@ export default function AgendaPage() {
     ...(date ? { date } : {}),
   });
   const attend = useMarkConsultationAsAttended();
+  const resendNotifications = useResendScheduledNotifications();
   const update = useUpdateScheduledConsultation(() => setEditing(null));
   const voidConsultation = useVoidConsultation();
 
@@ -282,6 +284,16 @@ export default function AgendaPage() {
                     }}
                   >
                     <CreditCard className="h-4 w-4" /> Registrar pago
+                  </Button>
+                ) : null}
+                {editing.status === 'SCHEDULED' ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => resendNotifications.mutate(editing.id)}
+                    isLoading={resendNotifications.isPending}
+                  >
+                    <Send className="h-4 w-4" /> Reenviar correos
                   </Button>
                 ) : null}
               </div>
