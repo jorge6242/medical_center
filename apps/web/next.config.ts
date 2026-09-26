@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
         hostname: 'previews.dropbox.com',
         pathname: '/p/thumb/**',
       },
+      {
+        protocol: 'https',
+        hostname: '**.storageapi.dev',
+      },
     ],
   },
 };

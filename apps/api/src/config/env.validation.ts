@@ -16,4 +16,14 @@ export const envValidationSchema = Joi.object({
   MAIL_FROM: Joi.string().min(3).default('noreply@centromedico.local'),
   AUDIT_ENABLED: Joi.boolean().truthy('true').falsy('false').default(true),
   TRACE_RETENTION_DAYS: Joi.number().integer().min(1).max(3650).default(30),
+  S3_ENDPOINT: Joi.string().uri().allow('').optional(),
+  S3_REGION: Joi.string().allow('').default('auto'),
+  S3_BUCKET: Joi.string().allow('').optional(),
+  S3_ACCESS_KEY_ID: Joi.string().allow('').optional(),
+  S3_SECRET_ACCESS_KEY: Joi.string().allow('').optional(),
+  S3_SIGNED_URL_TTL_SECONDS: Joi.number()
+    .integer()
+    .min(60)
+    .max(604800)
+    .default(43200),
 });

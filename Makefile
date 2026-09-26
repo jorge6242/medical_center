@@ -1,7 +1,7 @@
 .PHONY: setup dev down down-v restart restart-api restart-web \
         logs logs-api logs-web logs-db shell-api shell-web shell-db \
         db-migrate db-deploy db-seed db-studio deps-sync \
-        tenant-provision \
+        tenant-provision tenant-access-link \
         docker-build-api docker-build-web docker-build docker-push-api docker-push-web docker-push \
         docker-release-api docker-release-web
 
@@ -9,6 +9,7 @@ DOCKERHUB_USER ?= jorge6242
 IMAGE_TAG ?= railway-mvp
 DOCKER_PLATFORM ?= linux/amd64
 NEXT_PUBLIC_API_URL ?= https://centromedicoapi-production.up.railway.app
+ACCESS_LINK_DAYS ?= 7
 API_IMAGE := $(DOCKERHUB_USER)/centro-medico-api:$(IMAGE_TAG)
 WEB_IMAGE := $(DOCKERHUB_USER)/centro-medico-web:$(IMAGE_TAG)
 
@@ -54,7 +55,7 @@ restart: ## Reiniciar todos los containers dev
 	docker compose -f docker-compose.dev.yml restart
 
 restart-api: ## Reiniciar solo el container API
-	docker compose -f docker-compose.dev.yml restart api
+	docker compose -f docker-compose.dev.yml up -d --no-deps --no-build --force-recreate api
 
 restart-web: ## Reiniciar solo el container Web
 	docker compose -f docker-compose.dev.yml restart web
@@ -121,6 +122,13 @@ tenant-provision: ## Crea un tenant nuevo sin datos demo; requiere variables TEN
 		-e INITIAL_BCV_RATE="$(INITIAL_BCV_RATE)" \
 		-e ACCESS_LINK_DAYS="$(ACCESS_LINK_DAYS)" \
 		api pnpm run tenant:provision
+
+tenant-access-link: ## Crea link temporal; requiere TENANT_SLUG (ACCESS_LINK_DAYS, default: 7)
+	@test -n "$(TENANT_SLUG)" || (echo "ERROR: TENANT_SLUG is required" && exit 2)
+	docker compose -f docker-compose.dev.yml exec -T api \
+		pnpm run tenant:access-link -- \
+		--slug "$(TENANT_SLUG)" \
+		--expires-days "$(ACCESS_LINK_DAYS)"
 
 # ── Docker Hub Images ─────────────────────────────────────────────────────────
 

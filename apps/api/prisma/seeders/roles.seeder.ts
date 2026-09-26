@@ -5,7 +5,7 @@ const TENANT_ID = 'tenant-demo-001';
 export const BASE_ROLES = [
   {
     name: 'admin',
-    version: 2,
+    version: 3,
     permissions: [
       { resource: 'patients', action: 'create' },
       { resource: 'patients', action: 'read' },
@@ -40,6 +40,7 @@ export const BASE_ROLES = [
       { resource: 'laboratories', action: 'delete' },
       { resource: 'tenant_access_links', action: 'create' },
       { resource: 'tenant_access_links', action: 'revoke' },
+      { resource: 'tenant_settings', action: 'update' },
       { resource: 'users', action: 'read' },
       { resource: 'users', action: 'create' },
       { resource: 'users', action: 'delete' },

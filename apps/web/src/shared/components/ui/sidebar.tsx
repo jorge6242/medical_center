@@ -13,6 +13,7 @@ import {
   FlaskConical,
   House,
   Receipt,
+  Settings,
   Stethoscope,
   User,
   Users,
@@ -35,6 +36,7 @@ const ICON_MAP = {
   BookOpen,
   Boxes,
   FlaskConical,
+  Settings,
 } as const;
 
 type IconName = keyof typeof ICON_MAP;

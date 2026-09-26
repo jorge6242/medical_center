@@ -122,6 +122,22 @@ Configuración recomendada del API:
 
 ## Provisioning En Railway
 
+### Generar un link temporal para un tenant existente
+
+En desarrollo local, ejecutar dentro de Docker:
+
+```bash
+make tenant-access-link TENANT_SLUG=centro-medico-demo ACCESS_LINK_DAYS=7
+```
+
+En la **Console** del servicio API en Railway (donde el comando ya está dentro del contenedor), ejecutar:
+
+```bash
+pnpm run tenant:access-link -- --slug centro-medico-demo --expires-days 14
+```
+
+El comando crea un link que vence en 7 días por defecto e imprime la URL completa para compartir. En local usa `http://localhost:3000` si `FRONTEND_URL` no está definida; en Railway usa la variable `FRONTEND_URL` configurada en el servicio API.
+
 No ejecutar `make tenant-provision` para producción: ese target usa el contenedor y la base local.
 
 Después de desplegar el API, abrir la **Console** del servicio API en Railway y ejecutar desde `/app/apps/api`:

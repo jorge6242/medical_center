@@ -7,13 +7,14 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { RequestContextModule } from '../common/context';
+import { InternalRequestGuard } from '../common/guards/internal-request.guard';
 import { OnboardingService } from '../doctors/onboarding.service';
 import { MailerModule } from '../mailer/mailer.module';
+import { RailwayBucketModule } from '../railway-bucket/railway-bucket.module';
 import { RolesModule } from '../roles/roles.module';
 import { AclGuard } from './guards/acl.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { InternalRequestGuard } from '../common/guards/internal-request.guard';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { InternalRequestGuard } from '../common/guards/internal-request.guard';
     RequestContextModule,
     RolesModule,
     MailerModule,
+    RailwayBucketModule,
   ],
   controllers: [AuthController],
   providers: [

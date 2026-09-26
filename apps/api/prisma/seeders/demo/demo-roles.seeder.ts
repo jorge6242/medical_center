@@ -5,7 +5,7 @@ import type { PrismaClient } from '@prisma/client';
 const ROLES = [
   {
     name: 'admin',
-    version: 2,
+    version: 3,
     permissions: [
       { resource: 'patients', action: 'create' },
       { resource: 'patients', action: 'read' },
@@ -34,6 +34,7 @@ const ROLES = [
       { resource: 'expenses', action: 'delete' },
       { resource: 'reports', action: 'read' },
       { resource: 'audit_logs', action: 'read' },
+      { resource: 'tenant_settings', action: 'update' },
     ],
   },
   {

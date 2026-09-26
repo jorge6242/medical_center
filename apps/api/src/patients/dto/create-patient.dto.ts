@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   Length,
+  MinLength,
 } from 'class-validator';
 
 export class CreatePatientDto {
@@ -14,7 +15,7 @@ export class CreatePatientDto {
   declare documentType: DocumentType;
 
   @IsString()
-  @Length(6, 12)
+  @MinLength(6)
   declare documentId: string;
 
   @IsString()

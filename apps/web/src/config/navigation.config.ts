@@ -118,4 +118,11 @@ export const NAV_ITEMS: NavItem[] = [
     permission: { resource: 'doctors', action: 'read' },
     visibleForRoles: ['doctor'],
   },
+  {
+    label: 'Configuración del centro',
+    path: '/admin/configuracion-centro',
+    icon: 'Settings',
+    permission: { resource: 'tenant_settings', action: 'update' },
+    visibleForRoles: ['admin'],
+  },
 ];

@@ -11,6 +11,7 @@ import * as bcrypt from 'bcrypt';
 
 import { TraceWriter } from '../audit-log/trace-writer';
 import { PrismaService } from '../database/prisma.service';
+import { RailwayBucketService } from '../railway-bucket/railway-bucket.service';
 
 import type { AuthResponseDto } from './dto/auth-response.dto';
 import type { BootstrapAccessLinkDto } from './dto/bootstrap-access-link.dto';
@@ -23,6 +24,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly railwayBucket: RailwayBucketService,
     private readonly traceWriter?: TraceWriter,
   ) {}
 
@@ -147,13 +149,17 @@ export class AuthService {
       { purpose: 'tenant_access', tenantId: link.tenantId, linkId: link.id },
       { expiresIn: '10m' },
     );
+    const logoUrl = await this.railwayBucket.resolveLogoUrl(
+      link.tenant.logoObjectKey,
+      link.tenant.logoUrl,
+    );
 
     return {
       contextToken,
       tenant: {
         name: link.tenant.name,
         slug: link.tenant.slug,
-        logoUrl: link.tenant.logoUrl,
+        logoUrl,
       },
     };
   }

@@ -13,6 +13,7 @@ model Tenant {
   name      String
   slug      String   @unique
   logoUrl   String?
+  logoObjectKey String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

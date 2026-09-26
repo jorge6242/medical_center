@@ -2,6 +2,7 @@ const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   const isServer = typeof window === 'undefined';
+  const isFormData = typeof FormData !== 'undefined' && init?.body instanceof FormData;
 
   let cookieHeader = '';
   if (isServer) {
@@ -10,7 +11,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   }
 
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(isServer ? { Cookie: cookieHeader } : {}),
     ...init?.headers,
   };
