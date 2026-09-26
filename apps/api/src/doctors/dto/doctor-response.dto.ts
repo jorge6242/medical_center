@@ -14,12 +14,6 @@ export class DoctorBankAccountResponseDto {
   declare isDefault: boolean;
 }
 
-export class DoctorSpecialtyResponseDto {
-  declare specialtyId: string;
-  declare specialtyName: string;
-  declare isPrimary: boolean;
-}
-
 export class DoctorServiceResponseDto {
   declare id: string;
   declare specialtyId: string;
@@ -34,11 +28,13 @@ export class DoctorResponseDto {
   declare documentType: DocumentType;
   declare documentId: string;
   declare name: string;
+  declare lastName: string;
   declare email: string | null;
   declare phone: string | null;
   declare splitPercentage: string;
   declare isActive: boolean;
-  declare specialties: DoctorSpecialtyResponseDto[];
+  declare primarySpecialtyId: string;
+  declare primarySpecialtyName: string;
   declare services: DoctorServiceResponseDto[];
   declare bankAccounts: DoctorBankAccountResponseDto[];
   declare medicalLicenseNumber: string | null;

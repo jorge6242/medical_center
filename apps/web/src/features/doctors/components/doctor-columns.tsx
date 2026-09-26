@@ -13,7 +13,11 @@ export function getDoctorColumns(): ColumnDef<DoctorAdminResponse>[] {
     {
       accessorKey: 'name',
       header: 'Nombre',
-      cell: ({ row }) => <span className="font-medium text-on-surface">{row.original.name}</span>,
+      cell: ({ row }) => (
+        <span className="font-medium text-on-surface">
+          {`${row.original.name} ${row.original.lastName}`.trim()}
+        </span>
+      ),
     },
     {
       accessorKey: 'documentId',
@@ -25,12 +29,10 @@ export function getDoctorColumns(): ColumnDef<DoctorAdminResponse>[] {
       ),
     },
     {
-      accessorKey: 'specialties',
-      header: 'Especialidades',
+      accessorKey: 'primarySpecialtyName',
+      header: 'Especialidad base',
       cell: ({ row }) => (
-        <span className="text-on-surface-variant">
-          {row.original.specialties.map((s) => s.specialtyName).join(', ') || '—'}
-        </span>
+        <span className="text-on-surface-variant">{row.original.primarySpecialtyName || '—'}</span>
       ),
     },
     {

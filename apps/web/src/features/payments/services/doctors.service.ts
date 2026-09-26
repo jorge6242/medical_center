@@ -5,11 +5,8 @@ export interface DoctorResponse {
   name: string;
   documentType: string;
   documentId: string;
-  specialties: Array<{
-    specialtyId: string;
-    specialtyName: string;
-    isPrimary: boolean;
-  }>;
+  primarySpecialtyId: string;
+  primarySpecialtyName: string;
 }
 
 export interface DoctorServiceResponse {

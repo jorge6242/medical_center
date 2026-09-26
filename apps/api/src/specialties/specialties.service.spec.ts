@@ -69,7 +69,7 @@ describe('SpecialtiesService', () => {
           isActive: true,
         }),
       },
-      doctorSpecialty: { count: jest.fn().mockResolvedValue(2) },
+      doctor: { count: jest.fn().mockResolvedValue(2) },
       doctorService: { count: jest.fn().mockResolvedValue(0) },
       consultationService: { count: jest.fn().mockResolvedValue(3) },
     } as unknown as PrismaService;

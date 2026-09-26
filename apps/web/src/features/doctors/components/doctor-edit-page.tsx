@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 
@@ -17,7 +18,7 @@ export function DoctorEditPage({ doctorId }: DoctorEditPageProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: doctor, error, isFetching, isLoading } = useDoctorAdmin(doctorId);
-  const returnToList = () => router.push('/admin/doctores');
+  const returnToDetail = () => router.push(`/admin/doctores/${doctorId}`);
 
   useEffect(() => {
     return () => {
@@ -33,7 +34,7 @@ export function DoctorEditPage({ doctorId }: DoctorEditPageProps) {
     return (
       <div className="flex flex-col gap-4">
         <p className="text-error">{error?.message ?? 'No se pudo cargar el doctor.'}</p>
-        <Button className="w-fit" variant="outline" onClick={returnToList}>
+        <Button className="w-fit" variant="outline" onClick={returnToDetail}>
           Volver a doctores
         </Button>
       </div>
@@ -45,14 +46,16 @@ export function DoctorEditPage({ doctorId }: DoctorEditPageProps) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-on-surface">Editar doctor</h1>
-          <p className="text-sm text-on-surface-variant">{doctor.name}</p>
+          <p className="text-sm text-on-surface-variant">
+            {`${doctor.name} ${doctor.lastName}`.trim()}
+          </p>
         </div>
-        <Button variant="outline" onClick={returnToList}>
+        <Button variant="outline" onClick={returnToDetail}>
           Volver
         </Button>
       </div>
       <Card className="p-6">
-        <DoctorForm doctor={doctor} onCancel={returnToList} />
+        <DoctorForm doctor={doctor} onCancel={returnToDetail} onSuccess={returnToDetail} />
       </Card>
     </div>
   );

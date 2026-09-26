@@ -10,12 +10,6 @@ export interface DoctorBankAccountResponse {
   isDefault: boolean;
 }
 
-export interface DoctorSpecialtyResponse {
-  specialtyId: string;
-  specialtyName: string;
-  isPrimary: boolean;
-}
-
 export interface DoctorServiceResponse {
   id: string;
   specialtyId: string;
@@ -30,11 +24,13 @@ export interface DoctorAdminResponse {
   documentType: string;
   documentId: string;
   name: string;
+  lastName: string;
   email: string | null;
   phone: string | null;
   splitPercentage: string;
   isActive: boolean;
-  specialties: DoctorSpecialtyResponse[];
+  primarySpecialtyId: string;
+  primarySpecialtyName: string;
   services: DoctorServiceResponse[];
   bankAccounts: DoctorBankAccountResponse[];
   medicalLicenseNumber: string | null;
@@ -47,10 +43,11 @@ export interface CreateDoctorDto {
   documentType: string;
   documentId: string;
   name: string;
+  lastName: string;
   email?: string;
   phone?: string;
   splitPercentage: number;
-  specialtyIds: string[];
+  primarySpecialtyId: string;
   services: Array<{ specialtyId: string; serviceName: string; priceUsd: number }>;
   bankAccount: {
     bankName: string;
@@ -66,10 +63,11 @@ export interface UpdateDoctorDto {
   documentType?: string;
   documentId?: string;
   name?: string;
+  lastName?: string;
   email?: string | null;
   phone?: string | null;
   splitPercentage?: number;
-  specialtyIds?: string[];
+  primarySpecialtyId?: string;
   medicalLicenseNumber?: string | null;
   services?: Array<{ specialtyId: string; serviceName: string; priceUsd: number }>;
   bankAccount?: {

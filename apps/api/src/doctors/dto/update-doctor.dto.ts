@@ -1,18 +1,16 @@
 import { AccountType, DocumentType } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
-  ArrayMaxSize,
-  ArrayMinSize,
   IsArray,
   IsEmail,
   IsEnum,
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
   Length,
   Max,
   Min,
+  MinLength,
   ValidateNested,
 } from 'class-validator';
 
@@ -47,13 +45,18 @@ export class UpdateDoctorDto {
 
   @IsOptional()
   @IsString()
-  @Length(6, 12)
+  @MinLength(6)
   declare documentId?: string;
 
   @IsOptional()
   @IsString()
   @Length(2, 100)
   declare name?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 100)
+  declare lastName?: string;
 
   @IsOptional()
   @IsEmail()
@@ -70,11 +73,9 @@ export class UpdateDoctorDto {
   declare splitPercentage?: number;
 
   @IsOptional()
-  @IsArray()
-  @ArrayMinSize(1)
-  @ArrayMaxSize(1)
-  @IsUUID('4', { each: true })
-  declare specialtyIds?: string[];
+  @IsString()
+  @Length(1, 100)
+  declare primarySpecialtyId?: string;
 
   @IsOptional()
   @IsString()

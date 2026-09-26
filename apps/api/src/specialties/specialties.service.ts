@@ -160,7 +160,7 @@ export class SpecialtiesService {
   ): Promise<{ id: string }> {
     const specialty = await this.assertExists(tenantId, id);
     const [doctors, doctorServices, consultations] = await Promise.all([
-      this.prisma.doctorSpecialty.count({ where: { specialtyId: id } }),
+      this.prisma.doctor.count({ where: { primarySpecialtyId: id } }),
       this.prisma.doctorService.count({ where: { specialtyId: id } }),
       this.prisma.consultationService.count({ where: { specialtyId: id } }),
     ]);

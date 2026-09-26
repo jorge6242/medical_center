@@ -1,10 +1,10 @@
-import { DoctorEditPage } from '@/features/doctors/components/doctor-edit-page';
+import { DoctorDetailPage } from '@/features/doctors/components/doctor-detail-page';
 
 interface DoctorEditRouteProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function DoctorEditRoute({ params }: DoctorEditRouteProps) {
+export default async function DoctorDetailRoute({ params }: DoctorEditRouteProps) {
   const { id } = await params;
-  return <DoctorEditPage doctorId={id} />;
+  return <DoctorDetailPage doctorId={id} />;
 }

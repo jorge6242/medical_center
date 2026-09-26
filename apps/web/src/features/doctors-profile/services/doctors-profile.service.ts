@@ -11,7 +11,8 @@ export interface DoctorProfile {
   verificationStatus: string;
   verifiedAt: string | null;
   lastVerifiedAt: string | null;
-  specialties: Array<{ specialtyId: string; specialtyName: string; isPrimary: boolean }>;
+  primarySpecialtyId: string;
+  primarySpecialtyName: string;
 }
 
 export interface UpdateDoctorProfileDto {
@@ -20,8 +21,7 @@ export interface UpdateDoctorProfileDto {
   phone?: string;
 }
 
-export const getDoctorProfile = (): Promise<DoctorProfile> =>
-  apiJson('/doctors/me');
+export const getDoctorProfile = (): Promise<DoctorProfile> => apiJson('/doctors/me');
 
 export const updateDoctorProfile = (dto: UpdateDoctorProfileDto): Promise<DoctorProfile> =>
   apiJson('/doctors/me', {
@@ -34,5 +34,7 @@ export const verifyDoctorLicense = (): Promise<DoctorProfile> =>
     method: 'POST',
   });
 
-export const getDoctorVerificationStatus = (): Promise<{ status: string; licenseNumber: string | null }> =>
-  apiJson('/doctors/me/verification-status');
+export const getDoctorVerificationStatus = (): Promise<{
+  status: string;
+  licenseNumber: string | null;
+}> => apiJson('/doctors/me/verification-status');

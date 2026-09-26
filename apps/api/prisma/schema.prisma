@@ -215,11 +215,13 @@ model Doctor {
   id              String   @id @default(uuid())
   tenantId        String
   name            String
+  lastName        String   @default("")
   email           String?
   phone           String?
   documentType    DocumentType
   documentId      String
   splitPercentage Decimal  @db.Decimal(5, 2)
+  primarySpecialtyId String
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -234,7 +236,7 @@ model Doctor {
   user         User?   @relation(fields: [userId], references: [id])
 
   tenant        Tenant              @relation(fields: [tenantId], references: [id])
-  specialties   DoctorSpecialty[]
+  primarySpecialty Specialty @relation("DoctorPrimarySpecialty", fields: [primarySpecialtyId], references: [id])
   bankAccounts  DoctorBankAccount[]
   consultations Consultation[]
   medicalRecords MedicalRecord[]
@@ -244,21 +246,8 @@ model Doctor {
   @@unique([tenantId, documentType, documentId])
   @@index([tenantId])
   @@index([tenantId, isActive])
+  @@index([primarySpecialtyId])
   @@map("doctors")
-}
-
-model DoctorSpecialty {
-  id          String  @id @default(uuid())
-  doctorId    String
-  specialtyId String
-  isPrimary   Boolean @default(false)
-
-  doctor    Doctor    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-  specialty Specialty @relation(fields: [specialtyId], references: [id])
-
-  @@unique([doctorId, specialtyId])
-  @@index([doctorId])
-  @@map("doctor_specialties")
 }
 
 model DoctorBankAccount {
@@ -297,7 +286,7 @@ model Specialty {
 
   tenant        Tenant            @relation(fields: [tenantId], references: [id])
   doctorServices DoctorService[]
-  doctors       DoctorSpecialty[]
+  primaryDoctors Doctor[] @relation("DoctorPrimarySpecialty")
   consultationServices ConsultationService[]
 
   @@unique([tenantId, name])

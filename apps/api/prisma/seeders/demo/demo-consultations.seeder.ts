@@ -143,7 +143,7 @@ export async function seedDemoConsultations(
       },
     });
 
-    const specialty = await prisma.doctorSpecialty.findFirstOrThrow({
+    const doctorService = await prisma.doctorService.findFirstOrThrow({
       where: {
         doctorId: doctor.id,
         ...(item.specialtyName
@@ -152,15 +152,7 @@ export async function seedDemoConsultations(
                 is: { tenantId: DEMO_TENANT_ID, name: item.specialtyName },
               },
             }
-          : {}),
-      },
-      include: { specialty: true },
-      orderBy: { isPrimary: 'desc' },
-    });
-    const doctorService = await prisma.doctorService.findFirstOrThrow({
-      where: {
-        doctorId: doctor.id,
-        specialtyId: specialty.specialtyId,
+          : { specialtyId: doctor.primarySpecialtyId }),
         ...(item.serviceName
           ? { service: { is: { name: item.serviceName } } }
           : {}),

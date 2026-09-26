@@ -24,14 +24,15 @@ const doctorFormSchema = z.object({
   documentType: z.enum(['V', 'E', 'J', 'G']),
   documentId: z.string().min(1, 'Requerido'),
   name: z.string().min(2, 'Nombre requerido'),
+  lastName: z.string().min(2, 'Apellido requerido'),
   email: z.string().email().optional().or(z.literal('')),
   phone: z.string().optional(),
   splitPercentage: z.number().min(0).max(100),
-  specialtyId: z.string().uuid('Selecciona una especialidad'),
+  specialtyId: z.string().min(1, 'Selecciona una especialidad'),
   services: z
     .array(
       z.object({
-        specialtyId: z.string().uuid('Selecciona una especialidad'),
+        specialtyId: z.string().min(1, 'Selecciona una especialidad'),
         serviceName: z.string().min(2, 'Servicio requerido'),
         priceUsd: z.number().positive('Precio requerido'),
       }),
@@ -61,10 +62,11 @@ function getDoctorFormDefaults(doctor?: DoctorAdminResponse): Partial<DoctorForm
     documentId: doctor.documentId,
     documentType: doctor.documentType as DoctorFormData['documentType'],
     name: doctor.name,
+    lastName: doctor.lastName,
     email: doctor.email ?? '',
     phone: doctor.phone ?? '',
     splitPercentage: Number(doctor.splitPercentage),
-    specialtyId: doctor.specialties[0]?.specialtyId,
+    specialtyId: doctor.primarySpecialtyId,
     medicalLicenseNumber: doctor.medicalLicenseNumber ?? '',
     services: doctor.services.map((service) => ({
       specialtyId: service.specialtyId,
@@ -138,7 +140,7 @@ export function DoctorForm({ doctor, onCancel, onSuccess }: DoctorFormProps) {
   useEffect(() => {
     if (!doctor || specialties.length === 0) return;
 
-    const primarySpecialtyId = doctor.specialties[0]?.specialtyId;
+    const primarySpecialtyId = doctor.primarySpecialtyId;
     if (primarySpecialtyId) {
       setValue('specialtyId', primarySpecialtyId, { shouldDirty: false });
     }
@@ -192,10 +194,11 @@ export function DoctorForm({ doctor, onCancel, onSuccess }: DoctorFormProps) {
         documentType: data.documentType,
         documentId: data.documentId,
         name: data.name,
+        lastName: data.lastName,
         email: data.email?.trim() || null,
         phone: data.phone?.trim() || null,
         splitPercentage: data.splitPercentage,
-        specialtyIds: [data.specialtyId],
+        primarySpecialtyId: data.specialtyId,
         medicalLicenseNumber: data.medicalLicenseNumber?.trim() || null,
         services: data.services,
         bankAccount,
@@ -207,10 +210,11 @@ export function DoctorForm({ doctor, onCancel, onSuccess }: DoctorFormProps) {
       documentType: data.documentType,
       documentId: data.documentId,
       name: data.name,
+      lastName: data.lastName,
       email: data.email?.trim() || undefined,
       phone: data.phone?.trim() || undefined,
       splitPercentage: data.splitPercentage,
-      specialtyIds: [data.specialtyId],
+      primarySpecialtyId: data.specialtyId,
       services: data.services,
       medicalLicenseNumber: data.medicalLicenseNumber?.trim() || undefined,
       bankAccount: {
@@ -272,7 +276,15 @@ export function DoctorForm({ doctor, onCancel, onSuccess }: DoctorFormProps) {
           )}
         </div>
       </div>
-      <Input {...register('name')} id="name" label="Nombre completo" error={errors.name?.message} />
+      <div className="grid grid-cols-2 gap-4">
+        <Input {...register('name')} id="name" label="Nombre" error={errors.name?.message} />
+        <Input
+          {...register('lastName')}
+          id="lastName"
+          label="Apellido"
+          error={errors.lastName?.message}
+        />
+      </div>
       <Input
         {...register('medicalLicenseNumber')}
         id="medicalLicenseNumber"
@@ -300,7 +312,7 @@ export function DoctorForm({ doctor, onCancel, onSuccess }: DoctorFormProps) {
         <Select
           {...register('specialtyId')}
           id="specialtyId"
-          label="Especialidad informativa"
+          label="Especialidad base"
           error={errors.specialtyId?.message}
           options={[{ value: '', label: 'Seleccionar…' }, ...specialtyOptions]}
         />

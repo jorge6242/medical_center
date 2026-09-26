@@ -112,6 +112,7 @@ export class DoctorsService {
         ? {
             OR: [
               { name: { contains: search, mode: 'insensitive' as const } },
+              { lastName: { contains: search, mode: 'insensitive' as const } },
               {
                 documentId: { contains: search, mode: 'insensitive' as const },
               },
@@ -122,12 +123,8 @@ export class DoctorsService {
                 },
               },
               {
-                specialties: {
-                  some: {
-                    specialty: {
-                      name: { contains: search, mode: 'insensitive' as const },
-                    },
-                  },
+                primarySpecialty: {
+                  name: { contains: search, mode: 'insensitive' as const },
                 },
               },
             ],
@@ -142,7 +139,7 @@ export class DoctorsService {
         skip,
         take: limit,
         include: {
-          specialties: { include: { specialty: true } },
+          primarySpecialty: true,
           bankAccounts: { where: { isActive: true } },
           doctorServices: { include: { specialty: true, service: true } },
         },
@@ -162,7 +159,7 @@ export class DoctorsService {
     const doctor = await this.prisma.doctor.findFirst({
       where: { id, tenantId, isActive: true },
       include: {
-        specialties: { include: { specialty: true } },
+        primarySpecialty: true,
         bankAccounts: { where: { isActive: true } },
         doctorServices: { include: { specialty: true, service: true } },
       },
@@ -189,10 +186,11 @@ export class DoctorsService {
       );
     }
 
-    const validSpecialties = await this.prisma.specialty.findMany({
-      where: { id: { in: dto.specialtyIds }, tenantId, isActive: true },
+    const primarySpecialty = await this.prisma.specialty.findFirst({
+      where: { id: dto.primarySpecialtyId, tenantId, isActive: true },
+      select: { id: true },
     });
-    if (validSpecialties.length !== dto.specialtyIds.length) {
+    if (!primarySpecialty) {
       throw new BadRequestException(
         'Una o más especialidades no son válidas para este tenant',
       );
@@ -206,22 +204,14 @@ export class DoctorsService {
           documentType: dto.documentType,
           documentId: dto.documentId,
           name: dto.name,
+          lastName: dto.lastName,
           email: dto.email,
           phone: dto.phone,
           splitPercentage: dto.splitPercentage,
+          primarySpecialtyId: dto.primarySpecialtyId,
           medicalLicenseNumber: dto.medicalLicenseNumber,
         },
       });
-
-      for (let i = 0; i < dto.specialtyIds.length; i++) {
-        await tx.doctorSpecialty.create({
-          data: {
-            doctorId: created.id,
-            specialtyId: dto.specialtyIds[i] as string,
-            isPrimary: i === 0,
-          },
-        });
-      }
 
       await tx.doctorBankAccount.create({
         data: {
@@ -288,12 +278,12 @@ export class DoctorsService {
       }
     }
 
-    if (dto.specialtyIds) {
-      const validSpecialties = await this.prisma.specialty.findMany({
-        where: { id: { in: dto.specialtyIds }, tenantId, isActive: true },
+    if (dto.primarySpecialtyId) {
+      const primarySpecialty = await this.prisma.specialty.findFirst({
+        where: { id: dto.primarySpecialtyId, tenantId, isActive: true },
         select: { id: true },
       });
-      if (validSpecialties.length !== dto.specialtyIds.length) {
+      if (!primarySpecialty) {
         throw new BadRequestException(
           'La especialidad informativa no es válida para este tenant',
         );
@@ -315,23 +305,14 @@ export class DoctorsService {
           documentType: dto.documentType,
           documentId: dto.documentId,
           name: dto.name,
+          lastName: dto.lastName,
           email: dto.email,
           phone: dto.phone,
           splitPercentage: dto.splitPercentage,
+          primarySpecialtyId: dto.primarySpecialtyId,
           medicalLicenseNumber: dto.medicalLicenseNumber,
         },
       });
-
-      if (dto.specialtyIds) {
-        await tx.doctorSpecialty.deleteMany({ where: { doctorId: id } });
-        await tx.doctorSpecialty.create({
-          data: {
-            doctorId: id,
-            specialtyId: dto.specialtyIds[0] as string,
-            isPrimary: true,
-          },
-        });
-      }
 
       if (dto.bankAccount) {
         const accountNumber = dto.bankAccount.accountNumber;
@@ -516,7 +497,7 @@ export class DoctorsService {
       where: {
         tenantId,
         isActive: true,
-        specialties: { some: { specialtyId } },
+        doctorServices: { some: { tenantId, specialtyId } },
       },
       select: {
         id: true,
@@ -569,7 +550,7 @@ export class DoctorsService {
     const doctor = await this.prisma.doctor.findFirstOrThrow({
       where: { id, tenantId },
       include: {
-        specialties: { include: { specialty: true } },
+        primarySpecialty: true,
         bankAccounts: true,
         doctorServices: {
           where: { tenantId },
@@ -597,6 +578,7 @@ export class DoctorsService {
     documentType: DocumentType;
     documentId: string;
     name: string;
+    lastName: string;
     email: string | null;
     phone: string | null;
     splitPercentage: Prisma.Decimal;
@@ -605,11 +587,8 @@ export class DoctorsService {
     verificationStatus: string;
     verifiedAt: Date | null;
     lastVerifiedAt: Date | null;
-    specialties: Array<{
-      specialtyId: string;
-      isPrimary: boolean;
-      specialty: { name: string };
-    }>;
+    primarySpecialtyId: string;
+    primarySpecialty: { name: string };
     bankAccounts: Array<{
       id: string;
       bankName: string;
@@ -633,6 +612,7 @@ export class DoctorsService {
       documentType: doctor.documentType,
       documentId: doctor.documentId,
       name: doctor.name,
+      lastName: doctor.lastName,
       email: doctor.email,
       phone: doctor.phone,
       splitPercentage: doctor.splitPercentage.toString(),
@@ -641,11 +621,8 @@ export class DoctorsService {
       verificationStatus: doctor.verificationStatus as VerificationStatus,
       verifiedAt: doctor.verifiedAt?.toISOString() ?? null,
       lastVerifiedAt: doctor.lastVerifiedAt?.toISOString() ?? null,
-      specialties: doctor.specialties.map((ds) => ({
-        specialtyId: ds.specialtyId,
-        specialtyName: ds.specialty.name,
-        isPrimary: ds.isPrimary,
-      })),
+      primarySpecialtyId: doctor.primarySpecialtyId,
+      primarySpecialtyName: doctor.primarySpecialty.name,
       services: doctor.doctorServices.map((service) => ({
         id: service.id,
         specialtyId: service.specialtyId,

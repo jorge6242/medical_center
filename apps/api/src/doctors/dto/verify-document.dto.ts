@@ -1,11 +1,11 @@
 import { DocumentType } from '@prisma/client';
-import { IsEnum, IsString, Length } from 'class-validator';
+import { IsEnum, IsString, MinLength } from 'class-validator';
 
 export class VerifyDocumentDto {
   @IsEnum(DocumentType)
   declare documentType: DocumentType;
 
   @IsString()
-  @Length(6, 12)
+  @MinLength(6)
   declare documentId: string;
 }

@@ -61,6 +61,9 @@ const DOCTORS = [
 
 export async function seedDoctors(prisma: PrismaClient): Promise<void> {
   for (const docData of DOCTORS) {
+    const primarySpecialty = await prisma.specialty.findFirstOrThrow({
+      where: { tenantId: TENANT_ID, name: docData.specialties[0] },
+    });
     await prisma.doctor.upsert({
       where: {
         tenantId_documentType_documentId: {
@@ -69,7 +72,7 @@ export async function seedDoctors(prisma: PrismaClient): Promise<void> {
           documentId: docData.documentId,
         },
       },
-      update: {},
+      update: { primarySpecialtyId: primarySpecialty.id },
       create: {
         id: docData.id,
         tenantId: TENANT_ID,
@@ -80,6 +83,7 @@ export async function seedDoctors(prisma: PrismaClient): Promise<void> {
         documentType: docData.documentType,
         documentId: docData.documentId,
         splitPercentage: docData.splitPercentage,
+        primarySpecialtyId: primarySpecialty.id,
       },
     });
 
@@ -91,21 +95,6 @@ export async function seedDoctors(prisma: PrismaClient): Promise<void> {
       const specName = docData.specialties[i] as string;
       const specialty = await prisma.specialty.findFirstOrThrow({
         where: { tenantId: TENANT_ID, name: specName },
-      });
-
-      await prisma.doctorSpecialty.upsert({
-        where: {
-          doctorId_specialtyId: {
-            doctorId: doctor.id,
-            specialtyId: specialty.id,
-          },
-        },
-        update: {},
-        create: {
-          doctorId: doctor.id,
-          specialtyId: specialty.id,
-          isPrimary: i === 0,
-        },
       });
 
       const services = await prisma.service.findMany({

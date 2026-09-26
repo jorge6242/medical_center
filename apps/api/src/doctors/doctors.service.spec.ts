@@ -111,4 +111,31 @@ describe('DoctorsService doctor service pricing', () => {
       service.getDoctorServices('tenant-1', 'missing'),
     ).rejects.toThrow('Doctor missing no encontrado');
   });
+
+  it('finds doctors by configured service specialty, not by their base specialty', async () => {
+    const prisma = {
+      specialty: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'specialty-2',
+          name: 'Pediatría',
+        }),
+      },
+      doctor: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const service = new DoctorsService(prisma as never, {} as never);
+
+    await service.findBySpecialty('tenant-1', 'specialty-2');
+
+    expect(prisma.doctor.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          doctorServices: {
+            some: { tenantId: 'tenant-1', specialtyId: 'specialty-2' },
+          },
+        }),
+      }),
+    );
+  });
 });
