@@ -114,18 +114,46 @@ update_railway_image() {
     --yes
 }
 
+wait_for_health() {
+  local url="$1"
+  local hide_response="$2"
+  local -a curl_args=(curl --fail --silent --show-error --max-time 10)
+
+  if [[ "$hide_response" == 'true' ]]; then
+    curl_args+=(--output /dev/null)
+  fi
+
+  if "$DRY_RUN"; then
+    run "${curl_args[@]}" "$url"
+    return
+  fi
+
+  for attempt in {1..40}; do
+    if "${curl_args[@]}" "$url"; then
+      return
+    fi
+
+    if [[ "$attempt" -lt 40 ]]; then
+      printf 'Esperando disponibilidad del servicio (%s/40)...\n' "$attempt"
+      sleep 3
+    fi
+  done
+
+  fail "El servicio no respondió sano luego de 120 segundos: $url"
+}
+
 release_api() {
   local image="${DOCKERHUB_USER}/centro-medico-api:${TAG}"
   run make docker-release-api "IMAGE_TAG=${TAG}"
   update_railway_image "$API_SERVICE_ID" "$image"
-  run curl --fail --silent --show-error --retry 20 --retry-delay 3 "$API_HEALTH_URL"
+  wait_for_health "$API_HEALTH_URL" false
 }
 
 release_web() {
   local image="${DOCKERHUB_USER}/centro-medico-web:${TAG}"
   run make docker-release-web "IMAGE_TAG=${TAG}"
   update_railway_image "$WEB_SERVICE_ID" "$image"
-  run curl --fail --silent --show-error --retry 20 --retry-delay 3 --output /dev/null "$WEB_URL"
+  wait_for_health "$WEB_URL" true
 }
 
 IFS=',' read -r -a selected_services <<< "$SERVICES"
