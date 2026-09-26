@@ -1,8 +1,15 @@
 import { Badge } from '@/shared/components/ui/badge';
 
-const STATUS_CONFIG: Record<string, { label: string; variant: 'success' | 'warning' | 'error' }> = {
+type VerificationStatusConfig = {
+  label: string;
+  variant: 'success' | 'warning' | 'error';
+};
+
+const PENDING_CONFIG: VerificationStatusConfig = { label: 'Pendiente', variant: 'warning' };
+
+const STATUS_CONFIG: Record<string, VerificationStatusConfig> = {
   VERIFIED: { label: 'Verificado', variant: 'success' },
-  PENDING: { label: 'Pendiente', variant: 'warning' },
+  PENDING: PENDING_CONFIG,
   REJECTED: { label: 'Sin registro SACS', variant: 'error' },
   NOT_FOUND: { label: 'Cédula no encontrada', variant: 'error' },
 };
@@ -12,6 +19,6 @@ interface VerificationBadgeProps {
 }
 
 export function VerificationBadge({ status }: VerificationBadgeProps) {
-  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.PENDING;
+  const config = STATUS_CONFIG[status] ?? PENDING_CONFIG;
   return <Badge variant={config.variant}>{config.label}</Badge>;
 }
