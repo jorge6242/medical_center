@@ -71,7 +71,12 @@ services:
       - "3000:3000"
     volumes:
       # Hot reload: mount source only — node_modules stays in container
+      - ./package.json:/app/package.json
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml
       - ./apps/web/package.json:/app/apps/web/package.json
+      - ./packages/shared/package.json:/app/packages/shared/package.json
+      - ./apps/web/next.config.ts:/app/apps/web/next.config.ts
       - ./apps/web/src:/app/apps/web/src
       - ./apps/web/public:/app/apps/web/public
     depends_on:
