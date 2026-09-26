@@ -51,6 +51,8 @@ const ROLES = [
       { resource: 'specialties', action: 'delete' },
       { resource: 'doctors', action: 'read' },
       { resource: 'doctors', action: 'create' },
+      { resource: 'doctors', action: 'update' },
+      { resource: 'doctors', action: 'delete' },
       { resource: 'payments', action: 'create' },
       { resource: 'payments', action: 'read' },
       { resource: 'consultations', action: 'create' },
@@ -62,6 +64,7 @@ const ROLES = [
       { resource: 'reports', action: 'read' },
       { resource: 'laboratories', action: 'create' },
       { resource: 'laboratories', action: 'read' },
+      { resource: 'tenant_settings', action: 'update' },
     ],
   },
 ];
