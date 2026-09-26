@@ -186,7 +186,7 @@ export function ScheduleConsultationForm({ onSuccess, onCancel }: ScheduleConsul
         <Input {...register('notes')} id="scheduled-notes" label="Observaciones" />
         <label className="flex items-center gap-2 text-sm text-on-surface">
           <input type="checkbox" {...register('sendEmailNotification')} />
-          Notificar al doctor por email
+          Notificar por email al doctor y al paciente
         </label>
         <label className="flex items-center gap-2 text-sm text-on-surface">
           <input type="checkbox" {...register('registerPaymentNow')} />

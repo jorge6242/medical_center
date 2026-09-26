@@ -113,11 +113,6 @@ export class ConsultationsService {
       );
     }
 
-    const totalUsd = doctorServices.reduce(
-      (sum, ds) => sum + parseFloat(ds.priceUsd.toString()),
-      0,
-    );
-
     const consultation = await this.prisma.$transaction(async (tx) => {
       const created = await tx.consultation.create({
         data: {
@@ -162,37 +157,14 @@ export class ConsultationsService {
       return created;
     });
 
-    // Send email notification (non-blocking, errors are logged)
-    if (dto.sendEmailNotification && doctor.email) {
-      try {
-        const scheduledDate = dto.date.toLocaleDateString('es-VE');
-        const scheduledTime = dto.date.toLocaleTimeString('es-VE', {
-          hour: '2-digit',
-          minute: '2-digit',
-        });
-        const servicesText = doctorServices
-          .map((ds) => ds.service.name)
-          .join(', ');
-
-        const { subject, html } = this.mailerService.renderTemplate(
-          'appointmentEmail',
-          {
-            doctorName: doctor.name,
-            patientName: patient.name,
-            scheduledDate,
-            scheduledTime,
-            services: servicesText,
-            totalUsd: totalUsd.toFixed(2),
-            centerName: 'Centro Médico',
-          },
-        );
-
-        await this.mailerService.sendEmail(doctor.email, subject, html);
-      } catch (err) {
-        this.logger.warn(
-          `Failed to send appointment email for consultation ${consultation.id}: ${String(err)}`,
-        );
-      }
+    if (dto.sendEmailNotification) {
+      await this.notifyScheduledConsultation(
+        consultation.id,
+        doctor,
+        patient,
+        dto.date,
+        doctorServices.map((doctorService) => doctorService.service.name),
+      );
     }
 
     const full = await this.prisma.consultation.findFirstOrThrow({
@@ -209,6 +181,67 @@ export class ConsultationsService {
     });
 
     return this.toResponse(full as ConsultationWithRelations);
+  }
+
+  private async notifyScheduledConsultation(
+    consultationId: string,
+    doctor: Pick<Doctor, 'name' | 'email'>,
+    patient: Pick<Patient, 'name' | 'email'>,
+    date: Date,
+    services: string[],
+  ): Promise<void> {
+    const context = {
+      centerName: 'Centro Médico',
+      doctorName: doctor.name,
+      patientName: patient.name,
+      scheduledDate: date.toLocaleDateString('es-VE', {
+        timeZone: 'America/Caracas',
+      }),
+      scheduledTime: date.toLocaleTimeString('es-VE', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'America/Caracas',
+      }),
+      services: services.join(', '),
+    };
+
+    await Promise.all([
+      this.sendAppointmentEmail(
+        doctor.email,
+        'appointmentDoctorEmail',
+        context,
+        consultationId,
+      ),
+      this.sendAppointmentEmail(
+        patient.email,
+        'appointmentPatientEmail',
+        context,
+        consultationId,
+      ),
+    ]);
+  }
+
+  private async sendAppointmentEmail(
+    recipient: string | null,
+    template: 'appointmentDoctorEmail' | 'appointmentPatientEmail',
+    context: Record<string, string>,
+    consultationId: string,
+  ): Promise<void> {
+    if (!recipient) {
+      return;
+    }
+
+    try {
+      const { subject, html } = this.mailerService.renderTemplate(
+        template,
+        context,
+      );
+      await this.mailerService.sendEmail(recipient, subject, html);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to send ${template} for consultation ${consultationId}: ${String(error)}`,
+      );
+    }
   }
 
   // ─── markAsAttended ───────────────────────────────────────────────────────

@@ -25,6 +25,7 @@ const activePatient = {
   id: PATIENT_ID,
   tenantId: TENANT_ID,
   name: 'Ana Pérez',
+  email: 'ana@example.com',
   documentType: 'V' as const,
   documentId: '12345678',
   isActive: true,
@@ -142,7 +143,7 @@ describe('ConsultationsService.createScheduled', () => {
   const dto: CreateScheduledConsultationDto = {
     patientId: PATIENT_ID,
     doctorId: DOCTOR_ID,
-    date: new Date('2026-10-01T09:00:00.000Z'),
+    date: new Date('2026-10-01T13:00:00.000Z'),
     doctorServiceIds: [DS_ID_1],
     notes: 'Revisión anual',
     sendEmailNotification: true,
@@ -161,7 +162,7 @@ describe('ConsultationsService.createScheduled', () => {
     expect(result.services[0]?.serviceName).toBe('Consulta General');
   });
 
-  it('sends email when sendEmailNotification=true and doctor has email', async () => {
+  it('sends recipient-specific emails to the doctor and patient', async () => {
     const prisma = buildPrisma();
     const mailer = buildMailer();
     const auditLog = buildAuditLog();
@@ -172,7 +173,38 @@ describe('ConsultationsService.createScheduled', () => {
       sendEmailNotification: true,
     });
 
-    expect(mailer.sendEmail).toHaveBeenCalled();
+    expect(mailer.renderTemplate).toHaveBeenNthCalledWith(
+      1,
+      'appointmentDoctorEmail',
+      expect.objectContaining({
+        doctorName: 'Dr. García',
+        patientName: 'Ana Pérez',
+        scheduledDate: '1/10/2026',
+        scheduledTime: '09:00 a. m.',
+      }),
+    );
+    expect(mailer.renderTemplate).toHaveBeenNthCalledWith(
+      2,
+      'appointmentPatientEmail',
+      expect.objectContaining({
+        doctorName: 'Dr. García',
+        patientName: 'Ana Pérez',
+        scheduledDate: '1/10/2026',
+        scheduledTime: '09:00 a. m.',
+      }),
+    );
+    expect(mailer.sendEmail).toHaveBeenNthCalledWith(
+      1,
+      'doctor@clinic.com',
+      'Cita médica agendada',
+      '<p>Cita</p>',
+    );
+    expect(mailer.sendEmail).toHaveBeenNthCalledWith(
+      2,
+      'ana@example.com',
+      'Cita médica agendada',
+      '<p>Cita</p>',
+    );
   });
 
   it('does NOT send email when sendEmailNotification=false', async () => {
@@ -206,7 +238,11 @@ describe('ConsultationsService.createScheduled', () => {
       sendEmailNotification: true,
     });
 
-    expect(mailer.sendEmail).not.toHaveBeenCalled();
+    expect(mailer.sendEmail).toHaveBeenCalledWith(
+      'ana@example.com',
+      'Cita médica agendada',
+      '<p>Cita</p>',
+    );
   });
 
   it('throws ConflictException when patient has overlapping scheduled/pending consultation', async () => {
