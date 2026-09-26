@@ -47,10 +47,11 @@ export const BASE_ROLES = [
   },
   {
     name: 'recepcionista',
-    version: 9,
+    version: 10,
     permissions: [
       { resource: 'patients', action: 'create' },
       { resource: 'patients', action: 'read' },
+      { resource: 'patients', action: 'update' },
       { resource: 'patients', action: 'delete' },
       { resource: 'specialties', action: 'read' },
       { resource: 'specialties', action: 'create' },
