@@ -10,7 +10,7 @@ const appointmentPatientEmailTemplateHtml = readFileSync(
   'utf8',
 );
 
-interface AppointmentPatientEmailTemplateContext {
+export interface AppointmentPatientEmailTemplateContext {
   centerName: string;
   doctorName: string;
   patientName: string;
