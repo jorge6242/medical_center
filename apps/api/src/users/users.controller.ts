@@ -4,11 +4,13 @@ import {
   Get,
   Param,
   Post,
+  Patch,
   Body,
   UseGuards,
 } from '@nestjs/common';
 
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user-role.dto';
 import { UsersService } from './users.service';
 import { AclGuard } from '../auth/guards/acl.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -33,6 +35,16 @@ export class UsersController {
   @RequirePermission('users', 'create')
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateUserDto) {
     return this.usersService.create(user.tenantId, dto);
+  }
+
+  @Patch(':id')
+  @RequirePermission('users', 'update')
+  update(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+  ) {
+    return this.usersService.update(user.tenantId, user.sub, id, dto);
   }
 
   @Delete(':id')

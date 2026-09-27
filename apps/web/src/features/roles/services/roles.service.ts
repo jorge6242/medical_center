@@ -12,5 +12,6 @@ export interface RoleResponse {
   permissions: PermissionResponse[];
 }
 
-export const getRoles = (): Promise<RoleResponse[]> =>
-  apiJson('/roles');
+export const getRoles = (): Promise<RoleResponse[]> => apiJson('/roles');
+
+export const getAssignableRoles = (): Promise<RoleResponse[]> => apiJson('/roles/assignable');

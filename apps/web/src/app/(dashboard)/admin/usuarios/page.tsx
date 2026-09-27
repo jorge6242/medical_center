@@ -1,14 +1,21 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus } from 'lucide-react';
+import { Pencil, Plus } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod/v4';
 
-import { useRoles } from '@/features/roles/hooks/use-roles';
-import { useCreateUser, useDeactivateUser, useUsers } from '@/features/users/hooks/use-users';
+import { useAssignableRoles } from '@/features/roles/hooks/use-roles';
+import {
+  useCreateUser,
+  useDeactivateUser,
+  useUpdateUser,
+  useUsers,
+} from '@/features/users/hooks/use-users';
+import type { UserResponse } from '@/features/users/services/users.service';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
@@ -16,6 +23,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Modal } from '@/shared/components/ui/modal';
 import { Select } from '@/shared/components/ui/select';
 import { formatDate } from '@/shared/utils/format';
+import { useAuthStore } from '@/stores/auth.store';
 
 const schema = z.object({
   name: z.string().min(2, 'Nombre requerido'),
@@ -28,9 +36,24 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-function UserForm({ onClose }: { readonly onClose: () => void }) {
-  const { data: roles = [] } = useRoles();
-  const { mutate, isPending, error } = useCreateUser(onClose);
+const updateSchema = schema.extend({
+  password: z.string().min(8, 'Mínimo 8 caracteres').optional().or(z.literal('')),
+});
+
+type UpdateFormData = z.infer<typeof updateSchema>;
+
+export function UserForm({
+  onClose,
+  onSuccess,
+}: {
+  readonly onClose: () => void;
+  readonly onSuccess?: (user: UserResponse) => void;
+}) {
+  const { data: roles = [] } = useAssignableRoles();
+  const { mutate, isPending, error } = useCreateUser((user) => {
+    onSuccess?.(user);
+    onClose();
+  });
   const {
     register,
     handleSubmit,
@@ -106,16 +129,111 @@ function UserForm({ onClose }: { readonly onClose: () => void }) {
   );
 }
 
+export function UserEditForm({
+  user,
+  onClose,
+}: {
+  readonly user: UserResponse;
+  readonly onClose: () => void;
+}) {
+  const { data: roles = [] } = useAssignableRoles();
+  const { mutate, isPending, error } = useUpdateUser(onClose);
+  const roleOptions = [
+    { value: user.role.id, label: user.role.name },
+    ...roles
+      .filter((role) => role.id !== user.role.id)
+      .map((role) => ({ value: role.id, label: role.name })),
+  ];
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<UpdateFormData>({
+    resolver: zodResolver(updateSchema),
+    defaultValues: {
+      name: user.name,
+      lastName: user.lastName ?? '',
+      identificationNumber: user.identificationNumber ?? '',
+      email: user.email,
+      roleId: user.role.id,
+    },
+  });
+
+  return (
+    <form
+      onSubmit={handleSubmit((dto) =>
+        mutate({ id: user.id, dto: { ...dto, password: dto.password || undefined } }),
+      )}
+      className="flex flex-col gap-4"
+    >
+      <p className="text-sm text-on-surface-variant">
+        Actualizá la información de <span className="font-medium text-on-surface">{user.name}</span>
+        .
+      </p>
+      <Input {...register('name')} id="edit-name" label="Nombre" error={errors.name?.message} />
+      <Input
+        {...register('lastName')}
+        id="edit-last-name"
+        label="Apellido"
+        error={errors.lastName?.message}
+      />
+      <Input
+        {...register('identificationNumber')}
+        id="edit-identification-number"
+        label="Número de identificación (opcional)"
+        error={errors.identificationNumber?.message}
+      />
+      <Input
+        {...register('email')}
+        id="edit-email"
+        label="Email"
+        type="email"
+        error={errors.email?.message}
+      />
+      <Input
+        {...register('password')}
+        id="edit-password"
+        label="Nueva contraseña"
+        type="password"
+        error={errors.password?.message}
+      />
+      <Select
+        {...register('roleId', { required: 'Seleccioná un rol' })}
+        id="roleId"
+        label="Rol"
+        error={errors.roleId?.message}
+        options={roleOptions}
+      />
+      {error && (
+        <p className="rounded-lg bg-error-container px-3 py-2 text-sm text-on-error-container">
+          {error.message}
+        </p>
+      )}
+      <div className="flex justify-end gap-3 pt-2">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancelar
+        </Button>
+        <Button type="submit" isLoading={isPending}>
+          Guardar cambios
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 export default function UsuariosPage() {
+  const router = useRouter();
   const { data: users = [], isLoading } = useUsers();
   const { mutate: deactivate } = useDeactivateUser();
+  const userId = useAuthStore((state) => state.userId);
   const [showModal, setShowModal] = useState(false);
+  const [userToEdit, setUserToEdit] = useState<UserResponse | null>(null);
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-on-surface">Usuarios</h1>
-        <Button onClick={() => setShowModal(true)}>
+        <Button onClick={() => router.push('/admin/usuarios/nuevo')}>
           <Plus className="h-4 w-4" /> Nuevo usuario
         </Button>
       </div>
@@ -153,7 +271,16 @@ export default function UsuariosPage() {
                       </Badge>
                     </td>
                     <td className="py-3">
-                      {u.isActive && (
+                      {userId && u.id !== userId && u.isActive && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push(`/admin/usuarios/${u.id}/editar`)}
+                        >
+                          <Pencil className="h-4 w-4" /> Editar
+                        </Button>
+                      )}
+                      {userId && u.id !== userId && u.isActive && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -181,6 +308,9 @@ export default function UsuariosPage() {
 
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Nuevo usuario">
         <UserForm onClose={() => setShowModal(false)} />
+      </Modal>
+      <Modal open={userToEdit !== null} onClose={() => setUserToEdit(null)} title="Editar usuario">
+        {userToEdit && <UserEditForm user={userToEdit} onClose={() => setUserToEdit(null)} />}
       </Modal>
     </div>
   );

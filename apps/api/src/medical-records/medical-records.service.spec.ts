@@ -107,6 +107,8 @@ describe('MedicalRecordsService', () => {
       clinicalData: { anamnesis: { reason: 'Dolor' } },
     });
 
+    expect(result).not.toHaveProperty('tenantId');
+
     expect(prisma.consultation.findFirst).toHaveBeenCalledWith({
       where: { id: 'consult-1', tenantId: 'tenant-1' },
       select: {

@@ -12,6 +12,7 @@ import {
 import { PrismaService } from '../database/prisma.service';
 
 import type { CreateExpenseDto } from './dto/create-expense.dto';
+import type { ExpenseCategoryResponseDto } from './dto/expense-category-response.dto';
 import type { ExpenseQueryDto } from './dto/expense-query.dto';
 import type { ExpenseResponseDto } from './dto/expense-response.dto';
 import type { VoidExpenseDto } from './dto/void-expense.dto';
@@ -139,10 +140,13 @@ export class ExpensesService {
     return this.toResponse(updated);
   }
 
-  async findCategories(tenantId: string) {
+  async findCategories(
+    tenantId: string,
+  ): Promise<ExpenseCategoryResponseDto[]> {
     return this.prisma.expenseCategory.findMany({
       where: { tenantId, isActive: true },
       orderBy: { name: 'asc' },
+      select: { id: true, name: true },
     });
   }
 

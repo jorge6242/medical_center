@@ -1,7 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 
-import { MANAGED_USER_ROLE_NAMES } from './managed-roles';
+import { ASSIGNABLE_USER_ROLE_NAMES } from './managed-roles';
 import { PrismaService } from '../database/prisma.service';
+
+import type { RoleResponseDto } from './dto/role-response.dto';
 
 interface RoleVersionCache {
   version: number;
@@ -48,14 +50,33 @@ export class RolesService {
     this.cache.delete(this.getCacheKey(tenantId, roleName));
   }
 
-  async findAvailableRoles(tenantId: string) {
+  async findAllRoles(tenantId: string): Promise<RoleResponseDto[]> {
     return this.prisma.role.findMany({
       where: {
         tenantId,
         isActive: true,
-        name: { in: [...MANAGED_USER_ROLE_NAMES] },
       },
-      include: { permissions: true },
+      select: {
+        id: true,
+        name: true,
+        permissions: { select: { id: true, resource: true, action: true } },
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async findAssignableRoles(tenantId: string): Promise<RoleResponseDto[]> {
+    return this.prisma.role.findMany({
+      where: {
+        tenantId,
+        isActive: true,
+        name: { in: [...ASSIGNABLE_USER_ROLE_NAMES] },
+      },
+      select: {
+        id: true,
+        name: true,
+        permissions: { select: { id: true, resource: true, action: true } },
+      },
       orderBy: { name: 'asc' },
     });
   }

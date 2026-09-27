@@ -22,7 +22,6 @@ export function toMedicalRecordResponse(
 ): MedicalRecordResponseDto {
   return {
     id: record.id,
-    tenantId: record.tenantId,
     patientId: record.patientId,
     doctorId: record.doctorId,
     consultationId: record.consultationId,

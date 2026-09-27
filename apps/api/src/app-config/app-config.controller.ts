@@ -1,7 +1,9 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
+  Patch,
   Post,
   UploadedFile,
   UseGuards,
@@ -10,6 +12,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 
 import { AppConfigService } from './app-config.service';
+import { UpdateTenantSettingsDto } from './dto/update-tenant-settings.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
   CurrentUser,
@@ -41,5 +44,14 @@ export class AppConfigController {
     if (!file) throw new BadRequestException('Debés adjuntar un logo');
 
     return this.service.replaceLogo(user.tenantId, file);
+  }
+
+  @Patch('tenant')
+  @RequirePermission('tenant_settings', 'update')
+  updateTenantSettings(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdateTenantSettingsDto,
+  ) {
+    return this.service.updateTenantSettings(user.tenantId, dto);
   }
 }

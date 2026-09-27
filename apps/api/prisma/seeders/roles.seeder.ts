@@ -43,7 +43,9 @@ export const BASE_ROLES = [
       { resource: 'tenant_settings', action: 'update' },
       { resource: 'users', action: 'read' },
       { resource: 'users', action: 'create' },
+      { resource: 'users', action: 'update' },
       { resource: 'users', action: 'delete' },
+      { resource: 'roles', action: 'read' },
     ],
   },
   {

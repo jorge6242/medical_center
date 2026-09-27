@@ -4,16 +4,18 @@ import {
   IsArray,
   IsBoolean,
   IsDate,
+  IsNotEmpty,
   IsOptional,
   IsString,
-  IsUUID,
 } from 'class-validator';
 
 export class CreateScheduledConsultationDto {
-  @IsUUID('4')
+  @IsString()
+  @IsNotEmpty()
   declare patientId: string;
 
-  @IsUUID('4')
+  @IsString()
+  @IsNotEmpty()
   declare doctorId: string;
 
   @Type(() => Date)
@@ -22,7 +24,8 @@ export class CreateScheduledConsultationDto {
 
   @IsArray()
   @ArrayMinSize(1)
-  @IsUUID('4', { each: true })
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
   declare doctorServiceIds: string[];
 
   @IsOptional()

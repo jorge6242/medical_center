@@ -37,6 +37,18 @@ Los catálogos y los registros operativos se cargan después desde el sistema po
 
 Ejecutar desde la raíz del proyecto. Este comando modifica la base local, no Railway:
 
+### Asistente interactivo
+
+Para evitar errores al cargar las variables manualmente, usar el asistente. Solicita los datos del tenant, genera una contraseña segura si se deja vacía y pide confirmación antes de modificar la base local:
+
+```bash
+bash scripts/provision-tenant.sh
+```
+
+El resultado muestra la contraseña inicial y el token de acceso una sola vez. Guardarlos en un gestor de contraseñas y no en el repositorio.
+
+### Variables manuales
+
 ```bash
 TENANT_NAME="Centro Médico Virgen del Rosario" \
 TENANT_SLUG="virgen-del-rosario" \

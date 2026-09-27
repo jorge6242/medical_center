@@ -38,9 +38,14 @@ export function LookupCombobox<T extends LookupItem>({
   placeholder = 'Buscar por nombre o cédula…',
 }: LookupComboboxProps<T>) {
   const [query, setQuery] = useState('');
+  const [selectedName, setSelectedName] = useState('');
   const [open, setOpen] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const selectedItem = items.find((item) => item.id === value);
+
+  useEffect(() => {
+    if (!value) setSelectedName('');
+  }, [value]);
 
   useEffect(() => {
     const element = loadMoreRef.current;
@@ -60,11 +65,15 @@ export function LookupCombobox<T extends LookupItem>({
     setQuery(nextQuery);
     onQueryChange(nextQuery);
     setOpen(true);
-    if (value) onChange('');
+    if (value) {
+      setSelectedName('');
+      onChange('');
+    }
   };
 
   const handleSelect = (item: T) => {
     onChange(item.id);
+    setSelectedName(item.name);
     setQuery(item.name);
     setOpen(false);
   };
@@ -76,7 +85,7 @@ export function LookupCombobox<T extends LookupItem>({
       </label>
       <input
         id={id}
-        value={query || selectedItem?.name || ''}
+        value={query || selectedItem?.name || selectedName}
         onChange={(event) => handleQueryChange(event.target.value)}
         onFocus={() => setOpen(true)}
         placeholder={placeholder}
@@ -89,8 +98,12 @@ export function LookupCombobox<T extends LookupItem>({
       {error && <p className="text-xs text-error">{error}</p>}
       {open && query.length > 0 && (
         <div className="absolute z-20 mt-[4.5rem] max-h-60 w-full overflow-y-auto rounded-lg border border-outline bg-surface shadow-lg">
-          {!canSearch && <p className="p-3 text-sm text-on-surface-variant">Escribí al menos 2 caracteres.</p>}
-          {canSearch && isLoading && <p className="p-3 text-sm text-on-surface-variant">Buscando…</p>}
+          {!canSearch && (
+            <p className="p-3 text-sm text-on-surface-variant">Escribí al menos 2 caracteres.</p>
+          )}
+          {canSearch && isLoading && (
+            <p className="p-3 text-sm text-on-surface-variant">Buscando…</p>
+          )}
           {canSearch && !isLoading && items.length === 0 && (
             <p className="p-3 text-sm text-on-surface-variant">Sin resultados.</p>
           )}
@@ -103,10 +116,13 @@ export function LookupCombobox<T extends LookupItem>({
               className="block w-full px-3 py-2 text-left text-sm text-on-surface hover:bg-surface-variant"
             >
               {item.name} ({item.documentType}-{item.documentId})
+              {item.age !== undefined ? ` · ${item.age} años` : ''}
             </button>
           ))}
           <div ref={loadMoreRef} className="h-1" />
-          {isFetchingNextPage && <p className="p-2 text-center text-xs text-on-surface-variant">Cargando más…</p>}
+          {isFetchingNextPage && (
+            <p className="p-2 text-center text-xs text-on-surface-variant">Cargando más…</p>
+          )}
         </div>
       )}
     </div>

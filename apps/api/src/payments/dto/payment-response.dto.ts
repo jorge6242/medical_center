@@ -57,7 +57,6 @@ export class PaymentResponseDto {
   declare id: string;
   declare idempotencyKey: string | null;
   declare status: PaymentStatus;
-  declare tenantId: string;
 
   declare item: PaymentItemResponseDto;
 

@@ -12,6 +12,7 @@ const appointmentDoctorEmailTemplateHtml = readFileSync(
 
 export interface AppointmentDoctorEmailTemplateContext {
   centerName: string;
+  logoUrl: string;
   patientName: string;
   scheduledDate: string;
   scheduledTime: string;

@@ -10,10 +10,20 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 12,
   },
-  title: { color: '#1e3a5f', fontFamily: 'Helvetica-Bold', fontSize: 18, marginBottom: 4 },
+  title: {
+    color: '#1e3a5f',
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 18,
+    marginBottom: 4,
+  },
   subtitle: { color: '#666', fontSize: 10 },
   section: { marginBottom: 16 },
-  sectionTitle: { color: '#1e3a5f', fontFamily: 'Helvetica-Bold', fontSize: 11, marginBottom: 6 },
+  sectionTitle: {
+    color: '#1e3a5f',
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 11,
+    marginBottom: 6,
+  },
   row: {
     borderBottomColor: '#e5e7eb',
     borderBottomWidth: 1,
@@ -51,6 +61,14 @@ export function ConsultationDetailPDF({ consultation }: { consultation: Consulta
           <View style={styles.row}>
             <Text style={styles.label}>Cédula</Text>
             <Text style={styles.value}>{consultation.patientDocument}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Edad</Text>
+            <Text style={styles.value}>
+              {consultation.patientAge === null
+                ? 'No registrada'
+                : `${consultation.patientAge} años`}
+            </Text>
           </View>
         </View>
 

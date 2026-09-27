@@ -893,7 +893,6 @@ export class PaymentsService {
       id: payment.id,
       idempotencyKey: payment.idempotencyKey ?? '',
       status: payment.status,
-      tenantId: payment.tenantId,
       item: {
         id: item?.id ?? '',
         itemType: item?.itemType ?? 'CONSULTATION',

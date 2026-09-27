@@ -1,7 +1,7 @@
 import { apiJson } from '@/config/api';
 
 export interface ConfigInitResponse {
-  tenant: { name: string; slug: string; logoUrl: string | null };
+  tenant: { name: string; slug: string; email: string | null; logoUrl: string | null };
   systemConfig: { igtfRate: number };
   exchangeRate: { rate: number; date: string; source: 'MANUAL' | 'API' } | null;
 }

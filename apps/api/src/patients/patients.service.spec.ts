@@ -29,6 +29,28 @@ describe('PatientsService', () => {
     jest.clearAllMocks();
   });
 
+  it('includes the patient age in lookup results', async () => {
+    (prisma.patient.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'patient-1',
+        name: 'Ana Pérez',
+        documentType: 'V',
+        documentId: '12345678',
+        birthDate: new Date('2000-09-01T00:00:00.000Z'),
+      },
+    ]);
+
+    const result = await service.lookup('tenant-1', {
+      q: 'Ana',
+      limit: 20,
+    });
+
+    expect(result.data[0]).toMatchObject({
+      name: 'Ana Pérez',
+      age: expect.any(Number),
+    });
+  });
+
   it('returns clinicalHistory in patient detail responses', async () => {
     (prisma.patient.findFirst as jest.Mock).mockResolvedValue({
       id: 'patient-1',
@@ -55,6 +77,7 @@ describe('PatientsService', () => {
       id: 'patient-1',
       clinicalHistory: { antecedentesPersonales: { alergias: 'Ninguna' } },
     });
+    expect(result).not.toHaveProperty('tenantId');
   });
 
   it('persists clinicalHistory when updating a patient', async () => {

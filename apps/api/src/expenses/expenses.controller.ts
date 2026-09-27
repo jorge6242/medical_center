@@ -22,6 +22,7 @@ import {
 } from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
 
+import type { ExpenseCategoryResponseDto } from './dto/expense-category-response.dto';
 import type { ExpenseResponseDto } from './dto/expense-response.dto';
 import type { PaginatedResponseDto } from '../common/dto/paginated-response.dto';
 
@@ -32,7 +33,9 @@ export class ExpensesController {
 
   @Get('categories')
   @RequirePermission('expenses', 'read')
-  findCategories(@CurrentUser() user: JwtPayload) {
+  findCategories(
+    @CurrentUser() user: JwtPayload,
+  ): Promise<ExpenseCategoryResponseDto[]> {
     return this.expensesService.findCategories(user.tenantId);
   }
 

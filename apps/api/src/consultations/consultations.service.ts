@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
-  type Prisma,
+  Prisma,
   type Consultation,
   type ConsultationService,
   type Patient,
@@ -20,11 +20,13 @@ import {
 } from '../common/dto/paginated-response.dto';
 import { PrismaService } from '../database/prisma.service';
 import { MailerService } from '../mailer/mailer.service';
+import { RailwayBucketService } from '../railway-bucket/railway-bucket.service';
 
 import type { ConsultationDetailResponseDto } from './dto/consultation-detail-response.dto';
 import type { ConsultationQueryDto } from './dto/consultation-query.dto';
 import type { ConsultationResponseDto } from './dto/consultation-response.dto';
 import type { CreateScheduledConsultationDto } from './dto/create-scheduled-consultation.dto';
+import type { DoctorAvailabilityResponseDto } from './dto/doctor-availability-response.dto';
 import type { UpdateScheduledConsultationDto } from './dto/update-scheduled-consultation.dto';
 
 // Shape returned by Prisma when including patient, doctor, services
@@ -45,6 +47,7 @@ export class ConsultationsService {
     private readonly prisma: PrismaService,
     private readonly mailerService: MailerService,
     private readonly auditLog: AuditLogService,
+    private readonly railwayBucket?: RailwayBucketService,
   ) {}
 
   // ─── createScheduled ──────────────────────────────────────────────────────
@@ -92,70 +95,86 @@ export class ConsultationsService {
       );
     }
 
-    // Overlap detection
-    const slotMinutes = parseInt(slotConfig?.value ?? '60');
-    const slotMs = slotMinutes * 60_000;
-    const conflict = await this.prisma.consultation.findFirst({
-      where: {
+    const slotMinutes = parseInt(slotConfig?.value ?? '60', 10);
+    const [patientConflict, doctorConflict] = await Promise.all([
+      this.findScheduleConflict(tenantId, dto.patientId, dto.date, slotMinutes),
+      this.findScheduleConflict(
         tenantId,
-        patientId: dto.patientId,
-        status: { in: ['SCHEDULED', 'PENDING'] },
-        date: {
-          gte: new Date(dto.date.getTime() - slotMs),
-          lte: new Date(dto.date.getTime() + slotMs),
-        },
-      },
-    });
+        dto.doctorId,
+        dto.date,
+        slotMinutes,
+        'doctorId',
+      ),
+    ]);
 
-    if (conflict) {
+    if (patientConflict) {
       throw new ConflictException(
         'El paciente ya tiene una consulta agendada en ese horario',
       );
     }
 
-    const consultation = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.consultation.create({
-        data: {
-          tenantId,
-          patientId: dto.patientId,
-          doctorId: dto.doctorId,
-          date: dto.date,
-          status: 'SCHEDULED',
-          notes: dto.notes,
-        },
-      });
-
-      await tx.consultationService.createMany({
-        data: doctorServices.map((ds) => ({
-          consultationId: created.id,
-          serviceId: ds.serviceId,
-          specialtyId: ds.specialtyId,
-          serviceName: ds.service.name,
-          specialtyName: ds.specialty.name,
-          priceUsd: ds.priceUsd,
-        })),
-      });
-
-      await this.auditLog.log(
-        {
-          tenantId,
-          userId,
-          action: 'CREATE',
-          entity: 'Consultation',
-          entityId: created.id,
-          newValues: {
-            status: created.status,
-            patientId: created.patientId,
-            doctorId: created.doctorId,
-            date: created.date,
-          },
-          changedFields: ['status', 'patientId', 'doctorId', 'date'],
-        },
-        tx,
+    if (doctorConflict) {
+      throw new ConflictException(
+        'El doctor ya tiene una consulta agendada en ese horario',
       );
+    }
 
-      return created;
-    });
+    let consultation: Consultation;
+    try {
+      consultation = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.consultation.create({
+          data: {
+            tenantId,
+            patientId: dto.patientId,
+            doctorId: dto.doctorId,
+            date: dto.date,
+            status: 'SCHEDULED',
+            notes: dto.notes,
+          },
+        });
+
+        await tx.consultationService.createMany({
+          data: doctorServices.map((ds) => ({
+            consultationId: created.id,
+            serviceId: ds.serviceId,
+            specialtyId: ds.specialtyId,
+            serviceName: ds.service.name,
+            specialtyName: ds.specialty.name,
+            priceUsd: ds.priceUsd,
+          })),
+        });
+
+        await this.auditLog.log(
+          {
+            tenantId,
+            userId,
+            action: 'CREATE',
+            entity: 'Consultation',
+            entityId: created.id,
+            newValues: {
+              status: created.status,
+              patientId: created.patientId,
+              doctorId: created.doctorId,
+              date: created.date,
+            },
+            changedFields: ['status', 'patientId', 'doctorId', 'date'],
+          },
+          tx,
+        );
+
+        return created;
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          'El doctor ya tiene una consulta agendada en ese horario',
+        );
+      }
+      throw error;
+    }
 
     if (dto.sendEmailNotification) {
       await this.notifyScheduledConsultation(
@@ -184,6 +203,33 @@ export class ConsultationsService {
     return this.toResponse(full as ConsultationWithRelations);
   }
 
+  private findScheduleConflict(
+    tenantId: string,
+    entityId: string,
+    date: Date,
+    slotMinutes: number,
+    field: 'patientId' | 'doctorId' = 'patientId',
+    excludedConsultationId?: string,
+  ) {
+    const slotMs = slotMinutes * 60_000;
+
+    return this.prisma.consultation.findFirst({
+      where: {
+        tenantId,
+        [field]: entityId,
+        ...(excludedConsultationId
+          ? { id: { not: excludedConsultationId } }
+          : {}),
+        status: { in: ['SCHEDULED', 'PENDING', 'PAID'] },
+        date: {
+          gt: new Date(date.getTime() - slotMs),
+          lt: new Date(date.getTime() + slotMs),
+        },
+      },
+      select: { id: true },
+    });
+  }
+
   private async notifyScheduledConsultation(
     tenantId: string,
     consultationId: string,
@@ -194,10 +240,15 @@ export class ConsultationsService {
   ): Promise<void> {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { name: true },
+      select: { name: true, logoObjectKey: true, logoUrl: true },
     });
+    const logoUrl = await this.railwayBucket?.resolveLogoUrl(
+      tenant?.logoObjectKey ?? null,
+      tenant?.logoUrl ?? null,
+    );
     const context = {
       centerName: tenant?.name ?? 'Centro Médico',
+      logoUrl: logoUrl ?? '',
       doctorName: doctor.name,
       patientName: patient.name,
       scheduledDate: date.toLocaleDateString('es-VE', {
@@ -402,23 +453,35 @@ export class ConsultationsService {
     const slotConfig = await this.prisma.systemConfig.findFirst({
       where: { tenantId, key: 'appointment_slot_minutes' },
     });
-    const slotMs = parseInt(slotConfig?.value ?? '60') * 60_000;
-    const conflict = await this.prisma.consultation.findFirst({
-      where: {
+    const slotMinutes = parseInt(slotConfig?.value ?? '60', 10);
+    const [patientConflict, doctorConflict] = await Promise.all([
+      this.findScheduleConflict(
         tenantId,
-        patientId: consultation.patientId,
-        id: { not: consultationId },
-        status: { in: ['SCHEDULED', 'PENDING'] },
-        date: {
-          gte: new Date(dto.date.getTime() - slotMs),
-          lte: new Date(dto.date.getTime() + slotMs),
-        },
-      },
-    });
+        consultation.patientId,
+        dto.date,
+        slotMinutes,
+        'patientId',
+        consultationId,
+      ),
+      this.findScheduleConflict(
+        tenantId,
+        consultation.doctorId,
+        dto.date,
+        slotMinutes,
+        'doctorId',
+        consultationId,
+      ),
+    ]);
 
-    if (conflict) {
+    if (patientConflict) {
       throw new ConflictException(
         'El paciente ya tiene una consulta agendada en ese horario',
+      );
+    }
+
+    if (doctorConflict) {
+      throw new ConflictException(
+        'El doctor ya tiene una consulta agendada en ese horario',
       );
     }
 
@@ -506,6 +569,48 @@ export class ConsultationsService {
     );
   }
 
+  async findDoctorAvailability(
+    tenantId: string,
+    doctorId: string,
+    date: string,
+    dateTime?: Date,
+  ): Promise<DoctorAvailabilityResponseDto> {
+    const start = new Date(`${date}T00:00:00-04:00`);
+    const end = new Date(`${date}T23:59:59.999-04:00`);
+    const [consultations, slotConfig] = await Promise.all([
+      this.prisma.consultation.findMany({
+        where: {
+          tenantId,
+          doctorId,
+          status: { in: ['SCHEDULED', 'PENDING', 'PAID'] },
+          date: { gte: start, lte: end },
+        },
+        select: { date: true },
+        orderBy: { date: 'asc' },
+      }),
+      dateTime
+        ? this.prisma.systemConfig.findFirst({
+            where: { tenantId, key: 'appointment_slot_minutes' },
+          })
+        : null,
+    ]);
+    const slotMinutes = parseInt(slotConfig?.value ?? '60', 10);
+    const conflict = dateTime
+      ? await this.findScheduleConflict(
+          tenantId,
+          doctorId,
+          dateTime,
+          slotMinutes,
+          'doctorId',
+        )
+      : null;
+
+    return {
+      occupiedSlots: consultations.map((consultation) => consultation.date),
+      ...(dateTime ? { isRequestedSlotAvailable: !conflict } : {}),
+    };
+  }
+
   async findOne(
     tenantId: string,
     consultationId: string,
@@ -514,7 +619,12 @@ export class ConsultationsService {
       where: { id: consultationId, tenantId },
       include: {
         patient: {
-          select: { name: true, documentType: true, documentId: true },
+          select: {
+            name: true,
+            documentType: true,
+            documentId: true,
+            birthDate: true,
+          },
         },
         doctor: {
           select: {
@@ -539,6 +649,9 @@ export class ConsultationsService {
       ...this.toResponse(consultation as ConsultationWithRelations),
       doctorDocument: `${consultation.doctor.documentType}-${consultation.doctor.documentId}`,
       medicalRecordId: consultation.medicalRecord?.id ?? null,
+      patientAge: consultation.patient.birthDate
+        ? calculateAge(consultation.patient.birthDate)
+        : null,
     };
   }
 
@@ -673,7 +786,6 @@ export class ConsultationsService {
 
     return {
       id: c.id,
-      tenantId: c.tenantId,
       patientId: c.patientId,
       patientName: c.patient.name,
       patientDocument: `${c.patient.documentType}-${c.patient.documentId}`,
@@ -705,4 +817,15 @@ export class ConsultationsService {
     d.setHours(23, 59, 59, 999);
     return d;
   }
+}
+
+function calculateAge(birthDate: Date): number {
+  const today = new Date();
+  const age = today.getUTCFullYear() - birthDate.getUTCFullYear();
+  const birthdayHasNotOccurred =
+    today.getUTCMonth() < birthDate.getUTCMonth() ||
+    (today.getUTCMonth() === birthDate.getUTCMonth() &&
+      today.getUTCDate() < birthDate.getUTCDate());
+
+  return birthdayHasNotOccurred ? age - 1 : age;
 }

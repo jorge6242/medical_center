@@ -72,12 +72,21 @@ export class PatientsService {
       where,
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
       take: query.limit + 1,
-      select: { id: true, name: true, documentType: true, documentId: true },
+      select: {
+        id: true,
+        name: true,
+        documentType: true,
+        documentId: true,
+        birthDate: true,
+      },
     });
     const hasNextPage = patients.length > query.limit;
     const data = patients.slice(0, query.limit).map((patient) => {
       const item = new EntityLookupItemDto();
-      Object.assign(item, patient);
+      Object.assign(item, {
+        ...patient,
+        ...(patient.birthDate ? { age: calculateAge(patient.birthDate) } : {}),
+      });
       return item;
     });
     const last = data.at(-1);
@@ -347,7 +356,6 @@ function mapPatientResponse(patient: {
 }): PatientResponseDto {
   return {
     id: patient.id,
-    tenantId: patient.tenantId,
     documentType: patient.documentType,
     documentId: patient.documentId,
     name: patient.name,
@@ -361,4 +369,15 @@ function mapPatientResponse(patient: {
     isActive: patient.isActive,
     createdAt: patient.createdAt,
   };
+}
+
+function calculateAge(birthDate: Date): number {
+  const today = new Date();
+  const age = today.getUTCFullYear() - birthDate.getUTCFullYear();
+  const birthdayHasNotOccurred =
+    today.getUTCMonth() < birthDate.getUTCMonth() ||
+    (today.getUTCMonth() === birthDate.getUTCMonth() &&
+      today.getUTCDate() < birthDate.getUTCDate());
+
+  return birthdayHasNotOccurred ? age - 1 : age;
 }

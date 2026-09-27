@@ -3,6 +3,7 @@ export interface LookupItem {
   name: string;
   documentType: string;
   documentId: string;
+  age?: number;
 }
 
 export interface LookupResponse<T extends LookupItem = LookupItem> {

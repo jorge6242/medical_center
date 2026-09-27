@@ -15,6 +15,7 @@ import {
 import { ConsultationsService } from './consultations.service';
 import { ConsultationQueryDto } from './dto/consultation-query.dto';
 import { CreateScheduledConsultationDto } from './dto/create-scheduled-consultation.dto';
+import { DoctorAvailabilityQueryDto } from './dto/doctor-availability-query.dto';
 import { UpdateScheduledConsultationDto } from './dto/update-scheduled-consultation.dto';
 import { VoidConsultationDto } from './dto/void-consultation.dto';
 import { AclGuard } from '../auth/guards/acl.guard';
@@ -27,6 +28,7 @@ import { RequirePermission } from '../common/decorators/require-permission.decor
 
 import type { ConsultationDetailResponseDto } from './dto/consultation-detail-response.dto';
 import type { ConsultationResponseDto } from './dto/consultation-response.dto';
+import type { DoctorAvailabilityResponseDto } from './dto/doctor-availability-response.dto';
 import type { PaginatedResponseDto } from '../common/dto/paginated-response.dto';
 
 @Controller('consultations')
@@ -67,6 +69,20 @@ export class ConsultationsController {
     @CurrentUser() user: JwtPayload,
   ): Promise<ConsultationResponseDto[]> {
     return this.consultationsService.findToday(user.tenantId);
+  }
+
+  @Get('availability')
+  @RequirePermission('consultations', 'read')
+  findDoctorAvailability(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: DoctorAvailabilityQueryDto,
+  ): Promise<DoctorAvailabilityResponseDto> {
+    return this.consultationsService.findDoctorAvailability(
+      user.tenantId,
+      query.doctorId,
+      query.date,
+      query.dateTime,
+    );
   }
 
   @Get()

@@ -22,6 +22,8 @@ import {
 } from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
 
+import type { LabTestCatalogResponseDto } from './dto/lab-test-catalog-response.dto';
+
 @Controller('laboratories')
 @UseGuards(JwtAuthGuard, AclGuard)
 export class LabsController {
@@ -29,13 +31,18 @@ export class LabsController {
 
   @Get()
   @RequirePermission('laboratories', 'read')
-  findAll(@CurrentUser() user: JwtPayload) {
+  findAll(
+    @CurrentUser() user: JwtPayload,
+  ): Promise<LabTestCatalogResponseDto[]> {
     return this.labsService.findAll(user.tenantId);
   }
 
   @Get(':id')
   @RequirePermission('laboratories', 'read')
-  findOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+  findOne(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ): Promise<LabTestCatalogResponseDto> {
     return this.labsService.findOne(user.tenantId, id);
   }
 
@@ -44,7 +51,7 @@ export class LabsController {
   create(
     @CurrentUser() user: JwtPayload,
     @Body() dto: CreateLabTestCatalogDto,
-  ) {
+  ): Promise<LabTestCatalogResponseDto> {
     return this.labsService.create(user.tenantId, dto);
   }
 
@@ -54,13 +61,16 @@ export class LabsController {
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
     @Body() dto: UpdateLabTestCatalogDto,
-  ) {
+  ): Promise<LabTestCatalogResponseDto> {
     return this.labsService.update(user.tenantId, id, dto);
   }
 
   @Delete(':id')
   @RequirePermission('laboratories', 'delete')
-  remove(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+  remove(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ): Promise<LabTestCatalogResponseDto> {
     return this.labsService.remove(user.tenantId, id);
   }
 }

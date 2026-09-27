@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   createScheduledConsultation,
+  getDoctorAvailability,
   getConsultationDetail,
   getConsultations,
   getTodayConsultations,
@@ -18,13 +19,24 @@ const consultationsKey = ['consultations', 'today'] as const;
 const consultationsRootKey = ['consultations'] as const;
 
 export function useTodayConsultations() {
-  return useQuery({ queryKey: consultationsKey, queryFn: getTodayConsultations });
+  return useQuery({
+    queryKey: consultationsKey,
+    queryFn: getTodayConsultations,
+  });
 }
 
 export function useConsultations(query: ConsultationQuery) {
   return useQuery({
     queryKey: ['consultations', query],
     queryFn: () => getConsultations(query),
+  });
+}
+
+export function useDoctorAvailability(doctorId: string, date: string, dateTime: string) {
+  return useQuery({
+    queryKey: ['consultations', 'availability', doctorId, date, dateTime],
+    queryFn: () => getDoctorAvailability(doctorId, date, dateTime),
+    enabled: Boolean(doctorId && date && dateTime),
   });
 }
 

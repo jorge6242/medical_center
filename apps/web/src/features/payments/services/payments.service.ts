@@ -48,7 +48,6 @@ export interface PaymentResponse {
   id: string;
   idempotencyKey: string | null;
   status: string;
-  tenantId: string;
   item: PaymentItemResponse;
   totalServiceUsd: string;
   bcvExchangeRate: string;

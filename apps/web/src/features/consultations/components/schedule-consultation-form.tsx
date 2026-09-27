@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
+import { Loader2 } from 'lucide-react';
 import { z } from 'zod/v4';
 
 import { usePatientLookup } from '@/features/patients/hooks/use-patient-lookup';
@@ -15,7 +16,7 @@ import { Input } from '@/shared/components/ui/input';
 import { LookupCombobox } from '@/shared/components/ui/lookup-combobox';
 import { formatUsd } from '@/shared/utils/format';
 
-import { useCreateScheduledConsultation } from '../hooks/use-consultations';
+import { useCreateScheduledConsultation, useDoctorAvailability } from '../hooks/use-consultations';
 import type { ConsultationResponse } from '../services/consultations.service';
 
 const schema = z.object({
@@ -65,9 +66,30 @@ export function ScheduleConsultationForm({ onSuccess, onCancel }: ScheduleConsul
   });
 
   const doctorId = watch('doctorId');
+  const scheduledDate = watch('date');
   const selectedServiceIds = watch('doctorServiceIds');
   const registerPaymentNow = watch('registerPaymentNow');
   const { data: doctorServices = [] } = useDoctorServices(doctorId || null);
+  const availabilityDate = scheduledDate?.slice(0, 10) ?? '';
+  const availabilityDateTime = scheduledDate ? new Date(scheduledDate).toISOString() : '';
+  const { data: availability, isFetching: isLoadingAvailability } = useDoctorAvailability(
+    doctorId,
+    availabilityDate,
+    availabilityDateTime,
+  );
+  const occupiedSlots = [...new Set(availability?.occupiedSlots ?? [])];
+  const isAvailabilityKnown = availability?.isRequestedSlotAvailable !== undefined;
+  const isRequestedSlotAvailable = availability?.isRequestedSlotAvailable === true;
+  const shouldDisableScheduling =
+    Boolean(doctorId && availabilityDateTime) &&
+    (isLoadingAvailability || !isRequestedSlotAvailable);
+  const selectedTime = availabilityDateTime
+    ? new Intl.DateTimeFormat('es-VE', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'America/Caracas',
+      }).format(new Date(availabilityDateTime))
+    : '';
 
   useEffect(() => {
     setValue('doctorServiceIds', []);
@@ -94,7 +116,9 @@ export function ScheduleConsultationForm({ onSuccess, onCancel }: ScheduleConsul
         notes: data.notes,
         sendEmailNotification: data.sendEmailNotification,
       },
-      { onSuccess: (consultation) => onSuccess(consultation, data.registerPaymentNow) },
+      {
+        onSuccess: (consultation) => onSuccess(consultation, data.registerPaymentNow),
+      },
     );
   };
 
@@ -176,13 +200,62 @@ export function ScheduleConsultationForm({ onSuccess, onCancel }: ScheduleConsul
       </Card>
 
       <Card className="flex flex-col gap-4 p-4">
-        <Input
-          {...register('date')}
-          id="scheduled-date"
-          label="Fecha y hora"
-          type="datetime-local"
-          error={errors.date?.message}
-        />
+        <div className="flex w-full gap-2">
+          <div className="w-full">
+            <Input
+              {...register('date')}
+              id="scheduled-date"
+              label="Fecha y hora"
+              type="datetime-local"
+              error={
+                errors.date?.message ||
+                (isAvailabilityKnown && !isRequestedSlotAvailable
+                  ? 'El doctor ya tiene una consulta en este horario.'
+                  : undefined)
+              }
+            />
+          </div>
+          <div className="w-full">
+            {doctorId && availabilityDate ? (
+              <div className="rounded-md border border-outline-variant p-3">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-on-surface">Horarios ocupados</p>
+                  {isLoadingAvailability ? (
+                    <Loader2
+                      aria-label="Consultando disponibilidad"
+                      className="h-3 w-3 animate-spin text-on-surface-variant"
+                    />
+                  ) : null}
+                </div>
+                {isAvailabilityKnown && isRequestedSlotAvailable ? (
+                  <p className="mt-1 text-sm font-medium text-primary">{selectedTime} disponible</p>
+                ) : null}
+                {occupiedSlots.length ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {occupiedSlots.map((slot) => (
+                      <span
+                        key={slot}
+                        className="rounded-full bg-error-container px-2 py-1 text-xs text-on-error-container"
+                      >
+                        {new Intl.DateTimeFormat('es-VE', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          timeZone: 'America/Caracas',
+                        }).format(new Date(slot))}{' '}
+                        ocupado
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                {isAvailabilityKnown && !isRequestedSlotAvailable ? (
+                  <p className="mt-3 text-sm font-medium text-error">
+                    Este horario está ocupado para este doctor.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </div>
         <Input {...register('notes')} id="scheduled-notes" label="Observaciones" />
         <label className="flex items-center gap-2 text-sm text-on-surface">
           <input type="checkbox" {...register('sendEmailNotification')} />
@@ -199,7 +272,7 @@ export function ScheduleConsultationForm({ onSuccess, onCancel }: ScheduleConsul
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancelar
         </Button>
-        <Button type="submit" isLoading={isPending}>
+        <Button type="submit" isLoading={isPending} disabled={shouldDisableScheduling}>
           {registerPaymentNow ? 'Agendar y continuar al pago' : 'Agendar consulta'}
         </Button>
       </div>

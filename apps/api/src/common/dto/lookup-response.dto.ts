@@ -3,6 +3,7 @@ export class EntityLookupItemDto {
   declare name: string;
   declare documentType: string;
   declare documentId: string;
+  declare age?: number;
 }
 
 export class LookupResponseDto {

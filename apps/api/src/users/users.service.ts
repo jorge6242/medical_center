@@ -7,9 +7,13 @@ import * as bcrypt from 'bcrypt';
 
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { PrismaService } from '../database/prisma.service';
-import { MANAGED_USER_ROLE_NAMES } from '../roles/managed-roles';
+import {
+  ASSIGNABLE_USER_ROLE_NAMES,
+  MANAGED_USER_ROLE_NAMES,
+} from '../roles/managed-roles';
 
 import type { CreateUserDto } from './dto/create-user.dto';
+import type { UpdateUserDto } from './dto/update-user-role.dto';
 
 @Injectable()
 export class UsersService {
@@ -100,6 +104,116 @@ export class UsersService {
       this.prisma,
     );
     return this.toResponse(user);
+  }
+
+  async update(
+    tenantId: string,
+    actorId: string,
+    id: string,
+    dto: UpdateUserDto,
+  ) {
+    if (id === actorId)
+      throw new ConflictException('No podés modificar tu propio rol');
+
+    const user = await this.prisma.user.findFirst({
+      where: { id, tenantId, isActive: true },
+      include: { role: { select: { id: true, name: true } } },
+    });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    await this.ensureEmailIsAvailable(tenantId, id, dto.email);
+
+    const role = await this.prisma.role.findFirst({
+      where: {
+        id: dto.roleId,
+        tenantId,
+        isActive: true,
+        name: { in: [...ASSIGNABLE_USER_ROLE_NAMES] },
+      },
+    });
+    if (!role)
+      throw new NotFoundException('Rol no disponible para este tenant');
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        name: dto.name,
+        lastName: dto.lastName,
+        identificationNumber: dto.identificationNumber || null,
+        email: dto.email,
+        roleId: role.id,
+        ...(dto.password
+          ? { passwordHash: await bcrypt.hash(dto.password, 10) }
+          : {}),
+      },
+      include: { role: { select: { id: true, name: true } } },
+    });
+    await this.auditLog.log(
+      {
+        action: 'UPDATE',
+        entity: 'User',
+        entityId: updatedUser.id,
+        tenantId,
+        oldValues: this.getAuditedValues(user),
+        newValues: this.getAuditedValues(updatedUser),
+        changedFields: this.getChangedFields(user, updatedUser),
+      },
+      this.prisma,
+    );
+    return this.toResponse(updatedUser);
+  }
+
+  private async ensureEmailIsAvailable(
+    tenantId: string,
+    userId: string,
+    email: string,
+  ): Promise<void> {
+    const existingUser = await this.prisma.user.findUnique({
+      where: { tenantId_email: { tenantId, email } },
+    });
+    if (existingUser && existingUser.id !== userId)
+      throw new ConflictException('Ya existe un usuario con ese email');
+  }
+
+  private getAuditedValues(user: {
+    email: string;
+    name: string;
+    lastName: string | null;
+    identificationNumber: string | null;
+    role: { name: string } | null;
+  }) {
+    return {
+      email: user.email,
+      name: user.name,
+      lastName: user.lastName,
+      identificationNumber: user.identificationNumber,
+      role: user.role?.name,
+    };
+  }
+
+  private getChangedFields(
+    currentUser: {
+      email: string;
+      name: string;
+      lastName: string | null;
+      identificationNumber: string | null;
+      role: { name: string } | null;
+    },
+    updatedUser: {
+      email: string;
+      name: string;
+      lastName: string | null;
+      identificationNumber: string | null;
+      role: { name: string } | null;
+    },
+  ): string[] {
+    const currentValues = this.getAuditedValues(currentUser);
+    const updatedValues = this.getAuditedValues(updatedUser);
+    return Object.keys(currentValues).filter(
+      (field) =>
+        currentValues[field as keyof typeof currentValues] !==
+        updatedValues[field as keyof typeof updatedValues],
+    );
   }
 
   private toResponse(user: {

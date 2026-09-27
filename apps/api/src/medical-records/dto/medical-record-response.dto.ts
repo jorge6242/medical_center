@@ -2,7 +2,6 @@ import type { MedicalRecordStatus } from '@prisma/client';
 
 export class MedicalRecordResponseDto {
   declare id: string;
-  declare tenantId: string;
   declare patientId: string;
   declare doctorId: string;
   declare consultationId: string;

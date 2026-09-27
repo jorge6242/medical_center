@@ -3,7 +3,6 @@ import type { DocumentType, GenderType } from '@prisma/client';
 
 export class PatientResponseDto {
   declare id: string;
-  declare tenantId: string;
   declare documentType: DocumentType;
   declare documentId: string;
   declare name: string;

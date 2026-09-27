@@ -12,6 +12,7 @@ model Tenant {
   id        String   @id @default(uuid())
   name      String
   slug      String   @unique
+  email     String?
   logoUrl   String?
   logoObjectKey String?
   isActive  Boolean  @default(true)
@@ -24,6 +25,7 @@ model Tenant {
   doctors         Doctor[]
   specialties     Specialty[]
   consultations   Consultation[]
+  consultationReminders ConsultationReminder[]
   medicalRecords  MedicalRecord[]
   expenses        Expense[]
   systemConfigs   SystemConfig[]
@@ -362,6 +364,7 @@ model Consultation {
   consultationPayment ConsultationPayment?
   paymentItem         PaymentItem?
   medicalRecord       MedicalRecord?
+  reminders           ConsultationReminder[]
 
   @@index([tenantId])
   @@index([tenantId, patientId])
@@ -369,6 +372,25 @@ model Consultation {
   @@index([tenantId, status])
   @@index([tenantId, date])
   @@map("consultations")
+}
+
+enum ConsultationReminderType {
+  DAY_BEFORE
+}
+
+model ConsultationReminder {
+  id             String                    @id @default(uuid())
+  tenantId       String
+  consultationId String
+  type           ConsultationReminderType
+  sentAt         DateTime                  @default(now())
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  consultation Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+
+  @@unique([consultationId, type])
+  @@index([tenantId])
+  @@map("consultation_reminders")
 }
 
 enum MedicalRecordStatus {

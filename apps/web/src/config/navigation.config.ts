@@ -62,13 +62,13 @@ export const NAV_ITEMS: NavItem[] = [
     permission: { resource: 'expenses', action: 'read' },
     visibleForRoles: ['admin'],
   },
-  {
-    label: 'Catálogo',
-    path: '/catalogo',
-    icon: 'BookOpen',
-    permission: { resource: 'payments', action: 'read' },
-    visibleForRoles: ['admin'],
-  },
+  // {
+  //   label: 'Catálogo',
+  //   path: '/catalogo',
+  //   icon: 'BookOpen',
+  //   permission: { resource: 'payments', action: 'read' },
+  //   visibleForRoles: ['admin'],
+  // },
   {
     label: 'Colas',
     path: '/admin/queues',
@@ -88,6 +88,13 @@ export const NAV_ITEMS: NavItem[] = [
     path: '/admin/usuarios',
     icon: 'Users',
     permission: { resource: 'users', action: 'read' },
+    visibleForRoles: ['admin'],
+  },
+  {
+    label: 'Roles y permisos',
+    path: '/admin/roles',
+    icon: 'ShieldCheck',
+    permission: { resource: 'roles', action: 'read' },
     visibleForRoles: ['admin'],
   },
   {

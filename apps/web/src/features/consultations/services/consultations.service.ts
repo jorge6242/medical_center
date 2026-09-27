@@ -24,6 +24,7 @@ export interface ConsultationResponse {
 export interface ConsultationDetail extends ConsultationResponse {
   doctorDocument: string;
   medicalRecordId: string | null;
+  patientAge: number | null;
 }
 
 export interface CreateScheduledConsultationDto {
@@ -40,6 +41,11 @@ export interface ConsultationQuery {
   limit?: number;
   date?: string;
   status?: ConsultationStatus;
+}
+
+export interface DoctorAvailability {
+  occupiedSlots: string[];
+  isRequestedSlotAvailable?: boolean;
 }
 
 export interface PaginatedConsultations {
@@ -62,6 +68,15 @@ export const getConsultations = (query: ConsultationQuery): Promise<PaginatedCon
   return apiJson(`/consultations?${params.toString()}`);
 };
 
+export const getDoctorAvailability = (
+  doctorId: string,
+  date: string,
+  dateTime: string,
+): Promise<DoctorAvailability> =>
+  apiJson(
+    `/consultations/availability?${new URLSearchParams({ doctorId, date, dateTime }).toString()}`,
+  );
+
 export const createScheduledConsultation = (
   dto: CreateScheduledConsultationDto,
 ): Promise<ConsultationResponse> =>
@@ -83,4 +98,7 @@ export const updateScheduledConsultation = (
   id: string,
   dto: { date: string; notes?: string },
 ): Promise<ConsultationResponse> =>
-  apiJson(`/consultations/${id}`, { method: 'PATCH', body: JSON.stringify(dto) });
+  apiJson(`/consultations/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(dto),
+  });

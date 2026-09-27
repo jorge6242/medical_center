@@ -13,6 +13,7 @@ describe('ExpensesService', () => {
     },
     expenseCategory: {
       findFirst: jest.fn(),
+      findMany: jest.fn(),
     },
     $transaction: jest.fn(),
   } as unknown as PrismaService;
@@ -83,5 +84,20 @@ describe('ExpensesService', () => {
       description: 'Pago mensual de internet',
       status: 'ACTIVE',
     });
+  });
+
+  it('returns only the public fields for expense categories', async () => {
+    (prisma.expenseCategory.findMany as jest.Mock).mockResolvedValue([
+      { id: 'category-1', name: 'Servicios' },
+    ]);
+
+    const result = await service.findCategories('tenant-1');
+
+    expect(prisma.expenseCategory.findMany).toHaveBeenCalledWith({
+      where: { tenantId: 'tenant-1', isActive: true },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
+    });
+    expect(result[0]).not.toHaveProperty('tenantId');
   });
 });

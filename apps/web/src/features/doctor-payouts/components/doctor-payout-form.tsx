@@ -5,26 +5,24 @@ import { useEffect, useMemo, useState } from 'react';
 import { pdf } from '@react-pdf/renderer';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FileDown } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod/v4';
 
 import { useAppConfig } from '@/features/config/hooks/use-app-config';
+import { useDoctorLookup } from '@/features/payments/hooks/use-doctor-lookup';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
+import { LookupCombobox } from '@/shared/components/ui/lookup-combobox';
 import { Select } from '@/shared/components/ui/select';
 import { useNotification } from '@/shared/hooks/use-notification';
 import { formatBs, formatUsd } from '@/shared/utils/format';
 
-import {
-  useCreateDoctorPayout,
-  usePayoutDoctors,
-  usePendingDoctorPayout,
-} from '../hooks/use-doctor-payouts';
+import { useCreateDoctorPayout, usePendingDoctorPayout } from '../hooks/use-doctor-payouts';
 import type { DoctorPayout, DoctorPayoutDetail } from '../services/doctor-payouts.service';
 import { DoctorPayoutPDF } from './doctor-payout-pdf';
 
 const schema = z.object({
-  doctorId: z.string().uuid('Seleccioná un doctor'),
+  doctorId: z.string().min(1, 'Seleccioná un doctor'),
   paymentMethod: z.enum(['CASH_USD', 'ZELLE', 'WIRE_TRANSFER_USD', 'PAGO_MOVIL']),
   currency: z.enum(['USD', 'VES']),
   bcvExchangeRate: z.number().positive('Ingresá una tasa BCV válida'),
@@ -52,9 +50,11 @@ function downloadBlob(blob: Blob, filename: string) {
 export function DoctorPayoutForm({ onCancel, onSuccess }: DoctorPayoutFormProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isDownloadingPreview, setIsDownloadingPreview] = useState(false);
-  const { data: doctors = [] } = usePayoutDoctors();
+  const [doctorQuery, setDoctorQuery] = useState('');
+  const doctorLookup = useDoctorLookup(doctorQuery);
   const { data: appConfig } = useAppConfig();
   const {
+    control,
     register,
     handleSubmit,
     watch,
@@ -88,7 +88,7 @@ export function DoctorPayoutForm({ onCancel, onSuccess }: DoctorPayoutFormProps)
     0,
   );
   const equivalentBs = bcvExchangeRate ? totalDoctorShare * bcvExchangeRate : 0;
-  const selectedDoctor = doctors.find((doctor) => doctor.id === doctorId);
+  const selectedDoctor = doctorLookup.items.find((doctor) => doctor.id === doctorId);
 
   const submit = (data: FormData) => {
     if (paymentMethod === 'PAGO_MOVIL' && !data.referenceNumber?.trim()) return;
@@ -152,14 +152,25 @@ export function DoctorPayoutForm({ onCancel, onSuccess }: DoctorPayoutFormProps)
 
   return (
     <form onSubmit={handleSubmit(submit)} className="flex flex-col gap-4">
-      <Select
-        {...register('doctorId')}
-        label="Doctor"
-        options={[
-          { value: '', label: 'Seleccionar…' },
-          ...doctors.map((doctor) => ({ value: doctor.id, label: doctor.name })),
-        ]}
-        error={errors.doctorId?.message}
+      <Controller
+        control={control}
+        name="doctorId"
+        render={({ field }) => (
+          <LookupCombobox
+            id="doctorId"
+            label="Doctor"
+            value={field.value ?? ''}
+            onChange={field.onChange}
+            items={doctorLookup.items}
+            isLoading={doctorLookup.isLoading}
+            isFetchingNextPage={doctorLookup.isFetchingNextPage}
+            hasNextPage={doctorLookup.hasNextPage}
+            fetchNextPage={doctorLookup.fetchNextPage}
+            canSearch={doctorLookup.canSearch}
+            onQueryChange={setDoctorQuery}
+            error={errors.doctorId?.message}
+          />
+        )}
       />
       {doctorId && (
         <>

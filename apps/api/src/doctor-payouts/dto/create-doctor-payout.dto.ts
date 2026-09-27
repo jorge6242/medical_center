@@ -4,6 +4,7 @@ import {
   IsArray,
   IsEnum,
   IsNumber,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
@@ -12,7 +13,8 @@ import {
 } from 'class-validator';
 
 export class CreateDoctorPayoutDto {
-  @IsUUID('4')
+  @IsString()
+  @IsNotEmpty()
   declare doctorId: string;
 
   @IsArray()

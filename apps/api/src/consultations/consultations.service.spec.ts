@@ -164,6 +164,30 @@ describe('ConsultationsService.createScheduled', () => {
     expect(result.status).toBe('SCHEDULED');
     expect(result.services).toHaveLength(1);
     expect(result.services[0]?.serviceName).toBe('Consulta General');
+    expect(result).not.toHaveProperty('tenantId');
+  });
+
+  it('rejects a schedule when the doctor already has an active consultation in that slot', async () => {
+    const prisma = buildPrisma({
+      consultation: {
+        ...buildPrisma().consultation,
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce({ id: 'doctor-conflict' }),
+      },
+    });
+    const service = new ConsultationsService(
+      prisma,
+      buildMailer(),
+      buildAuditLog(),
+    );
+
+    await expect(
+      service.createScheduled(TENANT_ID, USER_ID, dto),
+    ).rejects.toThrow(
+      'El doctor ya tiene una consulta agendada en ese horario',
+    );
   });
 
   it('sends recipient-specific emails to the doctor and patient', async () => {
@@ -308,6 +332,61 @@ describe('ConsultationsService.createScheduled', () => {
   });
 });
 
+describe('ConsultationsService.findDoctorAvailability', () => {
+  it('returns only active consultation slots for the doctor on the requested day', async () => {
+    const occupiedDate = new Date('2026-10-01T13:00:00.000Z');
+    const prisma = buildPrisma({
+      consultation: {
+        ...buildPrisma().consultation,
+        findMany: jest.fn().mockResolvedValue([{ date: occupiedDate }]),
+      },
+    });
+    const service = new ConsultationsService(
+      prisma,
+      buildMailer(),
+      buildAuditLog(),
+    );
+
+    await expect(
+      service.findDoctorAvailability(TENANT_ID, DOCTOR_ID, '2026-10-01'),
+    ).resolves.toEqual({ occupiedSlots: [occupiedDate] });
+
+    expect(prisma.consultation.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tenantId: TENANT_ID,
+          doctorId: DOCTOR_ID,
+          status: { in: ['SCHEDULED', 'PENDING', 'PAID'] },
+        }),
+      }),
+    );
+  });
+
+  it('marks the requested slot unavailable when it overlaps an active consultation', async () => {
+    const requestedDateTime = new Date('2026-10-01T13:00:00.000Z');
+    const prisma = buildPrisma({
+      consultation: {
+        ...buildPrisma().consultation,
+        findFirst: jest.fn().mockResolvedValue({ id: 'doctor-conflict' }),
+      },
+    });
+    const service = new ConsultationsService(
+      prisma,
+      buildMailer(),
+      buildAuditLog(),
+    );
+
+    await expect(
+      service.findDoctorAvailability(
+        TENANT_ID,
+        DOCTOR_ID,
+        '2026-10-01',
+        requestedDateTime,
+      ),
+    ).resolves.toMatchObject({ isRequestedSlotAvailable: false });
+  });
+});
+
 describe('ConsultationsService.resendScheduledNotifications', () => {
   it('resends recipient-specific emails only while the consultation is scheduled', async () => {
     const prisma = buildPrisma({
@@ -380,6 +459,10 @@ describe('ConsultationsService.findOne', () => {
             documentType: 'V',
             documentId: '87654321',
           },
+          patient: {
+            ...activePatient,
+            birthDate: new Date('2000-09-01T00:00:00.000Z'),
+          },
           medicalRecord: { id: 'medical-record-1' },
         }),
       },
@@ -401,6 +484,7 @@ describe('ConsultationsService.findOne', () => {
       id: CONSULTATION_ID,
       doctorDocument: 'V-87654321',
       medicalRecordId: 'medical-record-1',
+      patientAge: expect.any(Number),
     });
   });
 });

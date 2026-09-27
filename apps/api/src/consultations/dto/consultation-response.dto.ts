@@ -6,7 +6,6 @@ export interface ConsultationServiceDto {
 
 export interface ConsultationResponseDto {
   id: string;
-  tenantId: string;
   patientId: string;
   patientName: string;
   patientDocument: string;

@@ -4,9 +4,10 @@ import {
   IsDate,
   IsEnum,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsPositive,
-  IsUUID,
+  IsString,
   Max,
   Min,
 } from 'class-validator';
@@ -18,11 +19,13 @@ export class ConsultationQueryDto {
   declare date?: Date;
 
   @IsOptional()
-  @IsUUID('4')
+  @IsString()
+  @IsNotEmpty()
   declare doctorId?: string;
 
   @IsOptional()
-  @IsUUID('4')
+  @IsString()
+  @IsNotEmpty()
   declare patientId?: string;
 
   @IsOptional()

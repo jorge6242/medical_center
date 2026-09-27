@@ -7,6 +7,8 @@ import {
   type UploadedLogo,
 } from '../railway-bucket/railway-bucket.service';
 
+import type { UpdateTenantSettingsDto } from './dto/update-tenant-settings.dto';
+
 @Injectable()
 export class AppConfigService {
   private readonly logger = new Logger(AppConfigService.name);
@@ -35,6 +37,7 @@ export class AppConfigService {
       tenant: {
         name: tenant.name,
         slug: tenant.slug,
+        email: tenant.email,
         logoUrl,
       },
       systemConfig: {
@@ -42,6 +45,17 @@ export class AppConfigService {
       },
       exchangeRate,
     };
+  }
+
+  async updateTenantSettings(
+    tenantId: string,
+    dto: UpdateTenantSettingsDto,
+  ): Promise<{ email: string | null }> {
+    return this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { email: dto.email },
+      select: { email: true },
+    });
   }
 
   async replaceLogo(
