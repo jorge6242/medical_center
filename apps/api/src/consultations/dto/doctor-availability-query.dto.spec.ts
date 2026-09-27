@@ -19,7 +19,8 @@ describe('DoctorAvailabilityQueryDto', () => {
     const dto = Object.assign(new CreateScheduledConsultationDto(), {
       patientId: 'demo-patient-001',
       doctorId: 'demo-doc-001',
-      date: new Date('2026-09-29T14:00:00.000Z'),
+      startsAt: new Date('2026-09-29T14:00:00.000Z'),
+      endsAt: new Date('2026-09-29T15:00:00.000Z'),
       doctorServiceIds: ['demo-doc-001-service-001'],
       sendEmailNotification: true,
     });

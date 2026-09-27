@@ -347,6 +347,7 @@ model Consultation {
   patientId String
   doctorId  String
   date      DateTime           @default(now())
+  endsAt    DateTime           @map("ends_at")
   status    ConsultationStatus @default(PENDING)
   notes     String?
   paymentId String?            @unique
@@ -371,6 +372,7 @@ model Consultation {
   @@index([tenantId, doctorId])
   @@index([tenantId, status])
   @@index([tenantId, date])
+  @@index([tenantId, doctorId, date, endsAt])
   @@map("consultations")
 }
 

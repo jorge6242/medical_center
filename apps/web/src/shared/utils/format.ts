@@ -14,9 +14,44 @@ export function formatBs(amount: string | number): string {
   }).format(Number(amount));
 }
 
-export function formatDate(date: string | Date): string {
+const APP_TIMEZONE = process.env.NEXT_PUBLIC_APP_TIMEZONE;
+
+export function formatDate(date: string | Date | null | undefined): string {
+  if (!date) return 'Fecha no disponible';
+
+  const parsedDate = new Date(date);
+  if (Number.isNaN(parsedDate.getTime())) return 'Fecha no disponible';
+
   return new Intl.DateTimeFormat('es-VE', {
     dateStyle: 'medium',
     timeStyle: 'short',
-  }).format(new Date(date));
+    ...(APP_TIMEZONE ? { timeZone: APP_TIMEZONE } : {}),
+  }).format(parsedDate);
+}
+
+export function formatDateShort(
+  date: string | Date | null | undefined,
+): string {
+  if (!date) return 'Fecha no disponible';
+
+  const parsedDate = new Date(date);
+  if (Number.isNaN(parsedDate.getTime())) return 'Fecha no disponible';
+
+  return new Intl.DateTimeFormat('es-VE', {
+    dateStyle: 'medium',
+    ...(APP_TIMEZONE ? { timeZone: APP_TIMEZONE } : {}),
+  }).format(parsedDate);
+}
+
+export function formatTime(date: string | Date | null | undefined): string {
+  if (!date) return '--:--';
+
+  const parsedDate = new Date(date);
+  if (Number.isNaN(parsedDate.getTime())) return '--:--';
+
+  return new Intl.DateTimeFormat('es-VE', {
+    hour: '2-digit',
+    minute: '2-digit',
+    ...(APP_TIMEZONE ? { timeZone: APP_TIMEZONE } : {}),
+  }).format(parsedDate);
 }

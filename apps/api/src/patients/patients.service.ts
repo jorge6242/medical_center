@@ -311,7 +311,7 @@ export class PatientsService {
         status: 'PAID',
         medicalRecord: null,
       },
-      orderBy: { date: 'desc' },
+      orderBy: { date: 'asc' },
       select: {
         id: true,
         date: true,
@@ -331,9 +331,9 @@ export class PatientsService {
     return consultations.map((consultation) => ({
       id: consultation.id,
       date: consultation.date,
-      status: 'PAID',
-      hasMedicalRecord: false,
-      canCreateMedicalRecord: true,
+      status: consultation.status,
+      hasMedicalRecord: consultation.medicalRecord !== null,
+      canCreateMedicalRecord: consultation.medicalRecord === null,
       services: consultation.services,
     }));
   }

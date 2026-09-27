@@ -81,7 +81,9 @@ export class ConsultationsController {
       user.tenantId,
       query.doctorId,
       query.date,
-      query.dateTime,
+      query.startsAt,
+      query.endsAt,
+      query.excludeConsultationId,
     );
   }
 

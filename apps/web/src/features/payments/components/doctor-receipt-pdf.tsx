@@ -66,13 +66,41 @@ interface Props {
 }
 
 export function DoctorReceiptPDF({ data, tenantName = 'Centro Médico' }: Props) {
+  const centerPercentage = (100 - parseFloat(data.splitPercentage)).toFixed(2);
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <Text style={styles.title}>{tenantName}</Text>
-          <Text style={styles.subtitle}>Recibo de Honorarios Profesionales</Text>
+          <Text style={styles.subtitle}>Recibo de Consulta</Text>
           <Text style={styles.receiptNumber}>N° {data.receiptNumber}</Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Datos del Paciente</Text>
+          <View style={styles.row}>
+            <Text style={styles.label}>Nombre:</Text>
+            <Text style={styles.value}>{data.patientName}</Text>
+          </View>
+          {data.patientDocumentId && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Documento:</Text>
+              <Text style={styles.value}>{data.patientDocumentId}</Text>
+            </View>
+          )}
+          {data.patientAge !== null && data.patientAge !== undefined && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Edad:</Text>
+              <Text style={styles.value}>{data.patientAge} años</Text>
+            </View>
+          )}
+          {data.patientPhone && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Teléfono:</Text>
+              <Text style={styles.value}>{data.patientPhone}</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -85,20 +113,30 @@ export function DoctorReceiptPDF({ data, tenantName = 'Centro Médico' }: Props)
             <Text style={styles.label}>Documento:</Text>
             <Text style={styles.value}>{data.doctorDocument}</Text>
           </View>
+          {data.doctorSpecialtyName && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Especialidad:</Text>
+              <Text style={styles.value}>{data.doctorSpecialtyName}</Text>
+            </View>
+          )}
           {data.doctorPhone && (
             <View style={styles.row}>
               <Text style={styles.label}>Teléfono:</Text>
               <Text style={styles.value}>{data.doctorPhone}</Text>
             </View>
           )}
-          <View style={styles.row}>
-            <Text style={styles.label}>Banco:</Text>
-            <Text style={styles.value}>{data.bankName}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Cuenta:</Text>
-            <Text style={styles.value}>{data.accountNumber}</Text>
-          </View>
+          {data.bankName && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Banco:</Text>
+              <Text style={styles.value}>{data.bankName}</Text>
+            </View>
+          )}
+          {data.accountNumber && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Cuenta:</Text>
+              <Text style={styles.value}>{data.accountNumber}</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -120,10 +158,10 @@ export function DoctorReceiptPDF({ data, tenantName = 'Centro Médico' }: Props)
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Porcentaje centro:</Text>
-            <Text style={styles.value}>{(100 - parseFloat(data.splitPercentage)).toFixed(2)}%</Text>
+            <Text style={styles.value}>{centerPercentage}%</Text>
           </View>
         </View>
-        {/* Detalle de pago (líneas) */}
+
         {data.details && data.details.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Detalle de Pago</Text>
@@ -131,7 +169,7 @@ export function DoctorReceiptPDF({ data, tenantName = 'Centro Médico' }: Props)
               <View key={idx} style={{ ...styles.row, marginBottom: 2 }}>
                 <Text style={styles.label}>{d.paymentMethod.replace(/_/g, ' ')}:</Text>
                 <Text style={styles.value}>
-                  {fmtCurrency(d.amount, d.currency)} {d.currency === 'USD' ? '' : ''}
+                  {fmtCurrency(d.amount, d.currency)}
                   {d.referenceNumber ? ` — Ref: ${d.referenceNumber}` : ''}
                 </Text>
               </View>
@@ -142,11 +180,15 @@ export function DoctorReceiptPDF({ data, tenantName = 'Centro Médico' }: Props)
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Totales</Text>
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Honorarios médico:</Text>
-            <Text style={styles.totalValue}>{fmt(data.doctorShare)}</Text>
+            <Text style={styles.totalLabel}>Total consulta:</Text>
+            <Text style={styles.totalValue}>{fmt(data.totalConsultation)}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Retención centro:</Text>
+            <Text style={styles.label}>Honorarios médico ({data.splitPercentage}%):</Text>
+            <Text style={styles.value}>{fmt(data.doctorShare)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Retención centro ({centerPercentage}%):</Text>
             <Text style={styles.value}>{fmt(data.centerShare)}</Text>
           </View>
         </View>

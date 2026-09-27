@@ -4,9 +4,14 @@ export interface ReceiptData {
   id: string;
   receiptNumber: string;
   paymentId: string;
+  patientName: string;
+  patientDocumentId?: string | null;
+  patientPhone?: string | null;
+  patientAge?: number | null;
   doctorName: string;
   doctorPhone?: string | null;
   doctorDocument: string;
+  doctorSpecialtyName?: string | null;
   bankName: string;
   accountNumber: string;
   splitPercentage: string;

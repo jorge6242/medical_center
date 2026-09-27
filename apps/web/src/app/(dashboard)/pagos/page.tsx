@@ -67,7 +67,7 @@ export default function PagosPage() {
     status,
   });
 
-  const { mutate: doVoid, isPending: voiding } = useVoidPayment();
+  const { mutate: doVoid } = useVoidPayment();
   const { mutate: doAddAdjustment, isPending: adjusting } =
     useCreatePaymentAdjustment();
 

@@ -5,6 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   Prisma,
   type Consultation,
@@ -12,7 +13,12 @@ import {
   type Patient,
   type Doctor,
 } from '@prisma/client';
+import { DateTime } from 'luxon';
 
+import {
+  assertValidConsultationInterval,
+  buildIntervalOverlapFilter,
+} from './consultation-interval.utils';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import {
   createPaginatedResponse,
@@ -47,6 +53,7 @@ export class ConsultationsService {
     private readonly prisma: PrismaService,
     private readonly mailerService: MailerService,
     private readonly auditLog: AuditLogService,
+    private readonly configService: ConfigService,
     private readonly railwayBucket?: RailwayBucketService,
   ) {}
 
@@ -57,7 +64,9 @@ export class ConsultationsService {
     userId: string,
     dto: CreateScheduledConsultationDto,
   ): Promise<ConsultationResponseDto> {
-    const [patient, doctor, doctorServices, slotConfig] = await Promise.all([
+    assertValidConsultationInterval(dto.startsAt, dto.endsAt);
+
+    const [patient, doctor, doctorServices] = await Promise.all([
       this.prisma.patient.findFirst({
         where: { id: dto.patientId, tenantId, isActive: true },
       }),
@@ -71,9 +80,6 @@ export class ConsultationsService {
           doctorId: dto.doctorId,
         },
         include: { service: true, specialty: true },
-      }),
-      this.prisma.systemConfig.findFirst({
-        where: { tenantId, key: 'appointment_slot_minutes' },
       }),
     ]);
 
@@ -95,14 +101,18 @@ export class ConsultationsService {
       );
     }
 
-    const slotMinutes = parseInt(slotConfig?.value ?? '60', 10);
     const [patientConflict, doctorConflict] = await Promise.all([
-      this.findScheduleConflict(tenantId, dto.patientId, dto.date, slotMinutes),
+      this.findScheduleConflict(
+        tenantId,
+        dto.patientId,
+        dto.startsAt,
+        dto.endsAt,
+      ),
       this.findScheduleConflict(
         tenantId,
         dto.doctorId,
-        dto.date,
-        slotMinutes,
+        dto.startsAt,
+        dto.endsAt,
         'doctorId',
       ),
     ]);
@@ -127,7 +137,8 @@ export class ConsultationsService {
             tenantId,
             patientId: dto.patientId,
             doctorId: dto.doctorId,
-            date: dto.date,
+            date: dto.startsAt,
+            endsAt: dto.endsAt,
             status: 'SCHEDULED',
             notes: dto.notes,
           },
@@ -155,9 +166,16 @@ export class ConsultationsService {
               status: created.status,
               patientId: created.patientId,
               doctorId: created.doctorId,
-              date: created.date,
+              startsAt: created.date,
+              endsAt: created.endsAt,
             },
-            changedFields: ['status', 'patientId', 'doctorId', 'date'],
+            changedFields: [
+              'status',
+              'patientId',
+              'doctorId',
+              'startsAt',
+              'endsAt',
+            ],
           },
           tx,
         );
@@ -167,10 +185,10 @@ export class ConsultationsService {
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
+        ['P2002', 'P2004'].includes(error.code)
       ) {
         throw new ConflictException(
-          'El doctor ya tiene una consulta agendada en ese horario',
+          'El intervalo seleccionado ya no está disponible',
         );
       }
       throw error;
@@ -182,7 +200,7 @@ export class ConsultationsService {
         consultation.id,
         doctor,
         patient,
-        dto.date,
+        dto.startsAt,
         doctorServices.map((doctorService) => doctorService.service.name),
       );
     }
@@ -206,13 +224,11 @@ export class ConsultationsService {
   private findScheduleConflict(
     tenantId: string,
     entityId: string,
-    date: Date,
-    slotMinutes: number,
+    startsAt: Date,
+    endsAt: Date,
     field: 'patientId' | 'doctorId' = 'patientId',
     excludedConsultationId?: string,
   ) {
-    const slotMs = slotMinutes * 60_000;
-
     return this.prisma.consultation.findFirst({
       where: {
         tenantId,
@@ -221,10 +237,7 @@ export class ConsultationsService {
           ? { id: { not: excludedConsultationId } }
           : {}),
         status: { in: ['SCHEDULED', 'PENDING', 'PAID'] },
-        date: {
-          gt: new Date(date.getTime() - slotMs),
-          lt: new Date(date.getTime() + slotMs),
-        },
+        ...buildIntervalOverlapFilter(startsAt, endsAt),
       },
       select: { id: true },
     });
@@ -246,18 +259,17 @@ export class ConsultationsService {
       tenant?.logoObjectKey ?? null,
       tenant?.logoUrl ?? null,
     );
+    const timeZone = this.configService.get<string>('app.timezone') ?? 'America/Caracas';
     const context = {
       centerName: tenant?.name ?? 'Centro Médico',
       logoUrl: logoUrl ?? '',
       doctorName: doctor.name,
       patientName: patient.name,
-      scheduledDate: date.toLocaleDateString('es-VE', {
-        timeZone: 'America/Caracas',
-      }),
+      scheduledDate: date.toLocaleDateString('es-VE', { timeZone }),
       scheduledTime: date.toLocaleTimeString('es-VE', {
         hour: '2-digit',
         minute: '2-digit',
-        timeZone: 'America/Caracas',
+        timeZone,
       }),
       services: services.join(', '),
     };
@@ -450,24 +462,21 @@ export class ConsultationsService {
       );
     }
 
-    const slotConfig = await this.prisma.systemConfig.findFirst({
-      where: { tenantId, key: 'appointment_slot_minutes' },
-    });
-    const slotMinutes = parseInt(slotConfig?.value ?? '60', 10);
+    assertValidConsultationInterval(dto.startsAt, dto.endsAt);
     const [patientConflict, doctorConflict] = await Promise.all([
       this.findScheduleConflict(
         tenantId,
         consultation.patientId,
-        dto.date,
-        slotMinutes,
+        dto.startsAt,
+        dto.endsAt,
         'patientId',
         consultationId,
       ),
       this.findScheduleConflict(
         tenantId,
         consultation.doctorId,
-        dto.date,
-        slotMinutes,
+        dto.startsAt,
+        dto.endsAt,
         'doctorId',
         consultationId,
       ),
@@ -487,7 +496,7 @@ export class ConsultationsService {
 
     await this.prisma.consultation.updateMany({
       where: { id: consultationId, tenantId, status: 'SCHEDULED' },
-      data: { date: dto.date, notes: dto.notes },
+      data: { date: dto.startsAt, endsAt: dto.endsAt, notes: dto.notes },
     });
     await this.auditLog.log({
       tenantId,
@@ -495,9 +504,17 @@ export class ConsultationsService {
       action: 'UPDATE',
       entity: 'Consultation',
       entityId: consultationId,
-      oldValues: { date: consultation.date, notes: consultation.notes },
-      newValues: { date: dto.date, notes: dto.notes },
-      changedFields: ['date', 'notes'],
+      oldValues: {
+        startsAt: consultation.date,
+        endsAt: consultation.endsAt,
+        notes: consultation.notes,
+      },
+      newValues: {
+        startsAt: dto.startsAt,
+        endsAt: dto.endsAt,
+        notes: dto.notes,
+      },
+      changedFields: ['startsAt', 'endsAt', 'notes'],
     });
 
     const updated = await this.prisma.consultation.findFirstOrThrow({
@@ -548,7 +565,7 @@ export class ConsultationsService {
         where,
         skip,
         take: limit,
-        orderBy: { date: 'asc' },
+        orderBy: { createdAt: 'desc' },
         include: {
           patient: {
             select: { name: true, documentType: true, documentId: true },
@@ -573,41 +590,51 @@ export class ConsultationsService {
     tenantId: string,
     doctorId: string,
     date: string,
-    dateTime?: Date,
+    startsAt?: Date,
+    endsAt?: Date,
+    excludedConsultationId?: string,
   ): Promise<DoctorAvailabilityResponseDto> {
-    const start = new Date(`${date}T00:00:00-04:00`);
-    const end = new Date(`${date}T23:59:59.999-04:00`);
-    const [consultations, slotConfig] = await Promise.all([
-      this.prisma.consultation.findMany({
-        where: {
-          tenantId,
-          doctorId,
-          status: { in: ['SCHEDULED', 'PENDING', 'PAID'] },
-          date: { gte: start, lte: end },
-        },
-        select: { date: true },
-        orderBy: { date: 'asc' },
-      }),
-      dateTime
-        ? this.prisma.systemConfig.findFirst({
-            where: { tenantId, key: 'appointment_slot_minutes' },
-          })
-        : null,
-    ]);
-    const slotMinutes = parseInt(slotConfig?.value ?? '60', 10);
-    const conflict = dateTime
-      ? await this.findScheduleConflict(
-          tenantId,
-          doctorId,
-          dateTime,
-          slotMinutes,
-          'doctorId',
-        )
-      : null;
+    const timeZone = this.configService.get<string>('app.timezone') ?? 'America/Caracas';
+    const day = DateTime.fromISO(date, { zone: timeZone });
+    const start = day.startOf('day').toUTC().toJSDate();
+    const end = day.endOf('day').toUTC().toJSDate();
+    if (Boolean(startsAt) !== Boolean(endsAt)) {
+      throw new BadRequestException(
+        'startsAt y endsAt deben enviarse juntos para validar disponibilidad',
+      );
+    }
+    const consultations = await this.prisma.consultation.findMany({
+      where: {
+        tenantId,
+        doctorId,
+        status: { in: ['SCHEDULED', 'PENDING', 'PAID'] },
+        ...buildIntervalOverlapFilter(start, end),
+      },
+      select: { date: true, endsAt: true },
+      orderBy: { date: 'asc' },
+    });
+    const hasRequestedInterval = Boolean(startsAt && endsAt);
+    if (startsAt && endsAt) {
+      assertValidConsultationInterval(startsAt, endsAt);
+    }
+    const conflict =
+      startsAt && endsAt
+        ? await this.findScheduleConflict(
+            tenantId,
+            doctorId,
+            startsAt,
+            endsAt,
+            'doctorId',
+            excludedConsultationId,
+          )
+        : null;
 
     return {
-      occupiedSlots: consultations.map((consultation) => consultation.date),
-      ...(dateTime ? { isRequestedSlotAvailable: !conflict } : {}),
+      occupiedSlots: consultations.map((consultation) => ({
+        startsAt: consultation.date,
+        endsAt: consultation.endsAt,
+      })),
+      ...(hasRequestedInterval ? { isRequestedSlotAvailable: !conflict } : {}),
     };
   }
 
@@ -792,6 +819,8 @@ export class ConsultationsService {
       doctorId: c.doctorId,
       doctorName: c.doctor.name,
       date: c.date,
+      startsAt: c.date,
+      endsAt: c.endsAt,
       status: c.status,
       services: c.services.map((s) => ({
         serviceName: s.serviceName,
@@ -807,15 +836,13 @@ export class ConsultationsService {
   }
 
   private startOfDay(date: Date): Date {
-    const d = new Date(date);
-    d.setHours(0, 0, 0, 0);
-    return d;
+    const timeZone = this.configService.get<string>('app.timezone') ?? 'America/Caracas';
+    return DateTime.fromJSDate(date, { zone: timeZone }).startOf('day').toUTC().toJSDate();
   }
 
   private endOfDay(date: Date): Date {
-    const d = new Date(date);
-    d.setHours(23, 59, 59, 999);
-    return d;
+    const timeZone = this.configService.get<string>('app.timezone') ?? 'America/Caracas';
+    return DateTime.fromJSDate(date, { zone: timeZone }).endOf('day').toUTC().toJSDate();
   }
 }
 

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -30,7 +31,15 @@ export class ReceiptsService {
           include: {
             details: true,
             item: {
-              include: { consultation: { include: { services: true } } },
+              include: {
+                consultation: {
+                  include: {
+                    services: true,
+                    patient: true,
+                    doctor: { include: { primarySpecialty: true } },
+                  },
+                },
+              },
             },
           },
         },
@@ -41,6 +50,8 @@ export class ReceiptsService {
         receipt,
         receipt.payment?.details ?? [],
         this.extractServices(receipt.payment),
+        this.extractPatient(receipt.payment),
+        this.extractDoctorSpecialty(receipt.payment),
       );
 
     if (!generatedById)
@@ -76,7 +87,15 @@ export class ReceiptsService {
           include: {
             details: true,
             item: {
-              include: { consultation: { include: { services: true } } },
+              include: {
+                consultation: {
+                  include: {
+                    services: true,
+                    patient: true,
+                    doctor: { include: { primarySpecialty: true } },
+                  },
+                },
+              },
             },
           },
         },
@@ -87,6 +106,8 @@ export class ReceiptsService {
         existing,
         existing.payment?.details ?? [],
         this.extractServices(existing.payment),
+        this.extractPatient(existing.payment),
+        this.extractDoctorSpecialty(existing.payment),
       );
 
     const payment = await this.prisma.payment.findFirst({
@@ -97,8 +118,12 @@ export class ReceiptsService {
             consultation: {
               include: {
                 services: true,
+                patient: true,
                 doctor: {
-                  include: { bankAccounts: { where: { isDefault: true } } },
+                  include: {
+                    primarySpecialty: true,
+                    bankAccounts: { where: { isDefault: true } },
+                  },
                 },
               },
             },
@@ -131,80 +156,109 @@ export class ReceiptsService {
 
     const defaultAccount = doctor.bankAccounts[0];
 
-    const currentYear = new Date().getFullYear();
-    const counter = await this.prisma.receiptCounter.upsert({
-      where: { year_tenantId: { year: currentYear, tenantId } },
-      update: { lastSeq: { increment: 1 } },
-      create: { year: currentYear, tenantId, lastSeq: 1 },
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { slug: true },
     });
+    if (!tenant) {
+      throw new NotFoundException(`Tenant ${tenantId} no encontrado`);
+    }
 
-    const receiptNumber = `CM-${currentYear}-${counter.lastSeq}`;
+    const currentYear = new Date().getFullYear();
 
-    try {
-      const receipt = await this.prisma.doctorReceipt.create({
-        data: {
-          receiptNumber,
-          paymentId,
-          generatedById,
-          doctorName: doctor.name,
-          doctorPhone: doctor.phone ?? '',
-          doctorDocument: `${doctor.documentType}-${doctor.documentId}`,
-          bankName: defaultAccount?.bankName ?? '',
-          accountNumber: defaultAccount?.accountNumber ?? '',
-          splitPercentage: doctor.splitPercentage, // Use doctor's split percentage directly
-          totalConsultation: payment.totalServiceUsd,
-          doctorShare: payment.doctorShareUsd,
-          centerShare: payment.centerShareUsd,
-        },
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const counter = await this.prisma.receiptCounter.upsert({
+        where: { year_tenantId: { year: currentYear, tenantId } },
+        update: { lastSeq: { increment: 1 } },
+        create: { year: currentYear, tenantId, lastSeq: 1 },
       });
-      await this.auditLog.log(
-        {
-          action: 'CREATE',
-          entity: 'DoctorReceipt',
-          entityId: receipt.id,
-          tenantId,
-          userId: generatedById,
-          newValues: { paymentId, receiptNumber: receipt.receiptNumber },
-          changedFields: ['paymentId', 'receiptNumber'],
-        },
-        this.prisma,
-      );
 
-      return this.toResponse(
-        receipt,
-        payment.details ?? [],
-        this.extractServices(payment),
-      );
-    } catch (error: unknown) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        const existingReceipt = await this.prisma.doctorReceipt.findFirst({
-          where: { paymentId, payment: { tenantId } },
-          include: {
-            payment: {
-              include: {
-                details: true,
-                item: {
-                  include: { consultation: { include: { services: true } } },
+      const receiptNumber = `CM-${tenant.slug.toUpperCase()}-${currentYear}-${counter.lastSeq}`;
+
+      try {
+        const receipt = await this.prisma.doctorReceipt.create({
+          data: {
+            receiptNumber,
+            paymentId,
+            generatedById,
+            doctorName: doctor.name,
+            doctorPhone: doctor.phone ?? '',
+            doctorDocument: `${doctor.documentType}-${doctor.documentId}`,
+            bankName: defaultAccount?.bankName ?? '',
+            accountNumber: defaultAccount?.accountNumber ?? '',
+            splitPercentage: doctor.splitPercentage,
+            totalConsultation: payment.totalServiceUsd,
+            doctorShare: payment.doctorShareUsd,
+            centerShare: payment.centerShareUsd,
+          },
+        });
+        await this.auditLog.log(
+          {
+            action: 'CREATE',
+            entity: 'DoctorReceipt',
+            entityId: receipt.id,
+            tenantId,
+            userId: generatedById,
+            newValues: { paymentId, receiptNumber: receipt.receiptNumber },
+            changedFields: ['paymentId', 'receiptNumber'],
+          },
+          this.prisma,
+        );
+
+        return this.toResponse(
+          receipt,
+          payment.details ?? [],
+          this.extractServices(payment),
+          this.extractPatient(payment),
+          this.extractDoctorSpecialty(payment),
+        );
+      } catch (error: unknown) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          const existingReceipt = await this.prisma.doctorReceipt.findFirst({
+            where: { paymentId, payment: { tenantId } },
+            include: {
+              payment: {
+                include: {
+                  details: true,
+                  item: {
+                    include: {
+                      consultation: {
+                        include: {
+                          services: true,
+                          patient: true,
+                          doctor: { include: { primarySpecialty: true } },
+                        },
+                      },
+                    },
+                  },
                 },
               },
             },
-          },
-        });
+          });
 
-        if (existingReceipt) {
-          return this.toResponse(
-            existingReceipt,
-            existingReceipt.payment?.details ?? [],
-            this.extractServices(existingReceipt.payment),
-          );
+          if (existingReceipt) {
+            return this.toResponse(
+              existingReceipt,
+              existingReceipt.payment?.details ?? [],
+              this.extractServices(existingReceipt.payment),
+              this.extractPatient(existingReceipt.payment),
+              this.extractDoctorSpecialty(existingReceipt.payment),
+            );
+          }
+
+          continue;
         }
-      }
 
-      throw error;
+        throw error;
+      }
     }
+
+    throw new ConflictException(
+      'No se pudo generar un número de recibo único',
+    );
   }
 
   private toResponse(
@@ -237,14 +291,26 @@ export class ReceiptsService {
       specialtyName: string;
       priceUsd: Prisma.Decimal;
     }> = [],
+    patient: {
+      name: string;
+      documentId?: string;
+      phone?: string | null;
+      birthDate?: Date | null;
+    } | null = null,
+    doctorSpecialtyName?: string | null,
   ): ReceiptResponseDto {
     return {
       id: r.id,
       receiptNumber: r.receiptNumber,
       paymentId: r.paymentId,
+      patientName: patient?.name ?? '',
+      patientDocumentId: patient?.documentId ?? null,
+      patientPhone: patient?.phone ?? null,
+      patientAge: this.calculateAge(patient?.birthDate),
       doctorName: r.doctorName,
       doctorPhone: r.doctorPhone ?? null,
       doctorDocument: r.doctorDocument,
+      doctorSpecialtyName: doctorSpecialtyName ?? null,
       bankName: r.bankName,
       accountNumber: r.accountNumber,
       splitPercentage: r.splitPercentage.toString(),
@@ -269,6 +335,20 @@ export class ReceiptsService {
     };
   }
 
+  private calculateAge(birthDate?: Date | null): number | null {
+    if (!birthDate) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      age--;
+    }
+    return age;
+  }
+
   private extractServices(
     payment: {
       item?: {
@@ -289,5 +369,48 @@ export class ReceiptsService {
     priceUsd: Prisma.Decimal;
   }> {
     return payment?.item?.consultation?.services ?? [];
+  }
+
+  private extractPatient(
+    payment: {
+      item?: {
+        consultation?: {
+          patient: {
+            name: string;
+            documentId: string;
+            phone?: string | null;
+            birthDate?: Date | null;
+          } | null;
+        } | null;
+      } | null;
+    } | null,
+  ): {
+    name: string;
+    documentId?: string;
+    phone?: string | null;
+    birthDate?: Date | null;
+  } | null {
+    const patient = payment?.item?.consultation?.patient;
+    if (!patient) return null;
+    return {
+      name: patient.name,
+      documentId: patient.documentId,
+      phone: patient.phone,
+      birthDate: patient.birthDate,
+    };
+  }
+
+  private extractDoctorSpecialty(
+    payment: {
+      item?: {
+        consultation?: {
+          doctor: {
+            primarySpecialty?: { name: string } | null;
+          } | null;
+        } | null;
+      } | null;
+    } | null,
+  ): string | null {
+    return payment?.item?.consultation?.doctor?.primarySpecialty?.name ?? null;
   }
 }

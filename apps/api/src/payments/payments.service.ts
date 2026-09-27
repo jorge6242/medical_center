@@ -73,7 +73,13 @@ export class PaymentsService {
           include: {
             item: {
               include: {
-                consultation: { include: { services: true } },
+                consultation: {
+                  include: {
+                    services: true,
+                    doctor: { include: { primarySpecialty: true } },
+                    patient: true,
+                  },
+                },
               },
             },
             details: true,
@@ -231,7 +237,17 @@ export class PaymentsService {
       const full = await this.prisma.payment.findFirstOrThrow({
         where: { idempotencyKey: dto.idempotencyKey, tenantId },
         include: {
-          item: { include: { consultation: { include: { services: true } } } },
+          item: {
+            include: {
+              consultation: {
+                include: {
+                  services: true,
+                  doctor: { include: { primarySpecialty: true } },
+                  patient: true,
+                },
+              },
+            },
+          },
           details: true,
           adjustments: true,
         },
@@ -311,13 +327,19 @@ export class PaymentsService {
     const doctorShareUsd = totalServiceUsd * splitPct;
     const centerShareUsd = totalServiceUsd - doctorShareUsd;
 
+    const consultationStartsAt = dto.consultationDate ?? new Date();
+    const consultationEndsAt = new Date(
+      consultationStartsAt.getTime() + 60 * 60_000,
+    );
+
     await this.prisma.$transaction(async (tx) => {
       const consultation = await tx.consultation.create({
         data: {
           tenantId,
           patientId: dto.patientId,
           doctorId: doctorRecord.id,
-          date: dto.consultationDate ?? new Date(),
+          date: consultationStartsAt,
+          endsAt: consultationEndsAt,
           status: 'PENDING',
         },
       });
@@ -434,7 +456,17 @@ export class PaymentsService {
     const full = await this.prisma.payment.findFirstOrThrow({
       where: { idempotencyKey: dto.idempotencyKey, tenantId },
       include: {
-        item: { include: { consultation: { include: { services: true } } } },
+        item: {
+          include: {
+            consultation: {
+              include: {
+                services: true,
+                doctor: { include: { primarySpecialty: true } },
+                patient: true,
+              },
+            },
+          },
+        },
         details: true,
         adjustments: true,
       },
@@ -595,7 +627,13 @@ export class PaymentsService {
       include: {
         item: {
           include: {
-            consultation: { include: { services: true } },
+            consultation: {
+              include: {
+                services: true,
+                doctor: { include: { primarySpecialty: true } },
+                patient: true,
+              },
+            },
             labOrder: { include: { tests: true } },
           },
         },
@@ -665,7 +703,13 @@ export class PaymentsService {
         include: {
           item: {
             include: {
-              consultation: { include: { services: true } },
+              consultation: {
+                include: {
+                  services: true,
+                  doctor: { include: { primarySpecialty: true } },
+                  patient: true,
+                },
+              },
               labOrder: { include: { tests: true } },
             },
           },
@@ -857,6 +901,15 @@ export class PaymentsService {
           specialtyName: string;
           priceUsd: Prisma.Decimal;
         }>;
+        doctor: {
+          name: string;
+          lastName: string;
+          primarySpecialty: { name: string };
+        };
+        patient: {
+          name: string;
+          documentId: string;
+        };
       } | null;
       labOrder?: {
         tests: Array<{
@@ -903,6 +956,14 @@ export class PaymentsService {
         patientId: item?.consultation?.patientId ?? undefined,
         consultationId: item?.consultationId ?? undefined,
         labOrderId: item?.labOrderId ?? undefined,
+        patientName: item?.consultation?.patient.name ?? undefined,
+        patientDocumentId:
+          item?.consultation?.patient.documentId ?? undefined,
+        doctorName: item?.consultation?.doctor
+          ? `${item.consultation.doctor.name} ${item.consultation.doctor.lastName}`.trim()
+          : undefined,
+        doctorSpecialtyName:
+          item?.consultation?.doctor.primarySpecialty.name ?? undefined,
         services,
         labTests,
       },

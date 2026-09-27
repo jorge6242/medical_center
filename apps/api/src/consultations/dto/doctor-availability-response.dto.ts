@@ -1,4 +1,4 @@
 export interface DoctorAvailabilityResponseDto {
-  occupiedSlots: Date[];
+  occupiedSlots: Array<{ startsAt: Date; endsAt: Date }>;
   isRequestedSlotAvailable?: boolean;
 }

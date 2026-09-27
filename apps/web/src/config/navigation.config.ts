@@ -69,13 +69,13 @@ export const NAV_ITEMS: NavItem[] = [
   //   permission: { resource: 'payments', action: 'read' },
   //   visibleForRoles: ['admin'],
   // },
-  {
-    label: 'Colas',
-    path: '/admin/queues',
-    icon: 'Boxes',
-    permission: { resource: 'roles', action: 'read' },
-    visibleForRoles: ['admin'],
-  },
+  // {
+  //   label: 'Colas',
+  //   path: '/admin/queues',
+  //   icon: 'Boxes',
+  //   permission: { resource: 'roles', action: 'read' },
+  //   visibleForRoles: ['admin'],
+  // },
   {
     label: 'Doctores',
     path: '/admin/doctores',

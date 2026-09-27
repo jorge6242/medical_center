@@ -40,6 +40,10 @@ export interface PaymentItemResponse {
   patientId?: string;
   consultationId?: string;
   labOrderId?: string;
+  patientName?: string;
+  patientDocumentId?: string;
+  doctorName?: string;
+  doctorSpecialtyName?: string;
   services?: ConsultationServiceSnapshot[];
   labTests?: LabOrderTestSnapshot[];
 }

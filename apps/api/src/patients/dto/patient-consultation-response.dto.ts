@@ -6,8 +6,8 @@ export class PatientConsultationServiceResponseDto {
 export class PatientConsultationResponseDto {
   declare id: string;
   declare date: Date;
-  declare status: 'PAID';
-  declare hasMedicalRecord: false;
-  declare canCreateMedicalRecord: true;
+  declare status: string;
+  declare hasMedicalRecord: boolean;
+  declare canCreateMedicalRecord: boolean;
   declare services: PatientConsultationServiceResponseDto[];
 }

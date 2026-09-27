@@ -2,9 +2,14 @@ export class ReceiptResponseDto {
   declare id: string;
   declare receiptNumber: string;
   declare paymentId: string;
+  declare patientName: string;
+  declare patientDocumentId?: string | null;
+  declare patientPhone?: string | null;
+  declare patientAge?: number | null;
   declare doctorName: string;
   declare doctorPhone?: string | null;
   declare doctorDocument: string;
+  declare doctorSpecialtyName?: string | null;
   declare bankName: string;
   declare accountNumber: string;
   declare splitPercentage: string;

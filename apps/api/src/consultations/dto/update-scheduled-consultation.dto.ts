@@ -4,7 +4,11 @@ import { IsDate, IsOptional, IsString } from 'class-validator';
 export class UpdateScheduledConsultationDto {
   @Type(() => Date)
   @IsDate()
-  declare date: Date;
+  declare startsAt: Date;
+
+  @Type(() => Date)
+  @IsDate()
+  declare endsAt: Date;
 
   @IsOptional()
   @IsString()

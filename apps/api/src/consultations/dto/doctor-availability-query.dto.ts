@@ -20,5 +20,14 @@ export class DoctorAvailabilityQueryDto {
   @IsOptional()
   @Type(() => Date)
   @IsDate()
-  declare dateTime?: Date;
+  declare startsAt?: Date;
+
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  declare endsAt?: Date;
+
+  @IsOptional()
+  @IsString()
+  declare excludeConsultationId?: string;
 }

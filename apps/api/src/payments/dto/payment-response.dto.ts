@@ -48,6 +48,12 @@ export class PaymentItemResponseDto {
   declare consultationId?: string;
   declare labOrderId?: string;
 
+  // Human-readable details for admin reports
+  declare patientName?: string;
+  declare patientDocumentId?: string;
+  declare doctorName?: string;
+  declare doctorSpecialtyName?: string;
+
   // Embedded snapshot data
   declare services?: ConsultationServiceSnapshotDto[];
   declare labTests?: LabOrderTestSnapshotDto[];

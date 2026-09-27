@@ -20,7 +20,11 @@ export class CreateScheduledConsultationDto {
 
   @Type(() => Date)
   @IsDate()
-  declare date: Date;
+  declare startsAt: Date;
+
+  @Type(() => Date)
+  @IsDate()
+  declare endsAt: Date;
 
   @IsArray()
   @ArrayMinSize(1)

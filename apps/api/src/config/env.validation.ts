@@ -8,6 +8,7 @@ export const envValidationSchema = Joi.object({
   DATABASE_URL: Joi.string().uri().required(),
   JWT_SECRET: Joi.string().min(32).required(),
   JWT_EXPIRES_IN: Joi.string().default('8h'),
+  APP_TIMEZONE: Joi.string().default('America/Caracas'),
   API_INTERNAL_SECRET: Joi.string().min(32).required(),
   MAIL_HOST: Joi.string().default('smtp.ethereal.email'),
   MAIL_PORT: Joi.number().default(587),

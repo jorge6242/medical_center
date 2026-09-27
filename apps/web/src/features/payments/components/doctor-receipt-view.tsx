@@ -5,24 +5,90 @@ import { formatUsd, formatBs, formatDate } from '@/shared/utils/format';
 import type { ReceiptData } from '@/features/payments/services/receipts.service';
 
 export function DoctorReceiptView({ data }: { data: ReceiptData }) {
+  const centerPercentage = (100 - parseFloat(data.splitPercentage)).toFixed(2);
+
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-on-surface">Recibo {data.receiptNumber}</h2>
+          <h2 className="text-lg font-semibold text-on-surface">
+            Recibo de Consulta {data.receiptNumber}
+          </h2>
           <p className="text-sm text-on-surface-variant">
             Generado: {formatDate(data.generatedAt)}
           </p>
         </div>
-        <div className="text-right">
-          <p className="text-sm text-on-surface-variant">Doctor</p>
-          <p className="font-medium text-on-surface">{data.doctorName}</p>
-          <p className="text-sm text-on-surface-variant">{data.doctorDocument}</p>
-          {data.doctorPhone && (
-            <p className="text-sm text-on-surface-variant">{data.doctorPhone}</p>
-          )}
-        </div>
       </div>
+
+      <Card>
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-on-surface-variant">Datos del paciente</h3>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div>
+              <span className="text-on-surface-variant">Nombre:</span>{' '}
+              <span className="font-medium text-on-surface">{data.patientName}</span>
+            </div>
+            {data.patientDocumentId && (
+              <div>
+                <span className="text-on-surface-variant">Documento:</span>{' '}
+                <span className="text-on-surface">{data.patientDocumentId}</span>
+              </div>
+            )}
+            {data.patientAge !== null && data.patientAge !== undefined && (
+              <div>
+                <span className="text-on-surface-variant">Edad:</span>{' '}
+                <span className="text-on-surface">{data.patientAge} años</span>
+              </div>
+            )}
+            {data.patientPhone && (
+              <div>
+                <span className="text-on-surface-variant">Teléfono:</span>{' '}
+                <span className="text-on-surface">{data.patientPhone}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      <Card>
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-on-surface-variant">Datos del médico</h3>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div>
+              <span className="text-on-surface-variant">Nombre:</span>{' '}
+              <span className="font-medium text-on-surface">{data.doctorName}</span>
+            </div>
+            <div>
+              <span className="text-on-surface-variant">Documento:</span>{' '}
+              <span className="text-on-surface">{data.doctorDocument}</span>
+            </div>
+            {data.doctorSpecialtyName && (
+              <div>
+                <span className="text-on-surface-variant">Especialidad:</span>{' '}
+                <span className="text-on-surface">{data.doctorSpecialtyName}</span>
+              </div>
+            )}
+            {data.doctorPhone && (
+              <div>
+                <span className="text-on-surface-variant">Teléfono:</span>{' '}
+                <span className="text-on-surface">{data.doctorPhone}</span>
+              </div>
+            )}
+            {data.bankName && (
+              <div>
+                <span className="text-on-surface-variant">Banco:</span>{' '}
+                <span className="text-on-surface">{data.bankName}</span>
+              </div>
+            )}
+            {data.accountNumber && (
+              <div>
+                <span className="text-on-surface-variant">Cuenta:</span>{' '}
+                <span className="text-on-surface">{data.accountNumber}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </Card>
 
       <Card>
         <div className="space-y-2">
@@ -59,7 +125,7 @@ export function DoctorReceiptView({ data }: { data: ReceiptData }) {
 
       <Card>
         <div className="space-y-2">
-          <h3 className="text-sm font-medium text-on-surface-variant">Detalle del recibo</h3>
+          <h3 className="text-sm font-medium text-on-surface-variant">Detalle del pago</h3>
           {data.details && data.details.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -93,22 +159,18 @@ export function DoctorReceiptView({ data }: { data: ReceiptData }) {
             <p className="text-sm text-on-surface-variant">No hay líneas de pago.</p>
           )}
 
-          <div className="mt-3 flex justify-end space-y-0">
-            <div className="w-64">
+          <div className="mt-3 flex justify-end">
+            <div className="w-72 space-y-1">
               <div className="flex justify-between text-sm text-on-surface-variant">
-                <span>Total servicio</span>
+                <span>Total consulta</span>
                 <span>{formatUsd(data.totalConsultation)}</span>
               </div>
               <div className="flex justify-between text-sm text-on-surface-variant">
-                <span>Porcentaje doctor</span>
-                <span>{data.splitPercentage}%</span>
-              </div>
-              <div className="flex justify-between font-medium text-on-surface mt-2">
-                <span>Doctor</span>
+                <span>Porcentaje doctor ({data.splitPercentage}%)</span>
                 <span>{formatUsd(data.doctorShare)}</span>
               </div>
-              <div className="flex justify-between font-medium text-on-surface">
-                <span>Centro</span>
+              <div className="flex justify-between text-sm text-on-surface-variant">
+                <span>Porcentaje centro ({centerPercentage}%)</span>
                 <span>{formatUsd(data.centerShare)}</span>
               </div>
             </div>

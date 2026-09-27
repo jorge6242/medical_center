@@ -32,14 +32,54 @@ function itemTypeVariant(itemType: string) {
   return itemType === "CONSULTATION" ? "success" : "secondary";
 }
 
+function formatServices(
+  services: PaymentResponse["item"]["services"],
+): string {
+  if (!services || services.length === 0) return "—";
+  return services.map((s) => s.serviceName).join(", ");
+}
+
 export function getPaymentColumns(): ColumnDef<PaymentResponse>[] {
   return [
     {
-      accessorKey: "id",
-      header: "ID",
+      accessorKey: "createdAt",
+      header: "Fecha",
+      cell: ({ row }) => formatDate(row.original.createdAt),
+    },
+    {
+      accessorKey: "item.patientName",
+      header: "Paciente",
+      cell: ({ row }) => {
+        const name = row.original.item.patientName ?? "—";
+        const documentId = row.original.item.patientDocumentId;
+        return (
+          <div className="flex flex-col">
+            <span className="font-medium text-on-surface">{name}</span>
+            {documentId && (
+              <span className="text-xs text-on-surface-variant">
+                {documentId}
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "item.doctorName",
+      header: "Doctor",
+      cell: ({ row }) => row.original.item.doctorName ?? "—",
+    },
+    {
+      accessorKey: "item.doctorSpecialtyName",
+      header: "Especialidad",
+      cell: ({ row }) => row.original.item.doctorSpecialtyName ?? "—",
+    },
+    {
+      accessorKey: "item.services",
+      header: "Servicio",
       cell: ({ row }) => (
-        <span className="font-mono text-xs text-on-surface-variant">
-          {row.original.id.slice(0, 8)}…
+        <span className="max-w-[200px] truncate text-on-surface">
+          {formatServices(row.original.item.services)}
         </span>
       ),
     },
@@ -57,28 +97,13 @@ export function getPaymentColumns(): ColumnDef<PaymentResponse>[] {
       ),
     },
     {
-      accessorKey: "totalServiceUsd",
-      header: "Total servicio",
+      accessorKey: "totalPaidUsdEquivalent",
+      header: "Total pagado",
       cell: ({ row }) => (
-        <span className="font-medium text-on-surface">
-          {formatUsd(row.original.totalServiceUsd)}
+        <span className="font-semibold text-on-surface">
+          {formatUsd(row.original.totalPaidUsdEquivalent)}
         </span>
       ),
-    },
-    {
-      accessorKey: "totalPaidUsdEquivalent",
-      header: "Total pagado USD",
-      cell: ({ row }) => formatUsd(row.original.totalPaidUsdEquivalent),
-    },
-    {
-      accessorKey: "totalIgtfUsd",
-      header: "IGTF",
-      cell: ({ row }) => formatUsd(row.original.totalIgtfUsd),
-    },
-    {
-      accessorKey: "createdAt",
-      header: "Fecha",
-      cell: ({ row }) => formatDate(row.original.createdAt),
     },
     {
       accessorKey: "status",

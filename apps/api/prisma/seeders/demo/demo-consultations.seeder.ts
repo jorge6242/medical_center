@@ -139,6 +139,7 @@ export async function seedDemoConsultations(
         patientId: patient.id,
         doctorId: doctor.id,
         date,
+        endsAt: new Date(date.getTime() + 60 * 60_000),
         status: item.status,
       },
     });

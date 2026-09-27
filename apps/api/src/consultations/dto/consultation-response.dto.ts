@@ -12,6 +12,8 @@ export interface ConsultationResponseDto {
   doctorId: string;
   doctorName: string;
   date: Date;
+  startsAt: Date;
+  endsAt: Date;
   status: string;
   services: ConsultationServiceDto[];
   totalUsd: string;

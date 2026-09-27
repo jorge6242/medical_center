@@ -3,6 +3,7 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
+import type { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 
 import { ConsultationsService } from './consultations.service';
@@ -60,6 +61,7 @@ const scheduledConsultation = {
   patientId: PATIENT_ID,
   doctorId: DOCTOR_ID,
   date: new Date('2026-10-01T13:00:00.000Z'),
+  endsAt: new Date('2026-10-01T14:00:00.000Z'),
   status: 'SCHEDULED' as const,
   notes: 'Revisión anual',
   paymentId: null,
@@ -141,13 +143,20 @@ function buildAuditLog(): AuditLogService {
   } as unknown as AuditLogService;
 }
 
+function buildConfigService(): ConfigService {
+  return {
+    get: jest.fn().mockReturnValue('America/Caracas'),
+  } as unknown as ConfigService;
+}
+
 // ─── createScheduled ──────────────────────────────────────────────────────────
 
 describe('ConsultationsService.createScheduled', () => {
   const dto: CreateScheduledConsultationDto = {
     patientId: PATIENT_ID,
     doctorId: DOCTOR_ID,
-    date: new Date('2026-10-01T13:00:00.000Z'),
+    startsAt: new Date('2026-10-01T13:00:00.000Z'),
+    endsAt: new Date('2026-10-01T14:00:00.000Z'),
     doctorServiceIds: [DS_ID_1],
     notes: 'Revisión anual',
     sendEmailNotification: true,
@@ -157,7 +166,8 @@ describe('ConsultationsService.createScheduled', () => {
     const prisma = buildPrisma();
     const mailer = buildMailer();
     const auditLog = buildAuditLog();
-    const service = new ConsultationsService(prisma, mailer, auditLog);
+    const configService = buildConfigService();
+    const service = new ConsultationsService(prisma, mailer, auditLog, configService);
 
     const result = await service.createScheduled(TENANT_ID, USER_ID, dto);
 
@@ -181,6 +191,7 @@ describe('ConsultationsService.createScheduled', () => {
       prisma,
       buildMailer(),
       buildAuditLog(),
+      buildConfigService(),
     );
 
     await expect(
@@ -194,7 +205,8 @@ describe('ConsultationsService.createScheduled', () => {
     const prisma = buildPrisma();
     const mailer = buildMailer();
     const auditLog = buildAuditLog();
-    const service = new ConsultationsService(prisma, mailer, auditLog);
+    const configService = buildConfigService();
+    const service = new ConsultationsService(prisma, mailer, auditLog, configService);
 
     await service.createScheduled(TENANT_ID, USER_ID, {
       ...dto,
@@ -241,7 +253,8 @@ describe('ConsultationsService.createScheduled', () => {
     const prisma = buildPrisma();
     const mailer = buildMailer();
     const auditLog = buildAuditLog();
-    const service = new ConsultationsService(prisma, mailer, auditLog);
+    const configService = buildConfigService();
+    const service = new ConsultationsService(prisma, mailer, auditLog, configService);
 
     await service.createScheduled(TENANT_ID, USER_ID, {
       ...dto,
@@ -261,7 +274,8 @@ describe('ConsultationsService.createScheduled', () => {
     });
     const mailer = buildMailer();
     const auditLog = buildAuditLog();
-    const service = new ConsultationsService(prisma, mailer, auditLog);
+    const configService = buildConfigService();
+    const service = new ConsultationsService(prisma, mailer, auditLog, configService);
 
     await service.createScheduled(TENANT_ID, USER_ID, {
       ...dto,
@@ -289,7 +303,8 @@ describe('ConsultationsService.createScheduled', () => {
     });
     const mailer = buildMailer();
     const auditLog = buildAuditLog();
-    const service = new ConsultationsService(prisma, mailer, auditLog);
+    const configService = buildConfigService();
+    const service = new ConsultationsService(prisma, mailer, auditLog, configService);
 
     await expect(
       service.createScheduled(TENANT_ID, USER_ID, dto),
@@ -302,7 +317,8 @@ describe('ConsultationsService.createScheduled', () => {
     });
     const mailer = buildMailer();
     const auditLog = buildAuditLog();
-    const service = new ConsultationsService(prisma, mailer, auditLog);
+    const configService = buildConfigService();
+    const service = new ConsultationsService(prisma, mailer, auditLog, configService);
 
     await expect(
       service.createScheduled(TENANT_ID, USER_ID, dto),
@@ -324,7 +340,8 @@ describe('ConsultationsService.createScheduled', () => {
     });
     const mailer = buildMailer();
     const auditLog = buildAuditLog();
-    const service = new ConsultationsService(prisma, mailer, auditLog);
+    const configService = buildConfigService();
+    const service = new ConsultationsService(prisma, mailer, auditLog, configService);
 
     await expect(
       service.createScheduled(TENANT_ID, USER_ID, dto),
@@ -338,18 +355,31 @@ describe('ConsultationsService.findDoctorAvailability', () => {
     const prisma = buildPrisma({
       consultation: {
         ...buildPrisma().consultation,
-        findMany: jest.fn().mockResolvedValue([{ date: occupiedDate }]),
+        findMany: jest.fn().mockResolvedValue([
+          {
+            date: occupiedDate,
+            endsAt: new Date('2026-10-01T14:00:00.000Z'),
+          },
+        ]),
       },
     });
     const service = new ConsultationsService(
       prisma,
       buildMailer(),
       buildAuditLog(),
+      buildConfigService(),
     );
 
     await expect(
       service.findDoctorAvailability(TENANT_ID, DOCTOR_ID, '2026-10-01'),
-    ).resolves.toEqual({ occupiedSlots: [occupiedDate] });
+    ).resolves.toEqual({
+      occupiedSlots: [
+        {
+          startsAt: occupiedDate,
+          endsAt: new Date('2026-10-01T14:00:00.000Z'),
+        },
+      ],
+    });
 
     expect(prisma.consultation.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -363,7 +393,8 @@ describe('ConsultationsService.findDoctorAvailability', () => {
   });
 
   it('marks the requested slot unavailable when it overlaps an active consultation', async () => {
-    const requestedDateTime = new Date('2026-10-01T13:00:00.000Z');
+    const requestedStartsAt = new Date('2026-10-01T13:00:00.000Z');
+    const requestedEndsAt = new Date('2026-10-01T14:00:00.000Z');
     const prisma = buildPrisma({
       consultation: {
         ...buildPrisma().consultation,
@@ -374,6 +405,7 @@ describe('ConsultationsService.findDoctorAvailability', () => {
       prisma,
       buildMailer(),
       buildAuditLog(),
+      buildConfigService(),
     );
 
     await expect(
@@ -381,7 +413,8 @@ describe('ConsultationsService.findDoctorAvailability', () => {
         TENANT_ID,
         DOCTOR_ID,
         '2026-10-01',
-        requestedDateTime,
+        requestedStartsAt,
+        requestedEndsAt,
       ),
     ).resolves.toMatchObject({ isRequestedSlotAvailable: false });
   });
@@ -396,7 +429,8 @@ describe('ConsultationsService.resendScheduledNotifications', () => {
     });
     const mailer = buildMailer();
     const auditLog = buildAuditLog();
-    const service = new ConsultationsService(prisma, mailer, auditLog);
+    const configService = buildConfigService();
+    const service = new ConsultationsService(prisma, mailer, auditLog, configService);
 
     await service.resendScheduledNotifications(
       TENANT_ID,
@@ -439,6 +473,7 @@ describe('ConsultationsService.resendScheduledNotifications', () => {
       prisma,
       buildMailer(),
       buildAuditLog(),
+      buildConfigService(),
     );
 
     await expect(
@@ -471,6 +506,7 @@ describe('ConsultationsService.findOne', () => {
       prisma,
       buildMailer(),
       buildAuditLog(),
+      buildConfigService(),
     );
 
     const result = await service.findOne(TENANT_ID, CONSULTATION_ID);
@@ -511,6 +547,7 @@ describe('ConsultationsService.markAsAttended', () => {
       prisma,
       buildMailer(),
       buildAuditLog(),
+      buildConfigService(),
     );
 
     const result = await service.markAsAttended(
@@ -554,6 +591,7 @@ describe('ConsultationsService.markAsAttended', () => {
       prisma,
       buildMailer(),
       buildAuditLog(),
+      buildConfigService(),
     );
 
     const result = await service.markAsAttended(
@@ -592,6 +630,7 @@ describe('ConsultationsService.markAsAttended', () => {
       prisma,
       buildMailer(),
       buildAuditLog(),
+      buildConfigService(),
     );
 
     await expect(
@@ -614,6 +653,7 @@ describe('ConsultationsService.markAsAttended', () => {
       prisma,
       buildMailer(),
       buildAuditLog(),
+      buildConfigService(),
     );
 
     await expect(
@@ -644,6 +684,7 @@ describe('ConsultationsService.void', () => {
       prisma,
       buildMailer(),
       buildAuditLog(),
+      buildConfigService(),
     );
 
     const result = await service.void(
@@ -675,6 +716,7 @@ describe('ConsultationsService.void', () => {
       prisma,
       buildMailer(),
       buildAuditLog(),
+      buildConfigService(),
     );
 
     await expect(
@@ -697,6 +739,7 @@ describe('ConsultationsService.void', () => {
       prisma,
       buildMailer(),
       buildAuditLog(),
+      buildConfigService(),
     );
 
     await expect(
@@ -736,6 +779,7 @@ describe('ConsultationsService.findToday', () => {
       prisma,
       buildMailer(),
       buildAuditLog(),
+      buildConfigService(),
     );
 
     const result = await service.findToday(TENANT_ID);
