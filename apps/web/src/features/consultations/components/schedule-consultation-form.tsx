@@ -31,27 +31,12 @@ import type { ConsultationResponse } from "../services/consultations.service";
 
 const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120] as const;
 
-interface ScheduleFormData {
-  patientId: string;
-  doctorId: string;
-  date: string;
-  startTime: string;
-  durationMinutes: number;
-  doctorServiceIds: string[];
-  notes?: string;
-  sendEmailNotification: boolean;
-  registerPaymentNow: boolean;
-}
-
-const schema: z.ZodSchema<ScheduleFormData> = z.object({
+const schema = z.object({
   patientId: z.string().min(1, "Seleccioná un paciente"),
   doctorId: z.string().min(1, "Seleccioná un doctor"),
   date: z.string().min(1, "Indicá la fecha"),
   startTime: z.string().min(1, "Indicá la hora de inicio"),
-  durationMinutes: z.preprocess(
-    (value) => (typeof value === 'string' ? Number(value) : value),
-    z.number().min(1, "Indicá la duración"),
-  ),
+  durationMinutes: z.number().min(1, "Indicá la duración"),
   doctorServiceIds: z
     .array(z.string())
     .min(1, "Seleccioná al menos un servicio"),
@@ -59,6 +44,8 @@ const schema: z.ZodSchema<ScheduleFormData> = z.object({
   sendEmailNotification: z.boolean(),
   registerPaymentNow: z.boolean(),
 });
+
+type ScheduleFormData = z.infer<typeof schema>;
 
 function defaultDateTime() {
   const now = new Date();
