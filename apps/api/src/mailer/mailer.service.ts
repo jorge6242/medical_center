@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import nodemailer, { type Transporter } from 'nodemailer';
+import { Resend } from 'resend';
 
 import { getTemplateCatalog, getTemplateSummary } from './template-catalog';
 import { TEMPLATE_REGISTRY, type TemplateName } from './template-registry';
@@ -9,17 +9,13 @@ import { renderTemplateString } from './templates/render-template';
 @Injectable()
 export class MailerService {
   private readonly logger = new Logger(MailerService.name);
-  private readonly transporter: Transporter;
+  private readonly resend: Resend;
+  private readonly from: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.transporter = nodemailer.createTransport({
-      host: this.configService.get<string>('mailer.host'),
-      port: this.configService.get<number>('mailer.port') ?? 587,
-      auth: {
-        user: this.configService.get<string>('mailer.user'),
-        pass: this.configService.get<string>('mailer.pass'),
-      },
-    });
+    const apiKey = this.configService.getOrThrow<string>('mailer.apiKey');
+    this.from = this.configService.getOrThrow<string>('mailer.from');
+    this.resend = new Resend(apiKey);
   }
 
   renderTemplate(
@@ -58,17 +54,18 @@ export class MailerService {
   }
 
   async sendEmail(to: string, subject: string, html: string): Promise<void> {
-    const from = this.configService.get<string>('mailer.from');
-    const mailerHost = this.configService.get<string>('mailer.host');
-
-    await this.transporter.sendMail({
-      from,
+    const { data, error } = await this.resend.emails.send({
+      from: this.from,
       to,
       subject,
       html,
     });
 
-    this.logger.log(`Email sent to ${to} via ${mailerHost ?? 'smtp'}`);
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    this.logger.log(`Email ${data.id} sent to ${to} via Resend`);
   }
 
   async sendReceiptEmail(
