@@ -37,10 +37,12 @@ async function bootstrap() {
   });
 
   app.enableCors({
-    origin: process.env['FRONTEND_URL'] ?? 'http://localhost:3000',
+    origin: [
+      process.env['FRONTEND_URL'] ?? 'http://localhost:3000',
+      /^https:\/\/.*\.goratechlabs\.com$/, // Wildcard: Acepta cualquier subdominio en producción
+    ],
     credentials: true,
   });
-
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalPipes(
     new ValidationPipe({
