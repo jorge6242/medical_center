@@ -4,7 +4,6 @@ const ROOT_DOMAIN = 'goratechlabs.com';
 
 export function middleware(request: NextRequest): NextResponse {
   const hostname = request.headers.get('host') ?? '';
-  // Strip port for local dev comparisons
   const host = hostname.split(':')[0] ?? '';
 
   const isRootDomain = host === ROOT_DOMAIN || host === `www.${ROOT_DOMAIN}`;
@@ -16,6 +15,28 @@ export function middleware(request: NextRequest): NextResponse {
 
   if (isSubdomain) {
     const webSlug = host.replace(`.${ROOT_DOMAIN}`, '');
+    const token = request.cookies.get('access_token')?.value;
+
+    if (token) {
+      try {
+        const payloadStr = token.split('.')[1];
+        if (payloadStr) {
+          // Edge compatible base64 decode
+          const decoded = atob(payloadStr);
+          const payload = JSON.parse(decoded);
+
+          if (payload.webSlug && payload.webSlug !== webSlug) {
+            // JWT does not match this subdomain -> clear cookie and force login
+            const response = NextResponse.redirect(new URL('/login', request.url));
+            response.cookies.delete('access_token');
+            return response;
+          }
+        }
+      } catch {
+        // Ignore parsing errors, let API handle invalid tokens
+      }
+    }
+
     const response = NextResponse.next();
     response.headers.set('x-tenant-web-slug', webSlug);
     return response;

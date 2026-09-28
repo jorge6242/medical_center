@@ -43,6 +43,7 @@ export class AuthService {
       where,
       take: 2,
       include: {
+        tenant: { select: { webSlug: true } },
         role: {
           include: {
             permissions: true,
@@ -103,6 +104,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.id,
       tenantId: user.tenantId,
+      webSlug: user.tenant.webSlug,
       email: user.email,
       role: user.role.name,
       doctorId: user.doctor?.id ?? null,

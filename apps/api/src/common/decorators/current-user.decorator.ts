@@ -6,6 +6,7 @@ export interface JwtPayload {
   sub: string;
   // tenantId is required for AsyncLocalStorage audit context.
   tenantId: string;
+  webSlug?: string | null;
   email: string;
   role: string;
   doctorId: string | null;
