@@ -164,6 +164,28 @@ export class AuthService {
     };
   }
 
+  async resolveByWebSlug(webSlug: string) {
+    const tenant = await this.prisma.tenant.findFirst({
+      where: { webSlug, isActive: true },
+      select: { id: true, name: true, logoUrl: true, logoObjectKey: true },
+    });
+    if (!tenant) throw new NotFoundException('Centro médico no encontrado');
+
+    const contextToken = this.jwtService.sign(
+      { purpose: 'web_slug_access', tenantId: tenant.id },
+      { expiresIn: '10m' },
+    );
+    const logoUrl = await this.railwayBucket.resolveLogoUrl(
+      tenant.logoObjectKey,
+      tenant.logoUrl,
+    );
+
+    return {
+      contextToken,
+      tenant: { name: tenant.name, logoUrl },
+    };
+  }
+
   async createAccessLink(
     tenantId: string,
     createdById: string,
@@ -215,34 +237,49 @@ export class AuthService {
 
   private async resolveContextToken(
     contextToken: string,
-  ): Promise<{ tenantId: string; linkId: string }> {
+  ): Promise<{ tenantId: string }> {
     let payload: { purpose?: string; tenantId?: string; linkId?: string };
     try {
       payload = this.jwtService.verify(contextToken);
     } catch {
       throw new UnauthorizedException('Contexto de tenant inválido o expirado');
     }
-    if (
-      payload.purpose !== 'tenant_access' ||
-      !payload.tenantId ||
-      !payload.linkId
-    ) {
-      throw new UnauthorizedException('Contexto de tenant inválido');
+
+    if (payload.purpose === 'tenant_access') {
+      if (!payload.tenantId || !payload.linkId) {
+        throw new UnauthorizedException('Contexto de tenant inválido');
+      }
+      const link = await this.prisma.tenantAccessLink.findFirst({
+        where: {
+          id: payload.linkId,
+          tenantId: payload.tenantId,
+          revokedAt: null,
+          OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }],
+          tenant: { isActive: true },
+        },
+        select: { tenantId: true },
+      });
+      if (!link)
+        throw new UnauthorizedException('Link de acceso inválido o expirado');
+      return { tenantId: link.tenantId };
     }
 
-    const link = await this.prisma.tenantAccessLink.findFirst({
-      where: {
-        id: payload.linkId,
-        tenantId: payload.tenantId,
-        revokedAt: null,
-        OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }],
-        tenant: { isActive: true },
-      },
-      select: { tenantId: true },
-    });
-    if (!link)
-      throw new UnauthorizedException('Link de acceso inválido o expirado');
-    return { tenantId: link.tenantId, linkId: payload.linkId };
+    if (payload.purpose === 'web_slug_access') {
+      if (!payload.tenantId) {
+        throw new UnauthorizedException('Contexto de tenant inválido');
+      }
+      const tenant = await this.prisma.tenant.findFirst({
+        where: { id: payload.tenantId, isActive: true },
+        select: { id: true },
+      });
+      if (!tenant)
+        throw new UnauthorizedException(
+          'Centro médico no encontrado o inactivo',
+        );
+      return { tenantId: tenant.id };
+    }
+
+    throw new UnauthorizedException('Contexto de tenant inválido');
   }
 
   private hashToken(token: string): string {

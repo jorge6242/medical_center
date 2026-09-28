@@ -65,6 +65,12 @@ export class AuthController {
     return this.authService.resolveAccessContext(dto.accessToken);
   }
 
+  @Get('tenant-by-webslug/:webSlug')
+  @Public()
+  resolveByWebSlug(@Param('webSlug') webSlug: string) {
+    return this.authService.resolveByWebSlug(webSlug);
+  }
+
   @Post('access-links/bootstrap')
   @InternalRequest()
   @Public()

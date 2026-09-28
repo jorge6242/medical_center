@@ -8,7 +8,7 @@ export interface LoginDto {
 
 export interface TenantAccessContext {
   contextToken: string;
-  tenant: { name: string; slug: string; logoUrl: string | null };
+  tenant: { name: string; slug?: string; logoUrl: string | null };
 }
 
 export interface LoginResponse {
@@ -31,5 +31,8 @@ export const resolveAccessContext = (accessToken: string): Promise<TenantAccessC
     method: 'POST',
     body: JSON.stringify({ accessToken }),
   });
+
+export const resolveByWebSlug = (webSlug: string): Promise<TenantAccessContext> =>
+  apiJson(`/auth/tenant-by-webslug/${encodeURIComponent(webSlug)}`);
 
 export const logout = (): Promise<void> => apiJson('/auth/logout', { method: 'POST' });
