@@ -143,7 +143,11 @@ export class AuthController {
     @CurrentUser() user: JwtPayload,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ message: string }> {
-    res.clearCookie('access_token');
+    res.clearCookie('access_token', {
+      httpOnly: true,
+      secure: process.env['NODE_ENV'] === 'production',
+      sameSite: process.env['NODE_ENV'] === 'production' ? 'none' : 'strict',
+    });
     await this.auditLog.log(
       {
         action: 'LOGOUT',

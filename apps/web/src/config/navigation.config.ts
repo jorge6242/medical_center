@@ -8,13 +8,6 @@ export const NAV_ITEMS: NavItem[] = [
     permission: { resource: 'payments', action: 'read' },
   },
   {
-    label: 'Crear consulta',
-    path: '/recepcion',
-    icon: 'ClipboardList',
-    permission: { resource: 'payments', action: 'create' },
-    visibleForRoles: ['admin', 'recepcionista'],
-  },
-  {
     label: 'Agenda',
     path: '/agenda',
     icon: 'ClipboardList',
@@ -62,20 +55,6 @@ export const NAV_ITEMS: NavItem[] = [
     permission: { resource: 'expenses', action: 'read' },
     visibleForRoles: ['admin'],
   },
-  // {
-  //   label: 'Catálogo',
-  //   path: '/catalogo',
-  //   icon: 'BookOpen',
-  //   permission: { resource: 'payments', action: 'read' },
-  //   visibleForRoles: ['admin'],
-  // },
-  // {
-  //   label: 'Colas',
-  //   path: '/admin/queues',
-  //   icon: 'Boxes',
-  //   permission: { resource: 'roles', action: 'read' },
-  //   visibleForRoles: ['admin'],
-  // },
   {
     label: 'Doctores',
     path: '/admin/doctores',
