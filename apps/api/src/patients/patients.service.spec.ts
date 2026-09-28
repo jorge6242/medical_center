@@ -1,6 +1,8 @@
 import { PatientsService } from './patients.service';
 
 import type { PrismaService } from '../database/prisma.service';
+import type { NotificationService } from '../notifications/notifications.service';
+import type { RailwayBucketService } from '../railway-bucket/railway-bucket.service';
 
 describe('PatientsService', () => {
   const prisma = {
@@ -20,13 +22,60 @@ describe('PatientsService', () => {
     },
     medicalRecord: { count: jest.fn() },
     labOrder: { count: jest.fn() },
+    reminderLog: { create: jest.fn() },
     $transaction: jest.fn(),
   } as unknown as PrismaService;
 
-  const service = new PatientsService(prisma);
+  const notificationService = {
+    send: jest.fn(),
+  } as unknown as NotificationService;
+
+  const railwayBucket = {
+    resolveLogoUrl: jest.fn().mockResolvedValue(null),
+  } as unknown as RailwayBucketService;
+
+  const service = new PatientsService(
+    prisma,
+    notificationService,
+    railwayBucket,
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (railwayBucket.resolveLogoUrl as jest.Mock).mockResolvedValue(null);
+  });
+
+  it('sends a tenant-scoped birthday email and records it', async () => {
+    (prisma.patient.findFirst as jest.Mock).mockResolvedValue({
+      id: 'patient-1',
+      tenantId: 'tenant-1',
+      name: 'Ana Pérez',
+      email: 'ana@example.com',
+      tenant: {
+        name: 'Centro Médico',
+        logoObjectKey: null,
+        logoUrl: null,
+        email: 'admin@example.com',
+      },
+    });
+
+    await expect(
+      service.sendBirthdayEmail('tenant-1', 'patient-1', 'user-1'),
+    ).resolves.toEqual({ message: 'Correo de cumpleaños enviado' });
+
+    expect(prisma.patient.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'patient-1', tenantId: 'tenant-1', isActive: true },
+      }),
+    );
+    expect(notificationService.send).toHaveBeenCalledWith(
+      'BIRTHDAY_PATIENT',
+      'tenant-1',
+      'ana@example.com',
+      expect.objectContaining({ patientName: 'Ana Pérez' }),
+      'EMAIL',
+    );
+    expect(prisma.reminderLog.create).toHaveBeenCalled();
   });
 
   it('includes the patient age in lookup results', async () => {
@@ -133,7 +182,7 @@ describe('PatientsService', () => {
         status: 'PAID',
         medicalRecord: null,
       },
-      orderBy: { date: 'desc' },
+      orderBy: { date: 'asc' },
       select: {
         id: true,
         date: true,

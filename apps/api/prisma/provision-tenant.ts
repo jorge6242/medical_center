@@ -4,6 +4,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
+import { seedReminderConfig } from './seeders/reminder-config.seeder';
 import { seedRoles } from './seeders/roles.seeder';
 import { seedSystemConfig } from './seeders/system-config.seeder';
 
@@ -69,6 +70,7 @@ async function main() {
 
       await seedRoles(tx, tenant.id);
       await seedSystemConfig(tx, tenant.id);
+      await seedReminderConfig(tx, tenant.id);
       await tx.systemConfig.update({
         where: { tenantId_key: { tenantId: tenant.id, key: 'igtf_rate' } },
         data: { value: initialIgtfRate },

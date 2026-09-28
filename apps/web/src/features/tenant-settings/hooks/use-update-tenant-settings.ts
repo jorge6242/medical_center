@@ -14,7 +14,7 @@ export function useUpdateTenantSettings() {
     mutationFn: updateTenantSettings,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['config', 'init'] });
-      notification.success('Correo del centro actualizado correctamente');
+      notification.success('Configuración del centro actualizada correctamente');
     },
     onError: (error: Error) => notification.error(error.message),
   });

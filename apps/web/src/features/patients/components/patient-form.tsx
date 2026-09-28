@@ -2,14 +2,20 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { Cake } from 'lucide-react';
 import { z } from 'zod/v4';
 
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Select } from '@/shared/components/ui/select';
 
-import type { PatientResponse, CreatePatientDto, UpdatePatientDto } from '../services/patients.service';
-import { useCreatePatient, useUpdatePatient } from '../hooks/use-patients';
+import type {
+  PatientResponse,
+  CreatePatientDto,
+  UpdatePatientDto,
+} from '../services/patients.service';
+import { useCreatePatient, useSendBirthdayEmail, useUpdatePatient } from '../hooks/use-patients';
+import { useNotification } from '@/shared/hooks/use-notification';
 
 const schema = z.object({
   name: z.string().min(2, 'Nombre requerido'),
@@ -46,6 +52,8 @@ export function PatientForm({ patient, onClose }: PatientFormProps) {
   const isEditing = Boolean(patient);
   const createMutation = useCreatePatient(onClose);
   const updateMutation = useUpdatePatient(patient?.id ?? '', onClose);
+  const sendBirthdayMutation = useSendBirthdayEmail();
+  const notification = useNotification();
   const isPending = isEditing ? updateMutation.isPending : createMutation.isPending;
   const error = isEditing ? updateMutation.error : createMutation.error;
   const {
@@ -71,6 +79,20 @@ export function PatientForm({ patient, onClose }: PatientFormProps) {
     }
 
     createMutation.mutate(payload as CreatePatientDto);
+  };
+
+  const handleSendBirthdayEmail = () => {
+    if (!patient?.id) return;
+
+    if (!patient.email) {
+      notification.error('El paciente no tiene correo electrónico');
+      return;
+    }
+
+    sendBirthdayMutation.mutate(patient.id, {
+      onSuccess: (response) => notification.success(response.message),
+      onError: (error) => notification.error(error.message),
+    });
   };
 
   return (
@@ -143,6 +165,19 @@ export function PatientForm({ patient, onClose }: PatientFormProps) {
       )}
 
       <div className="flex justify-end gap-3 pt-2">
+        {isEditing && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleSendBirthdayEmail}
+            isLoading={sendBirthdayMutation.isPending}
+            disabled={!patient?.email}
+            title={patient?.email ? 'Enviar correo de cumpleaños' : 'El paciente no tiene correo'}
+          >
+            <Cake className="mr-2 h-4 w-4" />
+            Cumpleaños
+          </Button>
+        )}
         <Button type="button" variant="outline" onClick={onClose}>
           Cancelar
         </Button>

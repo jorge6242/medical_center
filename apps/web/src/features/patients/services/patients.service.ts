@@ -81,3 +81,6 @@ export const deactivatePatient = (id: string): Promise<PatientResponse> =>
 
 export const permanentlyDeletePatient = (id: string): Promise<{ id: string }> =>
   apiJson(`/patients/${id}/permanent`, { method: 'DELETE' });
+
+export const sendBirthdayEmail = (id: string): Promise<{ message: string }> =>
+  apiJson(`/patients/${id}/send-birthday-email`, { method: 'POST' });

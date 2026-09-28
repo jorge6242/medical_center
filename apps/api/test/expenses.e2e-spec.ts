@@ -1,13 +1,14 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { type INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
-import type { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
 
 import { AclGuard } from '../src/auth/guards/acl.guard';
 import { JwtAuthGuard } from '../src/auth/guards/jwt-auth.guard';
 import { ExpensesController } from '../src/expenses/expenses.controller';
 import { ExpensesService } from '../src/expenses/expenses.service';
+
 import type { JwtPayload } from '../src/common/decorators/current-user.decorator';
+import type { NextFunction, Request, Response } from 'express';
 
 describe('ExpensesController (e2e)', () => {
   let app: INestApplication;
@@ -54,20 +55,27 @@ describe('ExpensesController (e2e)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
-    app.use((req: Request & { user?: JwtPayload }, _res: Response, next: NextFunction) => {
-      req.user = {
-        sub: 'user-1',
-        tenantId: 'tenant-1',
-        email: 'admin@example.com',
-        role: 'ADMIN',
-        permissions: [{ resource: 'expenses', action: 'read' }],
-        roleVersion: 1,
-        doctorId: null,
-
-      };
-      next();
-    });
+    app.useGlobalPipes(
+      new ValidationPipe({ transform: true, whitelist: true }),
+    );
+    app.use(
+      (
+        req: Request & { user?: JwtPayload },
+        _res: Response,
+        next: NextFunction,
+      ) => {
+        req.user = {
+          sub: 'user-1',
+          tenantId: 'tenant-1',
+          email: 'admin@example.com',
+          role: 'ADMIN',
+          permissions: [{ resource: 'expenses', action: 'read' }],
+          roleVersion: 1,
+          doctorId: null,
+        };
+        next();
+      },
+    );
     await app.init();
   });
 
@@ -76,7 +84,9 @@ describe('ExpensesController (e2e)', () => {
   });
 
   it('GET /expenses returns paginated data and meta', async () => {
-    const res = await request(app.getHttpServer()).get('/expenses?page=1&limit=10&search=internet').expect(200);
+    const res = await request(app.getHttpServer())
+      .get('/expenses?page=1&limit=10&search=internet')
+      .expect(200);
 
     expect(res.body).toHaveProperty('data');
     expect(res.body).toHaveProperty('meta');

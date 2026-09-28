@@ -25,7 +25,8 @@ model Tenant {
   doctors         Doctor[]
   specialties     Specialty[]
   consultations   Consultation[]
-  consultationReminders ConsultationReminder[]
+  reminderConfigs ReminderConfig[]
+  reminderLogs    ReminderLog[]
   medicalRecords  MedicalRecord[]
   expenses        Expense[]
   systemConfigs   SystemConfig[]
@@ -196,6 +197,7 @@ model Patient {
   consultations Consultation[]
   labOrders     LabOrder[]
   medicalRecords MedicalRecord[]
+  reminderLogs  ReminderLog[]
 
   @@unique([tenantId, documentType, documentId])
   @@index([tenantId])
@@ -365,7 +367,7 @@ model Consultation {
   consultationPayment ConsultationPayment?
   paymentItem         PaymentItem?
   medicalRecord       MedicalRecord?
-  reminders           ConsultationReminder[]
+  reminderLogs        ReminderLog[]
 
   @@index([tenantId])
   @@index([tenantId, patientId])
@@ -376,23 +378,53 @@ model Consultation {
   @@map("consultations")
 }
 
-enum ConsultationReminderType {
-  DAY_BEFORE
+enum ReminderType {
+  APPOINTMENT
+  BIRTHDAY
 }
 
-model ConsultationReminder {
-  id             String                    @id @default(uuid())
-  tenantId       String
-  consultationId String
-  type           ConsultationReminderType
-  sentAt         DateTime                  @default(now())
+model ReminderConfig {
+  id            String       @id @default(uuid())
+  tenantId      String
+  type          ReminderType
+  isActive      Boolean      @default(true)
+  sendToPatient Boolean      @default(true)
+  sendToDoctor  Boolean      @default(false)
+  sendToAdmin   Boolean      @default(true)
+  hoursBefore   Int?         @default(24)
+  daysBefore    Int?         @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id])
-  consultation Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 
-  @@unique([consultationId, type])
-  @@index([tenantId])
-  @@map("consultation_reminders")
+  @@unique([tenantId, type])
+  @@index([tenantId, type, isActive])
+  @@map("reminder_configs")
+}
+
+model ReminderLog {
+  id               String       @id @default(uuid())
+  deduplicationKey String?      @unique
+  tenantId         String
+  type             ReminderType
+  channel          String       @default("email")
+  consultationId   String?
+  patientId        String?
+  recipient        String
+  notificationType String
+  sentAt           DateTime     @default(now())
+  status           String       @default("sent")
+  error            String?
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  consultation Consultation? @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  patient      Patient?      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, type, sentAt])
+  @@index([consultationId, type])
+  @@index([patientId, type])
+  @@map("reminder_logs")
 }
 
 enum MedicalRecordStatus {

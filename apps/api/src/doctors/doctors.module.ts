@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { ScheduleModule } from '@nestjs/schedule';
 
 import { DoctorsMeController } from './doctors-me.controller';
 import { DoctorsController } from './doctors.controller';
@@ -10,7 +9,7 @@ import { SacsVerificationCron } from './sacs-verification.cron';
 import { SacsVerificationService } from './sacs-verification.service';
 
 @Module({
-  imports: [JwtModule.register({}), ScheduleModule.forRoot()],
+  imports: [JwtModule.register({})],
   controllers: [DoctorsMeController, DoctorsController],
   providers: [
     DoctorsService,

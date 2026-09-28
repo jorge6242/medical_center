@@ -8,6 +8,7 @@ import {
   getPatients,
   getPaginatedPatients,
   permanentlyDeletePatient,
+  sendBirthdayEmail,
   updatePatient,
   type GetPatientsQuery,
 } from '../services/patients.service';
@@ -68,5 +69,11 @@ export function usePermanentlyDeletePatient() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['patients'] });
     },
+  });
+}
+
+export function useSendBirthdayEmail() {
+  return useMutation({
+    mutationFn: sendBirthdayEmail,
   });
 }

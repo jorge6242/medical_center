@@ -3,7 +3,6 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import type { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 
 import { ConsultationsService } from './consultations.service';
@@ -12,6 +11,7 @@ import type { AuditLogService } from '../audit-log/audit-log.service';
 import type { PrismaService } from '../database/prisma.service';
 import type { MailerService } from '../mailer/mailer.service';
 import type { CreateScheduledConsultationDto } from './dto/create-scheduled-consultation.dto';
+import type { ConfigService } from '@nestjs/config';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -167,7 +167,12 @@ describe('ConsultationsService.createScheduled', () => {
     const mailer = buildMailer();
     const auditLog = buildAuditLog();
     const configService = buildConfigService();
-    const service = new ConsultationsService(prisma, mailer, auditLog, configService);
+    const service = new ConsultationsService(
+      prisma,
+      mailer,
+      auditLog,
+      configService,
+    );
 
     const result = await service.createScheduled(TENANT_ID, USER_ID, dto);
 
@@ -206,7 +211,12 @@ describe('ConsultationsService.createScheduled', () => {
     const mailer = buildMailer();
     const auditLog = buildAuditLog();
     const configService = buildConfigService();
-    const service = new ConsultationsService(prisma, mailer, auditLog, configService);
+    const service = new ConsultationsService(
+      prisma,
+      mailer,
+      auditLog,
+      configService,
+    );
 
     await service.createScheduled(TENANT_ID, USER_ID, {
       ...dto,
@@ -254,7 +264,12 @@ describe('ConsultationsService.createScheduled', () => {
     const mailer = buildMailer();
     const auditLog = buildAuditLog();
     const configService = buildConfigService();
-    const service = new ConsultationsService(prisma, mailer, auditLog, configService);
+    const service = new ConsultationsService(
+      prisma,
+      mailer,
+      auditLog,
+      configService,
+    );
 
     await service.createScheduled(TENANT_ID, USER_ID, {
       ...dto,
@@ -275,7 +290,12 @@ describe('ConsultationsService.createScheduled', () => {
     const mailer = buildMailer();
     const auditLog = buildAuditLog();
     const configService = buildConfigService();
-    const service = new ConsultationsService(prisma, mailer, auditLog, configService);
+    const service = new ConsultationsService(
+      prisma,
+      mailer,
+      auditLog,
+      configService,
+    );
 
     await service.createScheduled(TENANT_ID, USER_ID, {
       ...dto,
@@ -304,7 +324,12 @@ describe('ConsultationsService.createScheduled', () => {
     const mailer = buildMailer();
     const auditLog = buildAuditLog();
     const configService = buildConfigService();
-    const service = new ConsultationsService(prisma, mailer, auditLog, configService);
+    const service = new ConsultationsService(
+      prisma,
+      mailer,
+      auditLog,
+      configService,
+    );
 
     await expect(
       service.createScheduled(TENANT_ID, USER_ID, dto),
@@ -318,7 +343,12 @@ describe('ConsultationsService.createScheduled', () => {
     const mailer = buildMailer();
     const auditLog = buildAuditLog();
     const configService = buildConfigService();
-    const service = new ConsultationsService(prisma, mailer, auditLog, configService);
+    const service = new ConsultationsService(
+      prisma,
+      mailer,
+      auditLog,
+      configService,
+    );
 
     await expect(
       service.createScheduled(TENANT_ID, USER_ID, dto),
@@ -341,7 +371,12 @@ describe('ConsultationsService.createScheduled', () => {
     const mailer = buildMailer();
     const auditLog = buildAuditLog();
     const configService = buildConfigService();
-    const service = new ConsultationsService(prisma, mailer, auditLog, configService);
+    const service = new ConsultationsService(
+      prisma,
+      mailer,
+      auditLog,
+      configService,
+    );
 
     await expect(
       service.createScheduled(TENANT_ID, USER_ID, dto),
@@ -430,7 +465,12 @@ describe('ConsultationsService.resendScheduledNotifications', () => {
     const mailer = buildMailer();
     const auditLog = buildAuditLog();
     const configService = buildConfigService();
-    const service = new ConsultationsService(prisma, mailer, auditLog, configService);
+    const service = new ConsultationsService(
+      prisma,
+      mailer,
+      auditLog,
+      configService,
+    );
 
     await service.resendScheduledNotifications(
       TENANT_ID,

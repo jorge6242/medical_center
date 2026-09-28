@@ -3,6 +3,7 @@ import {
   type PatientClinicalHistory,
 } from '@centro-medico/shared';
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -29,6 +30,12 @@ import {
   encodeNameCursor,
 } from '../common/utils/cursor-pagination.utils';
 import { PrismaService } from '../database/prisma.service';
+import {
+  NotificationChannel,
+  NotificationType,
+} from '../notifications/notification.types';
+import { NotificationService } from '../notifications/notifications.service';
+import { RailwayBucketService } from '../railway-bucket/railway-bucket.service';
 
 import type { CreatePatientDto } from './dto/create-patient.dto';
 import type { PatientConsultationResponseDto } from './dto/patient-consultation-response.dto';
@@ -39,6 +46,8 @@ import type { UpdatePatientDto } from './dto/update-patient.dto';
 export class PatientsService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+    private readonly railwayBucket: RailwayBucketService,
     private readonly auditLog?: AuditLogService,
   ) {}
 
@@ -147,6 +156,77 @@ export class PatientsService {
     });
     if (!patient) throw new NotFoundException(`Paciente ${id} no encontrado`);
     return mapPatientResponse(patient);
+  }
+
+  async sendBirthdayEmail(
+    tenantId: string,
+    patientId: string,
+    userId: string,
+  ): Promise<{ message: string }> {
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: patientId, tenantId, isActive: true },
+      include: {
+        tenant: {
+          select: {
+            name: true,
+            logoObjectKey: true,
+            logoUrl: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!patient) {
+      throw new NotFoundException(`Paciente ${patientId} no encontrado`);
+    }
+
+    if (!patient.email) {
+      throw new BadRequestException(
+        `El paciente ${patient.name} no tiene correo electrónico`,
+      );
+    }
+
+    const logoUrl = await this.railwayBucket.resolveLogoUrl(
+      patient.tenant.logoObjectKey,
+      patient.tenant.logoUrl,
+    );
+
+    await this.notificationService.send(
+      NotificationType.BIRTHDAY_PATIENT,
+      tenantId,
+      patient.email,
+      {
+        centerName: patient.tenant.name,
+        logoUrl: logoUrl ?? '',
+        patientName: patient.name,
+      },
+      NotificationChannel.EMAIL,
+    );
+
+    await this.prisma.reminderLog.create({
+      data: {
+        tenantId,
+        type: 'BIRTHDAY',
+        channel: NotificationChannel.EMAIL,
+        patientId: patient.id,
+        recipient: patient.email,
+        notificationType: NotificationType.BIRTHDAY_PATIENT,
+        status: 'sent',
+      },
+    });
+
+    await this.auditLog?.log({
+      tenantId,
+      userId,
+      action: 'SEND',
+      entity: 'Patient',
+      entityId: patient.id,
+      newValues: { notificationType: NotificationType.BIRTHDAY_PATIENT },
+      changedFields: ['birthdayEmailSent'],
+    });
+
+    return { message: 'Correo de cumpleaños enviado' };
   }
 
   async create(

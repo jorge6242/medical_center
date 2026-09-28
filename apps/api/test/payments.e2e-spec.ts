@@ -1,6 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { type INestApplication, ValidationPipe } from '@nestjs/common';
+import { Test, type TestingModule } from '@nestjs/testing';
 import request from 'supertest';
+
 import { AppModule } from '../src/app.module';
 
 describe('PaymentsController (e2e)', () => {
@@ -12,7 +13,9 @@ describe('PaymentsController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ transform: true, whitelist: true }),
+    );
     await app.init();
   });
 
@@ -37,9 +40,7 @@ describe('PaymentsController (e2e)', () => {
   });
 
   it('GET /payments without query params should default to page=1, limit=10', async () => {
-    const res = await request(app.getHttpServer())
-      .get('/payments')
-      .expect(200);
+    const res = await request(app.getHttpServer()).get('/payments').expect(200);
 
     expect(res.body.meta).toHaveProperty('page', 1);
     expect(res.body.meta).toHaveProperty('limit', 10);

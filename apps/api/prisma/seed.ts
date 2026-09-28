@@ -7,6 +7,7 @@ import { seedExchangeRates } from './seeders/exchange-rates.seeder';
 import { seedExpenseCategories } from './seeders/expense-categories.seeder';
 import { seedLabTests } from './seeders/lab-tests.seeder';
 import { seedPatients } from './seeders/patients.seeder';
+import { seedReminderConfig } from './seeders/reminder-config.seeder';
 import { seedRoles } from './seeders/roles.seeder';
 import { seedSpecialties } from './seeders/specialties.seeder';
 import { seedSystemConfig } from './seeders/system-config.seeder';
@@ -30,6 +31,7 @@ async function main() {
   await seedLabTests(prisma);
   await seedExpenseCategories(prisma, 'tenant-demo-001');
   await seedSystemConfig(prisma);
+  await seedReminderConfig(prisma, 'tenant-demo-001');
   await seedExchangeRates(prisma);
   await seedDemo(prisma);
 

@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { SacsVerificationService } from './sacs-verification.service';
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { PrismaService } from '../database/prisma.service';
 
 @Injectable()

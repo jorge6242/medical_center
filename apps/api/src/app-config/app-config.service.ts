@@ -20,13 +20,15 @@ export class AppConfigService {
   ) {}
 
   async getInitConfig(tenantId: string) {
-    const [tenant, igtfConfig, exchangeRate] = await Promise.all([
-      this.prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } }),
-      this.prisma.systemConfig.findFirst({
-        where: { tenantId, key: 'igtf_rate' },
-      }),
-      this.exchangeRates.findLatest(tenantId),
-    ]);
+    const [tenant, igtfConfig, exchangeRate, reminderConfigs] =
+      await Promise.all([
+        this.prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } }),
+        this.prisma.systemConfig.findFirst({
+          where: { tenantId, key: 'igtf_rate' },
+        }),
+        this.exchangeRates.findLatest(tenantId),
+        this.prisma.reminderConfig.findMany({ where: { tenantId } }),
+      ]);
 
     const logoUrl = await this.railwayBucket.resolveLogoUrl(
       tenant.logoObjectKey,
@@ -44,6 +46,7 @@ export class AppConfigService {
         igtfRate: parseFloat(igtfConfig?.value ?? '0'),
       },
       exchangeRate,
+      reminderConfigs,
     };
   }
 
@@ -51,11 +54,50 @@ export class AppConfigService {
     tenantId: string,
     dto: UpdateTenantSettingsDto,
   ): Promise<{ email: string | null }> {
-    return this.prisma.tenant.update({
+    const result = await this.prisma.tenant.update({
       where: { id: tenantId },
       data: { email: dto.email },
       select: { email: true },
     });
+
+    if (dto.reminderConfigs && dto.reminderConfigs.length > 0) {
+      await this.updateReminderConfigs(tenantId, dto.reminderConfigs);
+    }
+
+    return result;
+  }
+
+  private async updateReminderConfigs(
+    tenantId: string,
+    configs: UpdateTenantSettingsDto['reminderConfigs'],
+  ): Promise<void> {
+    if (!configs || configs.length === 0) {
+      return;
+    }
+
+    await this.prisma.$transaction(
+      configs.map((config) =>
+        this.prisma.reminderConfig.upsert({
+          where: { tenantId_type: { tenantId, type: config.type } },
+          update: {
+            isActive: config.isActive,
+            sendToPatient: config.sendToPatient,
+            sendToDoctor: config.sendToDoctor,
+            sendToAdmin: config.sendToAdmin,
+          },
+          create: {
+            tenantId,
+            type: config.type,
+            isActive: config.isActive,
+            sendToPatient: config.sendToPatient,
+            sendToDoctor: config.sendToDoctor,
+            sendToAdmin: config.sendToAdmin,
+            hoursBefore: config.type === 'APPOINTMENT' ? 24 : null,
+            daysBefore: config.type === 'BIRTHDAY' ? 0 : null,
+          },
+        }),
+      ),
+    );
   }
 
   async replaceLogo(

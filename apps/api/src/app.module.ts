@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 
 import { AppConfigModule } from './app-config/app-config.module';
@@ -23,9 +24,11 @@ import { LabOrdersModule } from './lab-orders/lab-orders.module';
 import { LabsModule } from './labs/labs.module';
 import { MailerModule } from './mailer/mailer.module';
 import { MedicalRecordsModule } from './medical-records/medical-records.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { PatientsModule } from './patients/patients.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ReceiptsModule } from './receipts/receipts.module';
+import { RemindersModule } from './reminders/reminders.module';
 import { ReportsModule } from './reports/reports.module';
 import { RolesModule } from './roles/roles.module';
 import { SpecialtiesModule } from './specialties/specialties.module';
@@ -47,6 +50,7 @@ import { UsersModule } from './users/users.module';
         limit: 60,
       },
     ]),
+    ScheduleModule.forRoot(),
     PrismaModule,
     RolesModule,
     RequestContextModule,
@@ -61,7 +65,9 @@ import { UsersModule } from './users/users.module';
     ExchangeRatesModule,
     AppConfigModule,
     MailerModule,
+    NotificationsModule,
     MedicalRecordsModule,
+    RemindersModule,
     ReceiptsModule,
     StatsModule,
     AuditLogModule,

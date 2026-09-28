@@ -117,4 +117,13 @@ export class PatientsController {
   ): Promise<{ id: string }> {
     return this.patientsService.permanentlyDelete(user.tenantId, id);
   }
+
+  @Post(':id/send-birthday-email')
+  @RequirePermission('patients', 'update')
+  sendBirthdayEmail(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ): Promise<{ message: string }> {
+    return this.patientsService.sendBirthdayEmail(user.tenantId, id, user.sub);
+  }
 }
