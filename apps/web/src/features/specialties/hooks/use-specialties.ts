@@ -21,6 +21,7 @@ export function usePaginatedSpecialties(query?: GetSpecialtiesQuery) {
   return useQuery({
     queryKey: ['specialties', query?.page, query?.limit, query?.search],
     queryFn: () => getPaginatedSpecialties(query),
+    placeholderData: (previousData) => previousData,
   });
 }
 

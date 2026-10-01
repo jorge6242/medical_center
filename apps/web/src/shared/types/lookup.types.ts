@@ -4,6 +4,11 @@ export interface LookupItem {
   documentType: string;
   documentId: string;
   age?: number;
+  representative?: {
+    name: string;
+    documentType: string;
+    documentId: string;
+  };
 }
 
 export interface LookupResponse<T extends LookupItem = LookupItem> {

@@ -134,6 +134,17 @@ export class DoctorPayoutsService {
                             name: true,
                             documentType: true,
                             documentId: true,
+                            representatives: {
+                              select: {
+                                representative: {
+                                  select: {
+                                    name: true,
+                                    documentType: true,
+                                    documentId: true,
+                                  },
+                                },
+                              },
+                            },
                           },
                         },
                         services: {
@@ -157,12 +168,18 @@ export class DoctorPayoutsService {
       doctorDocument: `${payout.doctor.documentType}-${payout.doctor.documentId}`,
       items: payout.items.map((item) => {
         const consultation = item.payment.item?.consultation;
+        const representative =
+          consultation?.patient.representatives[0]?.representative;
         return {
           paymentId: item.paymentId,
           consultationDate: consultation?.date ?? null,
           patientName: consultation?.patient.name ?? 'Paciente',
           patientDocument: consultation
-            ? `${consultation.patient.documentType}-${consultation.patient.documentId}`
+            ? consultation.patient.documentType === 'M'
+              ? representative
+                ? `Menor (Rep: ${representative.name} ${representative.documentType}-${representative.documentId})`
+                : 'Menor (código interno)'
+              : `${consultation.patient.documentType}-${consultation.patient.documentId}`
             : null,
           description: item.payment.item?.description ?? 'Consulta médica',
           services: consultation?.services ?? [],

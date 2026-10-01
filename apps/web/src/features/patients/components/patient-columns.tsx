@@ -18,10 +18,16 @@ export function getPatientColumns(): ColumnDef<PatientResponse>[] {
     },
     {
       accessorKey: 'documentId',
-      header: 'Cédula',
+      header: 'Documento',
       cell: ({ row }) => (
-        <span className="text-on-surface-variant">
-          {row.original.documentType}-{row.original.documentId}
+        <span className="flex items-center gap-2 text-on-surface-variant">
+          {row.original.documentType === 'M' ? (
+            <span className="inline-flex items-center rounded-full bg-primary-container px-2 py-0.5 text-xs font-medium text-on-primary-container">
+              Menor
+            </span>
+          ) : (
+            `${row.original.documentType}-${row.original.documentId}`
+          )}
         </span>
       ),
     },

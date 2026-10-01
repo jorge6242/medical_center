@@ -16,6 +16,7 @@ import type {
   ConsolidatedRecord,
   DetailRecord,
 } from './interfaces/report-records.interface';
+import type { Prisma } from '@prisma/client';
 
 @Injectable()
 export class ReportsService {
@@ -139,9 +140,26 @@ export class ReportsService {
           item: {
             include: {
               consultation: {
-                include: { patient: true, doctor: true, services: true },
+                include: {
+                  patient: {
+                    include: {
+                      representatives: { include: { representative: true } },
+                    },
+                  },
+                  doctor: true,
+                  services: true,
+                },
               },
-              labOrder: { include: { patient: true, tests: true } },
+              labOrder: {
+                include: {
+                  patient: {
+                    include: {
+                      representatives: { include: { representative: true } },
+                    },
+                  },
+                  tests: true,
+                },
+              },
             },
           },
           details: {
@@ -153,12 +171,29 @@ export class ReportsService {
 
       for (const payment of payments) {
         const item = payment.item;
+        const formatPatient = (
+          patient: Prisma.PatientGetPayload<{
+            include: { representatives: { include: { representative: true } } };
+          }> | null,
+        ) => {
+          if (!patient) return undefined;
+          if (
+            patient.documentType === 'M' &&
+            patient.representatives?.[0]?.representative
+          ) {
+            return `${patient.name} (Menor - Rep: ${patient.representatives[0].representative.name})`;
+          } else if (patient.documentType === 'M') {
+            return `${patient.name} (Menor)`;
+          }
+          return patient.name;
+        };
+
         if (item?.itemType === 'CONSULTATION' && item.consultation) {
           records.push({
             id: payment.id,
             recordType: 'CONSULTATION',
             date: payment.createdAt,
-            patientName: item.consultation.patient?.name,
+            patientName: formatPatient(item.consultation.patient),
             doctorName: item.consultation.doctor?.name,
             description: item.description,
             amountUsd: Number(payment.totalServiceUsd),
@@ -173,7 +208,7 @@ export class ReportsService {
             id: payment.id,
             recordType: 'LAB',
             date: payment.createdAt,
-            patientName: item.labOrder.patient?.name,
+            patientName: formatPatient(item.labOrder.patient),
             description: item.description,
             amountUsd: Number(payment.totalServiceUsd),
             amountBs: Number(payment.totalPaidBs),

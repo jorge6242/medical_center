@@ -12,6 +12,13 @@ export interface PatientResponse {
   clinicalHistory?: Record<string, unknown> | null;
   isActive: boolean;
   createdAt: string;
+  representatives: Array<{
+    relationship: string;
+    name: string;
+    documentType: string;
+    documentId: string;
+    phone?: string | null;
+  }> | null;
 }
 
 export interface PaginatedResponse<T> {
@@ -26,14 +33,33 @@ export interface PaginatedResponse<T> {
   };
 }
 
-export interface CreatePatientDto {
+export interface RepresentativeData {
   name: string;
   documentType: string;
   documentId: string;
   phone?: string;
+  relationship: string;
+}
+
+export interface RepresentativeLookupResponse {
+  found: boolean;
+  representative?: {
+    name: string;
+    documentType: string;
+    documentId: string;
+    phone: string | null;
+  };
+}
+
+export interface CreatePatientDto {
+  name: string;
+  documentType: string;
+  documentId?: string;
+  phone?: string;
   email?: string;
   birthDate?: string;
   gender?: string;
+  representative?: RepresentativeData;
 }
 
 export interface UpdatePatientDto {
@@ -42,6 +68,7 @@ export interface UpdatePatientDto {
   email?: string;
   birthDate?: string;
   gender?: string;
+  representative?: RepresentativeData;
 }
 
 export interface GetPatientsQuery {
@@ -84,3 +111,11 @@ export const permanentlyDeletePatient = (id: string): Promise<{ id: string }> =>
 
 export const sendBirthdayEmail = (id: string): Promise<{ message: string }> =>
   apiJson(`/patients/${id}/send-birthday-email`, { method: 'POST' });
+
+export const lookupRepresentative = (
+  documentType: string,
+  documentId: string,
+): Promise<RepresentativeLookupResponse> => {
+  const params = new URLSearchParams({ documentType, documentId });
+  return apiJson(`/patients/representatives/lookup?${params.toString()}`);
+};

@@ -13,4 +13,11 @@ export class PatientResponseDto {
   declare clinicalHistory: PatientClinicalHistory | null;
   declare isActive: boolean;
   declare createdAt: Date;
+  declare representatives: Array<{
+    relationship: string;
+    name: string;
+    documentType: string;
+    documentId: string;
+    phone?: string | null;
+  }> | null;
 }

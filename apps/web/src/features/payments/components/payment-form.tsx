@@ -132,7 +132,10 @@ export function PaymentForm({ onClose }: { readonly onClose: () => void }) {
             { value: '', label: 'Seleccionar…' },
             ...patients.map((p) => ({
               value: p.id,
-              label: `${p.name} (${p.documentType}-${p.documentId})`,
+              label:
+                p.documentType === 'M'
+                  ? `${p.name} (Menor)`
+                  : `${p.name} (${p.documentType}-${p.documentId})`,
             })),
           ]}
         />

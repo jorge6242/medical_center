@@ -39,6 +39,7 @@ export function DataTable<TData>({
     columns,
     state: { pagination },
     manualPagination: true,
+    autoResetPageIndex: false,
     pageCount,
     rowCount,
     onPaginationChange,
@@ -54,7 +55,10 @@ export function DataTable<TData>({
         <table className="w-full text-sm">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className="border-b border-outline-variant bg-surface-variant">
+              <tr
+                key={headerGroup.id}
+                className="border-b border-outline-variant bg-surface-variant"
+              >
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
@@ -111,16 +115,20 @@ export function DataTable<TData>({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
+            onClick={() =>
+              onPaginationChange({ ...pagination, pageIndex: pagination.pageIndex - 1 })
+            }
+            disabled={pagination.pageIndex <= 0}
           >
             Anterior
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
+            onClick={() =>
+              onPaginationChange({ ...pagination, pageIndex: pagination.pageIndex + 1 })
+            }
+            disabled={pagination.pageIndex + 1 >= pageCount}
           >
             Siguiente
           </Button>

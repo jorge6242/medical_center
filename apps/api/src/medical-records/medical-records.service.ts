@@ -255,6 +255,17 @@ export class MedicalRecordsService {
               documentType: true,
               documentId: true,
               name: true,
+              representatives: {
+                select: {
+                  representative: {
+                    select: {
+                      name: true,
+                      documentType: true,
+                      documentId: true,
+                    },
+                  },
+                },
+              },
             },
           },
           doctor: {
@@ -279,25 +290,36 @@ export class MedicalRecordsService {
     ]);
 
     return createPaginatedResponse(
-      consultations.map((consultation) => ({
-        id: consultation.id,
-        date: consultation.date,
-        status: consultation.status as 'SCHEDULED' | 'PAID',
-        patientId: consultation.patientId,
-        patientName: consultation.patient.name,
-        patientDocument: `${consultation.patient.documentType}-${consultation.patient.documentId}`,
-        doctorId: consultation.doctorId,
-        doctorName: consultation.doctor.name,
-        doctorDocument: `${consultation.doctor.documentType}-${consultation.doctor.documentId}`,
-        services: consultation.services.map((service) => ({
-          serviceName: service.serviceName,
-          specialtyName: service.specialtyName,
-          priceUsd: service.priceUsd.toString(),
-        })),
-        medicalRecordId: consultation.medicalRecord?.id ?? null,
-        canCreateMedicalRecord:
-          consultation.status === 'PAID' && !consultation.medicalRecord,
-      })),
+      consultations.map((consultation) => {
+        let patientDoc = `${consultation.patient.documentType}-${consultation.patient.documentId}`;
+        const representative =
+          consultation.patient.representatives[0]?.representative;
+        if (consultation.patient.documentType === 'M' && representative) {
+          patientDoc = `Menor (Rep: ${representative.name} ${representative.documentType}-${representative.documentId})`;
+        } else if (consultation.patient.documentType === 'M') {
+          patientDoc = 'Menor';
+        }
+
+        return {
+          id: consultation.id,
+          date: consultation.date,
+          status: consultation.status as 'SCHEDULED' | 'PAID',
+          patientId: consultation.patientId,
+          patientName: consultation.patient.name,
+          patientDocument: patientDoc,
+          doctorId: consultation.doctorId,
+          doctorName: consultation.doctor.name,
+          doctorDocument: `${consultation.doctor.documentType}-${consultation.doctor.documentId}`,
+          services: consultation.services.map((service) => ({
+            serviceName: service.serviceName,
+            specialtyName: service.specialtyName,
+            priceUsd: service.priceUsd.toString(),
+          })),
+          medicalRecordId: consultation.medicalRecord?.id ?? null,
+          canCreateMedicalRecord:
+            consultation.status === 'PAID' && !consultation.medicalRecord,
+        };
+      }),
       total,
       page,
       limit,

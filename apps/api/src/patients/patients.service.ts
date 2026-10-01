@@ -63,6 +63,23 @@ export class PatientsService {
       OR: [
         { name: { contains: search, mode: 'insensitive' as const } },
         { documentId: { contains: search, mode: 'insensitive' as const } },
+        {
+          representatives: {
+            some: {
+              representative: {
+                OR: [
+                  { name: { contains: search, mode: 'insensitive' as const } },
+                  {
+                    documentId: {
+                      contains: search,
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
       ],
       ...(cursor
         ? {
@@ -87,14 +104,33 @@ export class PatientsService {
         documentType: true,
         documentId: true,
         birthDate: true,
+        representatives: {
+          select: {
+            relationship: true,
+            representative: {
+              select: { name: true, documentType: true, documentId: true },
+            },
+          },
+          take: 1,
+        },
       },
     });
     const hasNextPage = patients.length > query.limit;
     const data = patients.slice(0, query.limit).map((patient) => {
       const item = new EntityLookupItemDto();
+      const firstRep = patient.representatives[0];
       Object.assign(item, {
         ...patient,
         ...(patient.birthDate ? { age: calculateAge(patient.birthDate) } : {}),
+        ...(firstRep
+          ? {
+              representative: {
+                name: firstRep.representative.name,
+                documentType: firstRep.representative.documentType,
+                documentId: firstRep.representative.documentId,
+              },
+            }
+          : {}),
       });
       return item;
     });
@@ -153,6 +189,11 @@ export class PatientsService {
   async findOne(tenantId: string, id: string): Promise<PatientResponseDto> {
     const patient = await this.prisma.patient.findFirst({
       where: { id, tenantId, isActive: true },
+      include: {
+        representatives: {
+          include: { representative: true },
+        },
+      },
     });
     if (!patient) throw new NotFoundException(`Paciente ${id} no encontrado`);
     return mapPatientResponse(patient);
@@ -233,17 +274,23 @@ export class PatientsService {
     tenantId: string,
     dto: CreatePatientDto,
   ): Promise<PatientResponseDto> {
+    const isMinor = dto.documentType === 'M';
+    const documentId = isMinor ? generateMinorDocumentId() : dto.documentId;
+    if (!documentId) {
+      throw new BadRequestException('El documento de identidad es obligatorio');
+    }
+
     const existing = await this.prisma.patient.findFirst({
       where: {
         tenantId,
         documentType: dto.documentType,
-        documentId: dto.documentId,
+        documentId,
         isActive: true,
       },
     });
     if (existing) {
       throw new ConflictException(
-        `Paciente con ${dto.documentType}-${dto.documentId} ya existe`,
+        `Paciente con ${dto.documentType}-${documentId} ya existe`,
       );
     }
 
@@ -251,30 +298,81 @@ export class PatientsService {
       throw new ConflictException('Historial clínico inválido');
     }
 
-    const patient = await this.prisma.patient.create({
-      data: {
-        tenantId,
-        documentType: dto.documentType,
-        documentId: dto.documentId,
-        name: dto.name,
-        phone: dto.phone,
-        email: dto.email,
-        birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
-        gender: dto.gender,
-        clinicalHistory: dto.clinicalHistory as Prisma.InputJsonValue,
-      },
-    });
-    await this.auditLog?.log(
-      {
-        action: 'CREATE',
-        entity: 'Patient',
-        entityId: patient.id,
-        newValues: patient,
-        changedFields: Object.keys(dto),
-      },
-      this.prisma,
-    );
-    return mapPatientResponse(patient);
+    try {
+      const patient = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.patient.create({
+          data: {
+            tenantId,
+            documentType: dto.documentType,
+            documentId,
+            name: dto.name,
+            phone: dto.phone,
+            email: dto.email,
+            birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+            gender: dto.gender,
+            clinicalHistory: dto.clinicalHistory as Prisma.InputJsonValue,
+          },
+        });
+
+        if (dto.representative) {
+          const rep = dto.representative;
+          let existingRep = await tx.representative.findFirst({
+            where: {
+              tenantId,
+              documentType: rep.documentType,
+              documentId: rep.documentId,
+            },
+          });
+
+          if (!existingRep) {
+            existingRep = await tx.representative.create({
+              data: {
+                tenantId,
+                name: rep.name,
+                documentType: rep.documentType,
+                documentId: rep.documentId,
+                phone: rep.phone,
+              },
+            });
+          }
+
+          await tx.patientRepresentative.create({
+            data: {
+              tenantId,
+              patientId: created.id,
+              representativeId: existingRep.id,
+              relationship: rep.relationship,
+            },
+          });
+        }
+
+        return created;
+      });
+
+      await this.auditLog?.log(
+        {
+          action: 'CREATE',
+          entity: 'Patient',
+          entityId: patient.id,
+          newValues: patient,
+          changedFields: Object.keys(dto),
+        },
+        this.prisma,
+      );
+      return mapPatientResponse(patient);
+    } catch (err) {
+      // P2002: unique constraint — puede ocurrir en menores si hay colisión de ID generado
+      if (
+        err instanceof Error &&
+        'code' in err &&
+        (err as { code: string }).code === 'P2002'
+      ) {
+        throw new ConflictException(
+          'No se pudo registrar el paciente por conflicto de datos. Intentá de nuevo.',
+        );
+      }
+      throw err;
+    }
   }
 
   async update(
@@ -288,9 +386,16 @@ export class PatientsService {
       throw new ConflictException('Historial clínico inválido');
     }
 
+    // Promoción de menor a adulto: solo se permite si se envían ambos campos
+    const documentUpdate =
+      dto.documentType && dto.documentType !== 'M' && dto.documentId
+        ? { documentType: dto.documentType, documentId: dto.documentId }
+        : {};
+
     await this.prisma.patient.updateMany({
       where: { id, tenantId },
       data: {
+        ...documentUpdate,
         name: dto.name,
         phone: dto.phone,
         email: dto.email,
@@ -299,6 +404,48 @@ export class PatientsService {
         clinicalHistory: dto.clinicalHistory as Prisma.InputJsonValue,
       },
     });
+
+    if (dto.representative) {
+      const rep = dto.representative;
+      let existingRep = await this.prisma.representative.findFirst({
+        where: {
+          tenantId,
+          documentType: rep.documentType,
+          documentId: rep.documentId,
+        },
+      });
+
+      if (!existingRep) {
+        existingRep = await this.prisma.representative.create({
+          data: {
+            tenantId,
+            name: rep.name,
+            documentType: rep.documentType,
+            documentId: rep.documentId,
+            phone: rep.phone,
+          },
+        });
+      }
+
+      await this.prisma.patientRepresentative.upsert({
+        where: {
+          patientId_representativeId: {
+            patientId: id,
+            representativeId: existingRep.id,
+          },
+        },
+        create: {
+          tenantId,
+          patientId: id,
+          representativeId: existingRep.id,
+          relationship: rep.relationship,
+        },
+        update: {
+          relationship: rep.relationship,
+        },
+      });
+    }
+
     const patient = await this.prisma.patient.findFirstOrThrow({
       where: { id, tenantId },
     });
@@ -417,6 +564,38 @@ export class PatientsService {
       services: consultation.services,
     }));
   }
+
+  async lookupRepresentative(
+    tenantId: string,
+    documentType: string,
+    documentId: string,
+  ): Promise<{
+    found: boolean;
+    representative?: {
+      name: string;
+      documentType: string;
+      documentId: string;
+      phone: string | null;
+    };
+  }> {
+    const rep = await this.prisma.representative.findFirst({
+      where: {
+        tenantId,
+        documentType: documentType as DocumentType,
+        documentId,
+      },
+    });
+    if (!rep) return { found: false };
+    return {
+      found: true,
+      representative: {
+        name: rep.name,
+        documentType: rep.documentType,
+        documentId: rep.documentId,
+        phone: rep.phone,
+      },
+    };
+  }
 }
 
 function mapPatientResponse(patient: {
@@ -433,6 +612,15 @@ function mapPatientResponse(patient: {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  representatives?: Array<{
+    relationship: string;
+    representative: {
+      name: string;
+      documentType: string;
+      documentId: string;
+      phone: string | null;
+    };
+  }>;
 }): PatientResponseDto {
   return {
     id: patient.id,
@@ -448,6 +636,15 @@ function mapPatientResponse(patient: {
       : null,
     isActive: patient.isActive,
     createdAt: patient.createdAt,
+    representatives: patient.representatives
+      ? patient.representatives.map((pr) => ({
+          relationship: pr.relationship,
+          name: pr.representative.name,
+          documentType: pr.representative.documentType,
+          documentId: pr.representative.documentId,
+          phone: pr.representative.phone,
+        }))
+      : null,
   };
 }
 
@@ -460,4 +657,23 @@ function calculateAge(birthDate: Date): number {
       today.getUTCDate() < birthDate.getUTCDate());
 
   return birthdayHasNotOccurred ? age - 1 : age;
+}
+
+/**
+ * Genera un ID único para pacientes menores sin cédula.
+ * Formato: YYYYMMDD + 4 caracteres aleatorios hexadecimales.
+ * Ejemplo: 20260930A3F1
+ */
+function generateMinorDocumentId(): string {
+  const today = new Date();
+  const datePart = [
+    today.getUTCFullYear(),
+    String(today.getUTCMonth() + 1).padStart(2, '0'),
+    String(today.getUTCDate()).padStart(2, '0'),
+  ].join('');
+  const randomPart = Math.floor(Math.random() * 0xffff)
+    .toString(16)
+    .toUpperCase()
+    .padStart(4, '0');
+  return `${datePart}${randomPart}`;
 }

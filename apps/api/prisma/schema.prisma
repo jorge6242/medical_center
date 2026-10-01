@@ -42,6 +42,8 @@ model Tenant {
   doctorServices  DoctorService[]
   accessLinks     TenantAccessLink[]
   doctorPayouts   DoctorPayout[]
+  representatives        Representative[]
+  patientRepresentatives PatientRepresentative[]
 
   @@map("tenants")
 }
@@ -171,6 +173,8 @@ enum DocumentType {
   E
   J
   G
+  M // Menor sin cédula — ID autogenerado por el sistema
+  P // Pasaporte
 }
 
 enum GenderType {
@@ -199,12 +203,50 @@ model Patient {
   labOrders     LabOrder[]
   medicalRecords MedicalRecord[]
   reminderLogs  ReminderLog[]
+  representatives PatientRepresentative[]
 
   @@unique([tenantId, documentType, documentId])
   @@index([tenantId])
   @@index([tenantId, isActive])
   @@index([tenantId, documentType, documentId])
   @@map("patients")
+}
+
+model Representative {
+  id           String       @id @default(uuid())
+  tenantId     String
+  name         String
+  documentType DocumentType
+  documentId   String
+  phone        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  tenant   Tenant                  @relation(fields: [tenantId], references: [id])
+  patients PatientRepresentative[]
+
+  @@unique([tenantId, documentType, documentId])
+  @@index([tenantId, documentId])
+  @@index([tenantId, name])
+  @@map("representatives")
+}
+
+model PatientRepresentative {
+  id               String   @id @default(uuid())
+  tenantId         String
+  patientId        String
+  representativeId String
+  relationship     String   // Madre / Padre / Tutor legal / Otro
+  createdAt        DateTime @default(now())
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [id])
+  patient        Patient        @relation(fields: [patientId], references: [id])
+  representative Representative @relation(fields: [representativeId], references: [id])
+
+  @@unique([patientId, representativeId])
+  @@index([tenantId])
+  @@index([representativeId])
+  @@map("patient_representatives")
 }
 
 // ─── Doctores ─────────────────────────────────────────────────────────────────

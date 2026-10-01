@@ -38,7 +38,6 @@ export default function ConsultasPage() {
 
       <Card className="p-4">
         <DataTable
-          key={`consultas-page-${pagination.pageIndex}`}
           data={consultations}
           columns={getPaidConsultationColumns()}
           toolbar={

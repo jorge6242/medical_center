@@ -12,6 +12,7 @@ import {
   type ConsultationService,
   type Patient,
   type Doctor,
+  type Representative,
 } from '@prisma/client';
 import { DateTime } from 'luxon';
 
@@ -37,7 +38,14 @@ import type { UpdateScheduledConsultationDto } from './dto/update-scheduled-cons
 
 // Shape returned by Prisma when including patient, doctor, services
 type ConsultationWithRelations = Consultation & {
-  patient: Pick<Patient, 'name' | 'documentType' | 'documentId'>;
+  patient: Pick<Patient, 'name' | 'documentType' | 'documentId'> & {
+    representatives?: Array<{
+      representative: Pick<
+        Representative,
+        'name' | 'documentType' | 'documentId'
+      >;
+    }>;
+  };
   doctor: Pick<Doctor, 'name' | 'email'>;
   services: Pick<
     ConsultationService,
@@ -209,7 +217,18 @@ export class ConsultationsService {
       where: { id: consultation.id, tenantId },
       include: {
         patient: {
-          select: { name: true, documentType: true, documentId: true },
+          select: {
+            name: true,
+            documentType: true,
+            documentId: true,
+            representatives: {
+              select: {
+                representative: {
+                  select: { name: true, documentType: true, documentId: true },
+                },
+              },
+            },
+          },
         },
         doctor: { select: { name: true, email: true } },
         services: {
@@ -259,7 +278,8 @@ export class ConsultationsService {
       tenant?.logoObjectKey ?? null,
       tenant?.logoUrl ?? null,
     );
-    const timeZone = this.configService.get<string>('app.timezone') ?? 'America/Caracas';
+    const timeZone =
+      this.configService.get<string>('app.timezone') ?? 'America/Caracas';
     const context = {
       centerName: tenant?.name ?? 'Centro Médico',
       logoUrl: logoUrl ?? '',
@@ -369,7 +389,18 @@ export class ConsultationsService {
       where: { id: consultationId, tenantId },
       include: {
         patient: {
-          select: { name: true, documentType: true, documentId: true },
+          select: {
+            name: true,
+            documentType: true,
+            documentId: true,
+            representatives: {
+              select: {
+                representative: {
+                  select: { name: true, documentType: true, documentId: true },
+                },
+              },
+            },
+          },
         },
         doctor: { select: { name: true, email: true } },
         services: {
@@ -419,7 +450,18 @@ export class ConsultationsService {
       where: { id: consultationId, tenantId },
       include: {
         patient: {
-          select: { name: true, documentType: true, documentId: true },
+          select: {
+            name: true,
+            documentType: true,
+            documentId: true,
+            representatives: {
+              select: {
+                representative: {
+                  select: { name: true, documentType: true, documentId: true },
+                },
+              },
+            },
+          },
         },
         doctor: { select: { name: true, email: true } },
         services: {
@@ -443,7 +485,18 @@ export class ConsultationsService {
       where: { id: consultationId, tenantId },
       include: {
         patient: {
-          select: { name: true, documentType: true, documentId: true },
+          select: {
+            name: true,
+            documentType: true,
+            documentId: true,
+            representatives: {
+              select: {
+                representative: {
+                  select: { name: true, documentType: true, documentId: true },
+                },
+              },
+            },
+          },
         },
         doctor: { select: { name: true, email: true } },
         services: {
@@ -521,7 +574,18 @@ export class ConsultationsService {
       where: { id: consultationId, tenantId },
       include: {
         patient: {
-          select: { name: true, documentType: true, documentId: true },
+          select: {
+            name: true,
+            documentType: true,
+            documentId: true,
+            representatives: {
+              select: {
+                representative: {
+                  select: { name: true, documentType: true, documentId: true },
+                },
+              },
+            },
+          },
         },
         doctor: { select: { name: true, email: true } },
         services: {
@@ -568,7 +632,22 @@ export class ConsultationsService {
         orderBy: { createdAt: 'desc' },
         include: {
           patient: {
-            select: { name: true, documentType: true, documentId: true },
+            select: {
+              name: true,
+              documentType: true,
+              documentId: true,
+              representatives: {
+                select: {
+                  representative: {
+                    select: {
+                      name: true,
+                      documentType: true,
+                      documentId: true,
+                    },
+                  },
+                },
+              },
+            },
           },
           doctor: { select: { name: true, email: true } },
           services: {
@@ -594,7 +673,8 @@ export class ConsultationsService {
     endsAt?: Date,
     excludedConsultationId?: string,
   ): Promise<DoctorAvailabilityResponseDto> {
-    const timeZone = this.configService.get<string>('app.timezone') ?? 'America/Caracas';
+    const timeZone =
+      this.configService.get<string>('app.timezone') ?? 'America/Caracas';
     const day = DateTime.fromISO(date, { zone: timeZone });
     const start = day.startOf('day').toUTC().toJSDate();
     const end = day.endOf('day').toUTC().toJSDate();
@@ -698,7 +778,18 @@ export class ConsultationsService {
       orderBy: { date: 'asc' },
       include: {
         patient: {
-          select: { name: true, documentType: true, documentId: true },
+          select: {
+            name: true,
+            documentType: true,
+            documentId: true,
+            representatives: {
+              select: {
+                representative: {
+                  select: { name: true, documentType: true, documentId: true },
+                },
+              },
+            },
+          },
         },
         doctor: { select: { name: true, email: true } },
         services: {
@@ -724,7 +815,18 @@ export class ConsultationsService {
       where: { id: consultationId, tenantId },
       include: {
         patient: {
-          select: { name: true, documentType: true, documentId: true },
+          select: {
+            name: true,
+            documentType: true,
+            documentId: true,
+            representatives: {
+              select: {
+                representative: {
+                  select: { name: true, documentType: true, documentId: true },
+                },
+              },
+            },
+          },
         },
         doctor: { select: { name: true, email: true } },
         services: {
@@ -763,7 +865,18 @@ export class ConsultationsService {
       where: { id: consultationId, tenantId },
       include: {
         patient: {
-          select: { name: true, documentType: true, documentId: true },
+          select: {
+            name: true,
+            documentType: true,
+            documentId: true,
+            representatives: {
+              select: {
+                representative: {
+                  select: { name: true, documentType: true, documentId: true },
+                },
+              },
+            },
+          },
         },
         doctor: { select: { name: true, email: true } },
         services: {
@@ -785,7 +898,18 @@ export class ConsultationsService {
       where: { id: consultationId, tenantId, status: 'PENDING' },
       include: {
         patient: {
-          select: { name: true, documentType: true, documentId: true },
+          select: {
+            name: true,
+            documentType: true,
+            documentId: true,
+            representatives: {
+              select: {
+                representative: {
+                  select: { name: true, documentType: true, documentId: true },
+                },
+              },
+            },
+          },
         },
         doctor: { select: { name: true, email: true } },
         services: {
@@ -811,11 +935,22 @@ export class ConsultationsService {
       0,
     );
 
+    let patientDocument = `${c.patient.documentType}-${c.patient.documentId}`;
+    if (
+      c.patient.documentType === 'M' &&
+      c.patient.representatives?.[0]?.representative
+    ) {
+      const rep = c.patient.representatives[0].representative;
+      patientDocument = `Menor (Rep: ${rep.name} ${rep.documentType}-${rep.documentId})`;
+    } else if (c.patient.documentType === 'M') {
+      patientDocument = 'Menor';
+    }
+
     return {
       id: c.id,
       patientId: c.patientId,
       patientName: c.patient.name,
-      patientDocument: `${c.patient.documentType}-${c.patient.documentId}`,
+      patientDocument,
       doctorId: c.doctorId,
       doctorName: c.doctor.name,
       date: c.date,
@@ -836,13 +971,21 @@ export class ConsultationsService {
   }
 
   private startOfDay(date: Date): Date {
-    const timeZone = this.configService.get<string>('app.timezone') ?? 'America/Caracas';
-    return DateTime.fromJSDate(date, { zone: timeZone }).startOf('day').toUTC().toJSDate();
+    const timeZone =
+      this.configService.get<string>('app.timezone') ?? 'America/Caracas';
+    return DateTime.fromJSDate(date, { zone: timeZone })
+      .startOf('day')
+      .toUTC()
+      .toJSDate();
   }
 
   private endOfDay(date: Date): Date {
-    const timeZone = this.configService.get<string>('app.timezone') ?? 'America/Caracas';
-    return DateTime.fromJSDate(date, { zone: timeZone }).endOf('day').toUTC().toJSDate();
+    const timeZone =
+      this.configService.get<string>('app.timezone') ?? 'America/Caracas';
+    return DateTime.fromJSDate(date, { zone: timeZone })
+      .endOf('day')
+      .toUTC()
+      .toJSDate();
   }
 }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Input } from './input';
 
@@ -18,14 +18,23 @@ export function DebouncedSearchInput({
   debounceMs = 300,
 }: DebouncedSearchInputProps) {
   const [inputValue, setInputValue] = useState(value);
+  const onChangeRef = useRef(onChange);
+  const lastNotifiedRef = useRef(value);
 
   useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    if (inputValue === lastNotifiedRef.current) return;
+
     const handler = setTimeout(() => {
-      onChange(inputValue);
+      lastNotifiedRef.current = inputValue;
+      onChangeRef.current(inputValue);
     }, debounceMs);
 
     return () => clearTimeout(handler);
-  }, [inputValue, debounceMs, onChange]);
+  }, [inputValue, debounceMs]);
 
   return (
     <Input

@@ -115,10 +115,20 @@ export function LookupCombobox<T extends LookupItem>({
               onClick={() => handleSelect(item)}
               className="block w-full px-3 py-2 text-left text-sm text-on-surface hover:bg-surface-variant"
             >
-              {item.name} ({item.documentType}-{item.documentId})
-              {item.age !== undefined ? ` · ${item.age} años` : ''}
+              <span>
+                {item.name} ({item.documentType}-{item.documentId})
+                {item.documentType === 'M' ? ' (Menor)' : ''}
+                {item.age !== undefined ? ` · ${item.age} años` : ''}
+              </span>
+              {item.representative && (
+                <span className="mt-0.5 block text-xs text-on-surface-variant">
+                  Rep: {item.representative.name} ({item.representative.documentType}-
+                  {item.representative.documentId})
+                </span>
+              )}
             </button>
           ))}
+
           <div ref={loadMoreRef} className="h-1" />
           {isFetchingNextPage && (
             <p className="p-2 text-center text-xs text-on-surface-variant">Cargando más…</p>

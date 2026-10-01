@@ -35,7 +35,11 @@ export class ReceiptsService {
                 consultation: {
                   include: {
                     services: true,
-                    patient: true,
+                    patient: {
+                      include: {
+                        representatives: { include: { representative: true } },
+                      },
+                    },
                     doctor: { include: { primarySpecialty: true } },
                   },
                 },
@@ -91,7 +95,11 @@ export class ReceiptsService {
                 consultation: {
                   include: {
                     services: true,
-                    patient: true,
+                    patient: {
+                      include: {
+                        representatives: { include: { representative: true } },
+                      },
+                    },
                     doctor: { include: { primarySpecialty: true } },
                   },
                 },
@@ -118,7 +126,11 @@ export class ReceiptsService {
             consultation: {
               include: {
                 services: true,
-                patient: true,
+                patient: {
+                  include: {
+                    representatives: { include: { representative: true } },
+                  },
+                },
                 doctor: {
                   include: {
                     primarySpecialty: true,
@@ -228,7 +240,13 @@ export class ReceiptsService {
                       consultation: {
                         include: {
                           services: true,
-                          patient: true,
+                          patient: {
+                            include: {
+                              representatives: {
+                                include: { representative: true },
+                              },
+                            },
+                          },
                           doctor: { include: { primarySpecialty: true } },
                         },
                       },
@@ -256,9 +274,7 @@ export class ReceiptsService {
       }
     }
 
-    throw new ConflictException(
-      'No se pudo generar un número de recibo único',
-    );
+    throw new ConflictException('No se pudo generar un número de recibo único');
   }
 
   private toResponse(
@@ -375,11 +391,19 @@ export class ReceiptsService {
     payment: {
       item?: {
         consultation?: {
-          patient: {
+          patient?: {
             name: string;
+            documentType: string;
             documentId: string;
-            phone?: string | null;
-            birthDate?: Date | null;
+            phone: string | null;
+            birthDate: Date | null;
+            representatives: Array<{
+              representative: {
+                name: string;
+                documentType: string;
+                documentId: string;
+              };
+            }>;
           } | null;
         } | null;
       } | null;
@@ -392,9 +416,21 @@ export class ReceiptsService {
   } | null {
     const patient = payment?.item?.consultation?.patient;
     if (!patient) return null;
+
+    let docId = `${patient.documentType}-${patient.documentId}`;
+    if (
+      patient.documentType === 'M' &&
+      patient.representatives?.[0]?.representative
+    ) {
+      const rep = patient.representatives[0].representative;
+      docId = `Menor (Rep: ${rep.name} ${rep.documentType}-${rep.documentId})`;
+    } else if (patient.documentType === 'M') {
+      docId = 'Menor';
+    }
+
     return {
       name: patient.name,
-      documentId: patient.documentId,
+      documentId: docId,
       phone: patient.phone,
       birthDate: patient.birthDate,
     };

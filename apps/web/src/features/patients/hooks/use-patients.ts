@@ -7,6 +7,7 @@ import {
   deactivatePatient,
   getPatients,
   getPaginatedPatients,
+  lookupRepresentative,
   permanentlyDeletePatient,
   sendBirthdayEmail,
   updatePatient,
@@ -75,5 +76,14 @@ export function usePermanentlyDeletePatient() {
 export function useSendBirthdayEmail() {
   return useMutation({
     mutationFn: sendBirthdayEmail,
+  });
+}
+
+export function useLookupRepresentative(documentType: string, documentId: string) {
+  return useQuery({
+    queryKey: ['representative-lookup', documentType, documentId],
+    queryFn: () => lookupRepresentative(documentType, documentId),
+    enabled: documentId.length >= 6,
+    staleTime: 30_000,
   });
 }

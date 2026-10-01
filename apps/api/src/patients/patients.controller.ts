@@ -53,6 +53,28 @@ export class PatientsController {
     return this.patientsService.findAll(user.tenantId, query);
   }
 
+  @Get('representatives/lookup')
+  @RequirePermission('patients', 'read')
+  lookupRepresentative(
+    @CurrentUser() user: JwtPayload,
+    @Query('documentType') documentType: string,
+    @Query('documentId') documentId: string,
+  ): Promise<{
+    found: boolean;
+    representative?: {
+      name: string;
+      documentType: string;
+      documentId: string;
+      phone: string | null;
+    };
+  }> {
+    return this.patientsService.lookupRepresentative(
+      user.tenantId,
+      documentType,
+      documentId,
+    );
+  }
+
   @Get(':id')
   @RequirePermission('patients', 'read')
   findOne(
