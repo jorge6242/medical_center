@@ -15,7 +15,7 @@ import { formatUsd } from '@/shared/utils/format';
 import { apiJson } from '@/config/api';
 import { useSpecialties } from '@/features/specialties/hooks/use-specialties';
 import { ConsultationPaymentForm } from '@/features/payments/components/consultation-payment-form';
-import { LabOrderForm } from '@/features/lab-orders/components/lab-order-form';
+import { LaboratoryPriceCatalog } from '@/features/labs/components/laboratory-price-catalog';
 
 interface SpecialtyDoctorsResponse {
   specialty: { id: string; name: string };
@@ -128,7 +128,7 @@ export default function InicioPage() {
   const { data, isLoading } = useHomeStats();
 
   const [showConsultationModal, setShowConsultationModal] = useState(false);
-  const [showLabOrderModal, setShowLabOrderModal] = useState(false);
+  const [showLabPricesModal, setShowLabPricesModal] = useState(false);
   const [showSpecialtyModal, setShowSpecialtyModal] = useState(false);
 
   return (
@@ -167,12 +167,12 @@ export default function InicioPage() {
           variant="outline"
           size="lg"
           className="h-auto flex-col gap-3 px-8 py-6"
-          onClick={() => setShowLabOrderModal(true)}
+          onClick={() => setShowLabPricesModal(true)}
         >
           <FlaskConical className="h-8 w-8" />
           <div className="flex flex-col gap-1 text-center">
-            <span className="text-base font-semibold">Orden de laboratorio</span>
-            <span className="text-xs opacity-80">Crear orden de laboratorio</span>
+            <span className="text-base font-semibold">Consultar laboratorios</span>
+            <span className="text-xs opacity-80">Ver exámenes y precios</span>
           </div>
         </Button>
       </div>
@@ -239,15 +239,12 @@ export default function InicioPage() {
       </Modal>
 
       <Modal
-        open={showLabOrderModal}
-        onClose={() => setShowLabOrderModal(false)}
-        title="Nueva orden de laboratorio"
+        open={showLabPricesModal}
+        onClose={() => setShowLabPricesModal(false)}
+        title="Precios de laboratorio"
         className="max-w-lg"
       >
-        <LabOrderForm
-          onSuccess={() => setShowLabOrderModal(false)}
-          onCancel={() => setShowLabOrderModal(false)}
-        />
+        <LaboratoryPriceCatalog onClose={() => setShowLabPricesModal(false)} />
       </Modal>
     </div>
   );

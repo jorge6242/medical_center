@@ -4,34 +4,65 @@ import type { PrismaService } from '../database/prisma.service';
 
 describe('LabsService', () => {
   const prisma = {
-    labTestCatalog: { findMany: jest.fn() },
+    labTestCatalog: { count: jest.fn(), findMany: jest.fn() },
+    $transaction: jest.fn(),
   } as unknown as PrismaService;
   const service = new LabsService(prisma);
 
   beforeEach(() => jest.clearAllMocks());
 
-  it('returns only public fields for laboratory tests', async () => {
-    (prisma.labTestCatalog.findMany as jest.Mock).mockResolvedValue([
-      {
-        id: 'lab-1',
-        name: 'Hematología',
-        priceUsd: { toString: () => '30.00' },
-        isActive: true,
-      },
+  it('returns a tenant-scoped paginated laboratory test list', async () => {
+    (prisma.$transaction as jest.Mock).mockResolvedValue([
+      1,
+      [
+        {
+          id: 'lab-1',
+          name: 'Hematología',
+          priceUsd: { toString: () => '30.00' },
+          isActive: true,
+        },
+      ],
     ]);
 
-    const result = await service.findAll('tenant-1');
+    const result = await service.findAll('tenant-1', {
+      page: 2,
+      limit: 5,
+      search: 'hema',
+    });
 
+    expect(prisma.labTestCatalog.count).toHaveBeenCalledWith({
+      where: {
+        tenantId: 'tenant-1',
+        name: { contains: 'hema', mode: 'insensitive' },
+      },
+    });
     expect(prisma.labTestCatalog.findMany).toHaveBeenCalledWith({
-      where: { tenantId: 'tenant-1' },
+      where: {
+        tenantId: 'tenant-1',
+        name: { contains: 'hema', mode: 'insensitive' },
+      },
       orderBy: { name: 'asc' },
+      skip: 5,
+      take: 5,
       select: { id: true, name: true, priceUsd: true, isActive: true },
     });
-    expect(result[0]).toEqual({
-      id: 'lab-1',
-      name: 'Hematología',
-      priceUsd: '30.00',
-      isActive: true,
+    expect(result).toEqual({
+      data: [
+        {
+          id: 'lab-1',
+          name: 'Hematología',
+          priceUsd: '30.00',
+          isActive: true,
+        },
+      ],
+      meta: {
+        total: 1,
+        page: 2,
+        limit: 5,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: true,
+      },
     });
   });
 });

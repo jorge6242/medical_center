@@ -5,6 +5,11 @@ import {
 } from '@nestjs/common';
 import { type Prisma } from '@prisma/client';
 
+import {
+  createPaginatedResponse,
+  type PaginatedResponseDto,
+} from '../common/dto/paginated-response.dto';
+import { type PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { PrismaService } from '../database/prisma.service';
 
 import type {
@@ -17,13 +22,33 @@ import type { LabTestCatalogResponseDto } from './dto/lab-test-catalog-response.
 export class LabsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(tenantId: string): Promise<LabTestCatalogResponseDto[]> {
-    const labs = await this.prisma.labTestCatalog.findMany({
-      where: { tenantId },
-      orderBy: { name: 'asc' },
-      select: { id: true, name: true, priceUsd: true, isActive: true },
-    });
-    return labs.map((lab) => this.toResponse(lab));
+  async findAll(
+    tenantId: string,
+    query: PaginationQueryDto,
+  ): Promise<PaginatedResponseDto<LabTestCatalogResponseDto>> {
+    const { page, limit, search } = query;
+    const where = {
+      tenantId,
+      ...(search
+        ? { name: { contains: search, mode: 'insensitive' as const } }
+        : {}),
+    };
+    const [total, labs] = await this.prisma.$transaction([
+      this.prisma.labTestCatalog.count({ where }),
+      this.prisma.labTestCatalog.findMany({
+        where,
+        orderBy: { name: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: { id: true, name: true, priceUsd: true, isActive: true },
+      }),
+    ]);
+    return createPaginatedResponse(
+      labs.map((lab) => this.toResponse(lab)),
+      total,
+      page,
+      limit,
+    );
   }
 
   async findOne(

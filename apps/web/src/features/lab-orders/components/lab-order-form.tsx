@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 import { usePatients } from '@/features/patients/hooks/use-patients';
-import { useLabTests } from '@/features/labs/hooks/use-labs';
+import { useLaboratoryCatalog } from '@/features/labs/hooks/use-labs';
 import { useCreateLabOrder } from '@/features/lab-orders/hooks/use-lab-orders';
 import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
@@ -17,7 +17,7 @@ interface LabOrderFormProps {
 
 export function LabOrderForm({ onSuccess, onCancel }: LabOrderFormProps) {
   const { data: patients = [] } = usePatients();
-  const { data: labTests = [] } = useLabTests();
+  const { data: labTests = [] } = useLaboratoryCatalog();
 
   const [patientId, setPatientId] = useState('');
   const [selectedTestIds, setSelectedTestIds] = useState<string[]>([]);
@@ -48,7 +48,13 @@ export function LabOrderForm({ onSuccess, onCancel }: LabOrderFormProps) {
     return (
       <div className="flex flex-col items-center gap-4 py-8">
         <div className="rounded-full bg-primary-container p-4">
-          <svg className="h-8 w-8 text-on-primary-container" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg
+            className="h-8 w-8 text-on-primary-container"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>

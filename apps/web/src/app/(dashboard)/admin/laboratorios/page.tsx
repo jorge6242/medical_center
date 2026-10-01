@@ -4,20 +4,29 @@ import { useState } from 'react';
 
 import { Plus } from 'lucide-react';
 
+import { getLabTestColumns } from '@/features/labs/components/lab-test-columns';
+import { LabTestToolbar } from '@/features/labs/components/lab-test-toolbar';
 import {
   useCreateLabTest,
-  useLabTests,
+  usePaginatedLabTests,
   useToggleLabTest,
   useUpdateLabTest,
 } from '@/features/labs/hooks/use-labs';
+import type { LabTest } from '@/features/labs/services/labs.service';
 import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
+import { DataTable } from '@/shared/components/ui/data-table';
 import { Input } from '@/shared/components/ui/input';
 import { Modal } from '@/shared/components/ui/modal';
-import { formatUsd } from '@/shared/utils/format';
 
 export default function LaboratoriosPage() {
-  const { data: tests = [], isLoading } = useLabTests();
+  const [search, setSearch] = useState('');
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const { data, isLoading } = usePaginatedLabTests({
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize,
+    search,
+  });
   const { mutate: createTest, isPending: creating } = useCreateLabTest(() => {
     setShowModal(false);
     setEditingTest(null);
@@ -31,8 +40,10 @@ export default function LaboratoriosPage() {
   const { mutate: toggleTest } = useToggleLabTest();
 
   const [showModal, setShowModal] = useState(false);
-  const [editingTest, setEditingTest] = useState<{ id: string; name: string; priceUsd: string } | null>(null);
+  const [editingTest, setEditingTest] = useState<LabTest | null>(null);
   const [formData, setFormData] = useState({ name: '', priceUsd: '' });
+  const tests = data?.data ?? [];
+  const meta = data?.meta;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +53,10 @@ export default function LaboratoriosPage() {
         dto: { name: formData.name, priceUsd: parseFloat(formData.priceUsd) },
       });
     } else {
-      createTest({ name: formData.name, priceUsd: parseFloat(formData.priceUsd) });
+      createTest({
+        name: formData.name,
+        priceUsd: parseFloat(formData.priceUsd),
+      });
     }
   };
 
@@ -56,69 +70,33 @@ export default function LaboratoriosPage() {
         </Button>
       </div>
 
-      <Card>
-        {isLoading ? (
-          <div className="space-y-3 p-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-12 animate-pulse rounded-lg bg-surface-variant" />
-            ))}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-outline-variant text-left text-on-surface-variant">
-                  <th className="pb-3 pr-4 font-medium">Nombre</th>
-                  <th className="pb-3 pr-4 font-medium">Precio</th>
-                  <th className="pb-3 pr-4 font-medium">Estado</th>
-                  <th className="pb-3 font-medium" />
-                </tr>
-              </thead>
-              <tbody>
-                {tests.map((test) => (
-                  <tr key={test.id} className="border-b border-outline-variant last:border-0">
-                    <td className="py-3 pr-4 text-on-surface">{test.name}</td>
-                    <td className="py-3 pr-4 text-on-surface">{formatUsd(test.priceUsd)}</td>
-                    <td className="py-3 pr-4">
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs font-medium ${
-                          test.isActive
-                            ? 'bg-primary-container text-on-primary-container'
-                            : 'bg-surface-variant text-on-surface-variant'
-                        }`}
-                      >
-                        {test.isActive ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </td>
-                    <td className="flex items-center gap-2 py-3">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setEditingTest(test);
-                          setFormData({ name: test.name, priceUsd: test.priceUsd });
-                          setShowModal(true);
-                        }}
-                      >
-                        Editar
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => toggleTest(test.id)}>
-                        {test.isActive ? 'Desactivar' : 'Activar'}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-                {tests.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="py-8 text-center text-on-surface-variant">
-                      No hay tests de laboratorio registrados
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <Card className="p-4">
+        <DataTable
+          data={tests}
+          columns={getLabTestColumns()}
+          toolbar={
+            <LabTestToolbar
+              search={search}
+              onSearchChange={(value) => {
+                setSearch(value);
+                setPagination((current) => ({ ...current, pageIndex: 0 }));
+              }}
+            />
+          }
+          isLoading={isLoading}
+          pagination={pagination}
+          onPaginationChange={setPagination}
+          pageCount={meta?.totalPages ?? 0}
+          rowCount={meta?.total ?? 0}
+          meta={{
+            onEdit: (test: LabTest) => {
+              setEditingTest(test);
+              setFormData({ name: test.name, priceUsd: test.priceUsd });
+              setShowModal(true);
+            },
+            onToggle: (test: LabTest) => toggleTest(test),
+          }}
+        />
       </Card>
 
       <Modal

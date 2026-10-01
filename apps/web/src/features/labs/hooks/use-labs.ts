@@ -4,13 +4,27 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   createLabTest,
-  getLabTests,
+  getLaboratoryCatalog,
+  getPaginatedLabTests,
   toggleLabTest,
   updateLabTest,
+  type GetLabTestsQuery,
+  type LabTest,
 } from '../services/labs.service';
 
-export function useLabTests() {
-  return useQuery({ queryKey: ['lab-tests'], queryFn: getLabTests });
+export function usePaginatedLabTests(query?: GetLabTestsQuery) {
+  return useQuery({
+    queryKey: ['lab-tests', query?.page, query?.limit, query?.search],
+    queryFn: () => getPaginatedLabTests(query),
+    placeholderData: (previousData) => previousData,
+  });
+}
+
+export function useLaboratoryCatalog() {
+  return useQuery({
+    queryKey: ['laboratory-catalog'],
+    queryFn: getLaboratoryCatalog,
+  });
 }
 
 export function useCreateLabTest(onSuccess?: () => void) {
@@ -19,6 +33,7 @@ export function useCreateLabTest(onSuccess?: () => void) {
     mutationFn: createLabTest,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['lab-tests'] });
+      void queryClient.invalidateQueries({ queryKey: ['laboratory-catalog'] });
       onSuccess?.();
     },
   });
@@ -31,6 +46,7 @@ export function useUpdateLabTest(onSuccess?: () => void) {
       updateLabTest(id, dto),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['lab-tests'] });
+      void queryClient.invalidateQueries({ queryKey: ['laboratory-catalog'] });
       onSuccess?.();
     },
   });
@@ -39,9 +55,10 @@ export function useUpdateLabTest(onSuccess?: () => void) {
 export function useToggleLabTest() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: toggleLabTest,
+    mutationFn: (test: LabTest) => toggleLabTest(test),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['lab-tests'] });
+      void queryClient.invalidateQueries({ queryKey: ['laboratory-catalog'] });
     },
   });
 }

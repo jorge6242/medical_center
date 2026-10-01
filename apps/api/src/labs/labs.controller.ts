@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 
@@ -21,8 +22,10 @@ import {
   type JwtPayload,
 } from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 
 import type { LabTestCatalogResponseDto } from './dto/lab-test-catalog-response.dto';
+import type { PaginatedResponseDto } from '../common/dto/paginated-response.dto';
 
 @Controller('laboratories')
 @UseGuards(JwtAuthGuard, AclGuard)
@@ -33,8 +36,9 @@ export class LabsController {
   @RequirePermission('laboratories', 'read')
   findAll(
     @CurrentUser() user: JwtPayload,
-  ): Promise<LabTestCatalogResponseDto[]> {
-    return this.labsService.findAll(user.tenantId);
+    @Query() query: PaginationQueryDto,
+  ): Promise<PaginatedResponseDto<LabTestCatalogResponseDto>> {
+    return this.labsService.findAll(user.tenantId, query);
   }
 
   @Get(':id')
