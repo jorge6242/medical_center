@@ -3,7 +3,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { Cake } from 'lucide-react';
-import { z } from 'zod/v4';
 
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -17,39 +16,7 @@ import type {
 import { useCreatePatient, useSendBirthdayEmail, useUpdatePatient } from '../hooks/use-patients';
 import { useNotification } from '@/shared/hooks/use-notification';
 import { PatientRepresentativeSection } from './patient-representative-section';
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const ALL_DOCUMENT_TYPES = ['V', 'E', 'J', 'G', 'M', 'P'] as const;
-type DocumentType = (typeof ALL_DOCUMENT_TYPES)[number];
-
-// ─── Schema ───────────────────────────────────────────────────────────────────
-
-const representativeSchema = z.object({
-  documentType: z.enum(['V', 'E', 'P']),
-  documentId: z.string().min(6, 'Mínimo 6 caracteres'),
-  name: z.string().min(2, 'Nombre requerido'),
-  phone: z.string().optional(),
-  relationship: z.string().min(1, 'Parentesco requerido'),
-});
-
-const schema = z
-  .object({
-    name: z.string().min(2, 'Nombre requerido'),
-    documentType: z.enum(ALL_DOCUMENT_TYPES),
-    documentId: z.string().optional(),
-    phone: z.string().optional(),
-    email: z.string().email().optional().or(z.literal('')),
-    birthDate: z.string().optional().or(z.literal('')),
-    gender: z.enum(['MASCULINE', 'FEMININE', 'OTHER']).optional(),
-    representative: representativeSchema.optional(),
-  })
-  .refine((data) => data.documentType === 'M' || (data.documentId?.trim().length ?? 0) >= 6, {
-    message: 'Número de documento requerido (mínimo 6 caracteres)',
-    path: ['documentId'],
-  });
-
-type FormData = z.infer<typeof schema>;
+import { patientFormSchema, type DocumentType, type PatientFormData } from './patient-form.schema';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -62,7 +29,7 @@ const DOCUMENT_TYPE_OPTIONS: { value: DocumentType; label: string }[] = [
   { value: 'M', label: 'M — Menor sin cédula' },
 ];
 
-function toDefaultValues(patient?: PatientResponse): Partial<FormData> {
+function toDefaultValues(patient?: PatientResponse): Partial<PatientFormData> {
   if (!patient) return { documentType: 'V' };
   return {
     name: patient.name,
@@ -71,7 +38,7 @@ function toDefaultValues(patient?: PatientResponse): Partial<FormData> {
     phone: patient.phone ?? '',
     email: patient.email ?? '',
     birthDate: patient.birthDate ? patient.birthDate.slice(0, 10) : '',
-    gender: (patient.gender as FormData['gender']) ?? undefined,
+    gender: (patient.gender as PatientFormData['gender']) ?? undefined,
   };
 }
 
@@ -100,8 +67,8 @@ export function PatientForm({ patient, onClose }: PatientFormProps) {
     control,
     setValue,
     formState: { errors },
-  } = useForm<FormData>({
-    resolver: zodResolver(schema),
+  } = useForm<PatientFormData>({
+    resolver: zodResolver(patientFormSchema),
     defaultValues: toDefaultValues(patient),
   });
 
@@ -117,7 +84,7 @@ export function PatientForm({ patient, onClose }: PatientFormProps) {
     }
   };
 
-  const onSubmit = (data: FormData) => {
+  const onSubmit = (data: PatientFormData) => {
     const payload = {
       ...data,
       documentId: data.documentType === 'M' ? undefined : data.documentId,

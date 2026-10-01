@@ -5,28 +5,14 @@ import { useWatch, type Control, type UseFormSetValue, type FieldErrors } from '
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { Input } from '@/shared/components/ui/input';
 import { useLookupRepresentative } from '../hooks/use-patients';
+import type { PatientFormData, RepDocType } from './patient-form.schema';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type RepDocType = 'V' | 'E' | 'P';
-
-interface RepresentativeFormFields {
-  documentType: RepDocType;
-  documentId: string;
-  name: string;
-  phone?: string;
-  relationship: string;
-}
-
-// These match the parent FormData shape — keeping it generic via unknown
-// to avoid circular imports between the form and this component.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyFormData = any;
-
 interface PatientRepresentativeSectionProps {
-  control: Control<AnyFormData>;
-  setValue: UseFormSetValue<AnyFormData>;
-  errors: FieldErrors<AnyFormData>;
+  control: Control<PatientFormData>;
+  setValue: UseFormSetValue<PatientFormData>;
+  errors: FieldErrors<PatientFormData>;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -49,13 +35,11 @@ export function PatientRepresentativeSection({
   // Only UI state lives here — the actual field values live in react-hook-form
   const [expanded, setExpanded] = useState(false);
 
-  const repDocType =
-    (useWatch({ control, name: 'representative.documentType' }) as RepDocType) ?? 'V';
-  const repDocId = (useWatch({ control, name: 'representative.documentId' }) as string) ?? '';
-  const repName = (useWatch({ control, name: 'representative.name' }) as string) ?? '';
-  const repPhone = (useWatch({ control, name: 'representative.phone' }) as string) ?? '';
-  const repRelationship =
-    (useWatch({ control, name: 'representative.relationship' }) as string) ?? '';
+  const repDocType = useWatch({ control, name: 'representative.documentType' }) ?? 'V';
+  const repDocId = useWatch({ control, name: 'representative.documentId' }) ?? '';
+  const repName = useWatch({ control, name: 'representative.name' }) ?? '';
+  const repPhone = useWatch({ control, name: 'representative.phone' }) ?? '';
+  const repRelationship = useWatch({ control, name: 'representative.relationship' }) ?? '';
 
   const { data: repLookup, isFetching: isLookingUp } = useLookupRepresentative(
     repDocType,
@@ -71,7 +55,7 @@ export function PatientRepresentativeSection({
     }
   }, [repLookup, repDocId, setValue]);
 
-  const repErrors = errors.representative as FieldErrors<RepresentativeFormFields> | undefined;
+  const repErrors = errors.representative;
 
   const toggleExpanded = () => {
     setExpanded((prev) => {
