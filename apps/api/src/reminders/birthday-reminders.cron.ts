@@ -10,7 +10,7 @@ export class BirthdayRemindersCron {
 
   constructor(private readonly remindersService: RemindersService) {}
 
-  @Cron('30 8 * * *', { timeZone: 'America/Caracas' })
+  @Cron('45 8 * * *', { timeZone: 'America/Caracas' })
   async handleBirthdayReminders(): Promise<void> {
     this.logger.log('Triggering daily birthday reminders');
     await this.remindersService.sendBirthdayReminders();
