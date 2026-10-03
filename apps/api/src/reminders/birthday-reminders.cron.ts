@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { RemindersService } from './reminders.service';
@@ -10,7 +10,7 @@ export class BirthdayRemindersCron {
 
   constructor(private readonly remindersService: RemindersService) {}
 
-  @Cron('45 8 * * *', { timeZone: 'America/Caracas' })
+  @Cron(CronExpression.EVERY_DAY_AT_8AM, { timeZone: 'America/Caracas' })
   async handleBirthdayReminders(): Promise<void> {
     this.logger.log('Triggering daily birthday reminders');
     await this.remindersService.sendBirthdayReminders();
