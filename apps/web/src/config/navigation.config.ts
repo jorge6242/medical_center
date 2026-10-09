@@ -81,7 +81,7 @@ export const NAV_ITEMS: NavItem[] = [
     path: '/admin/laboratorios',
     icon: 'FlaskConical',
     permission: { resource: 'laboratories', action: 'read' },
-    visibleForRoles: ['admin'],
+    visibleForRoles: ['admin', 'recepcionista'],
   },
   {
     label: 'Órdenes Lab',
