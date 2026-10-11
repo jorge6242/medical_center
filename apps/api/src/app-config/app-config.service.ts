@@ -6,6 +6,10 @@ import {
   RailwayBucketService,
   type UploadedLogo,
 } from '../railway-bucket/railway-bucket.service';
+import {
+  subscriptionSummarySelect,
+  subscriptionResponse,
+} from './dto/tenant-subscription-response.dto';
 
 import type { UpdateTenantSettingsDto } from './dto/update-tenant-settings.dto';
 
@@ -18,6 +22,14 @@ export class AppConfigService {
     private readonly exchangeRates: ExchangeRatesService,
     private readonly railwayBucket: RailwayBucketService,
   ) {}
+
+  async getSubscription(tenantId: string) {
+    const record = await this.prisma.tenantSubscription.findUnique({
+      where: { tenantId },
+      select: subscriptionSummarySelect,
+    });
+    return record ? subscriptionResponse(record) : null;
+  }
 
   async getInitConfig(tenantId: string) {
     const [tenant, igtfConfig, exchangeRate, reminderConfigs] =

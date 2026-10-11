@@ -6,7 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod/v4';
 
-import { Button } from '@/shared/components/ui/button';
+import { FormActions } from '@/shared/components/form/form-actions';
+import { FormError } from '@/shared/components/form/form-error';
 import { Input } from '@/shared/components/ui/input';
 
 import { useCreateSpecialty, useUpdateSpecialty } from '../hooks/use-specialties';
@@ -55,19 +56,12 @@ export function SpecialtyForm({ specialty, onClose }: SpecialtyFormProps) {
         placeholder="Medicina Ocupacional"
         error={errors.name?.message}
       />
-      {error ? (
-        <p className="rounded-lg bg-error-container px-3 py-2 text-sm text-on-error-container">
-          {error.message}
-        </p>
-      ) : null}
-      <div className="flex justify-end gap-3">
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancelar
-        </Button>
-        <Button type="submit" isLoading={isPending}>
-          {isEditing ? 'Guardar cambios' : 'Crear especialidad'}
-        </Button>
-      </div>
+      <FormError error={error} />
+      <FormActions
+        onCancel={onClose}
+        isPending={isPending}
+        submitLabel={isEditing ? 'Guardar cambios' : 'Crear especialidad'}
+      />
     </form>
   );
 }

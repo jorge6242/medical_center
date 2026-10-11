@@ -1,0 +1,42 @@
+change: frontend-behavior-tests
+artifact_store: openspec
+execution_mode: auto
+delivery_strategy: ask-on-risk
+updated: '2026-10-11'
+status: planning-complete
+scope_authorized: planning-only
+phases:
+  explore: complete
+  proposal: complete
+  spec: complete
+  design: complete
+  tasks: complete
+  apply: not-started
+  verify: not-started
+  archive: not-started
+artifacts:
+  exploration: exploration.md
+  proposal: proposal.md
+  inventory: inventory.md
+  spec: specs/frontend-behavior-testing/spec.md
+  design: design.md
+  tasks: tasks.md
+  progress: progress.md
+progress:
+  implementation_tasks_total: 24
+  implementation_tasks_verified: 0
+  optional_tasks_deferred: 2
+  routes_total: 34
+  recommended_routes_pending: 29
+  routes_verified: 0
+  routes_deferred: 2
+  routes_without_own_suite: 3
+  test_execution: none
+next_phase: apply
+next_slice: '1.1'
+prerequisites_before_apply:
+  - Obtain implementation authorization.
+  - Resolve chained delivery or explicit size exception (forecast exceeds 400 lines).
+prerequisites_for_behavior_suites:
+  - Bootstrap frontend runner and Docker mounts (tasks 1.1 and 1.2).
+  - Resolve domain contract discrepancies before affected suites (task 1.3).

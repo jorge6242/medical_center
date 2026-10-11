@@ -32,6 +32,12 @@ export class AppConfigController {
     return this.service.getInitConfig(user.tenantId);
   }
 
+  @Get('subscription')
+  @RequirePermission('tenant_settings', 'update')
+  getSubscription(@CurrentUser() user: JwtPayload) {
+    return this.service.getSubscription(user.tenantId);
+  }
+
   @Post('logo')
   @RequirePermission('tenant_settings', 'update')
   @UseInterceptors(

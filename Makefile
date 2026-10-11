@@ -1,7 +1,7 @@
 .PHONY: setup dev down down-v restart restart-api restart-web \
         logs logs-api logs-web logs-db shell-api shell-web shell-db \
         db-migrate db-deploy db-seed db-studio deps-sync \
-        tenant-provision tenant-access-link \
+        tenant-provision tenant-access-link tenant-subscription \
         docker-build-api docker-build-web docker-build docker-push-api docker-push-web docker-push \
         docker-release-api docker-release-web
 
@@ -95,8 +95,8 @@ deps-sync: ## Regenera pnpm-lock.yaml dentro de Docker
 db-generate: ## Regenera Prisma Client (correr después de cambiar schema.prisma)
 	docker compose -f docker-compose.dev.yml exec api sh -c "cd /app/apps/api && npx prisma generate --config prisma/prisma.config.ts"
 
-db-migrate: ## Desarrollo — detecta cambios en schema, genera y aplica migración
-	docker compose -f docker-compose.dev.yml exec api pnpm run db:migrate
+db-migrate: ## Desarrollo — name=Nombre; create_only=true genera sin aplicar
+	docker compose -f docker-compose.dev.yml exec api pnpm run db:migrate $(if $(name),--name "$(name)") $(if $(filter true,$(create_only)),--create-only)
 
 db-deploy: ## Producción — aplica migraciones existentes (no genera nuevas)
 	docker compose -f docker-compose.dev.yml exec api pnpm run db:deploy
@@ -129,6 +129,9 @@ tenant-access-link: ## Crea link temporal; requiere TENANT_SLUG (ACCESS_LINK_DAY
 		pnpm run tenant:access-link -- \
 		--slug "$(TENANT_SLUG)" \
 		--expires-days "$(ACCESS_LINK_DAYS)"
+
+tenant-subscription: ## Carga un mes; ARGS='--tenant ... --plan ...'; preview por defecto
+	docker compose -f docker-compose.dev.yml exec -T api pnpm run tenant:subscription $(if $(ARGS),$(ARGS),--help)
 
 # ── Docker Hub Images ─────────────────────────────────────────────────────────
 

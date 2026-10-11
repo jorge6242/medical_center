@@ -15,6 +15,7 @@ import { Switch } from '@/shared/components/ui/switch';
 
 import { useUpdateTenantLogo } from '../hooks/use-update-tenant-logo';
 import { useUpdateTenantSettings } from '../hooks/use-update-tenant-settings';
+import { TenantSubscriptionCard } from './tenant-subscription-card';
 
 const MAX_LOGO_SIZE_BYTES = 2 * 1024 * 1024;
 const ACCEPTED_LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -194,6 +195,8 @@ export function TenantSettingsForm() {
           </div>
         </dl>
       </Card>
+
+      <TenantSubscriptionCard />
 
       <Card>
         <h2 className="text-lg font-semibold text-on-surface">Identidad visual</h2>

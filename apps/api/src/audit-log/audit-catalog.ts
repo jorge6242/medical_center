@@ -15,6 +15,10 @@ export const AUDIT_ENTITIES = [
   'Auth',
   'Onboarding',
   'Report',
+  'SubscriptionPlan',
+  'TenantSubscription',
+  'SubscriptionPeriod',
+  'SubscriptionInvoice',
 ] as const;
 
 export const AUDIT_ACTIONS = [

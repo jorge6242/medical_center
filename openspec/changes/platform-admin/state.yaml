@@ -1,0 +1,33 @@
+change: platform-admin
+schema: spec-driven
+artifact_store:
+  mode: openspec
+  source_of_truth: openspec/changes/platform-admin
+status: planning-drafted
+planning:
+  proposal: drafted
+  spec: drafted
+  design: drafted
+  tasks: drafted
+implementation:
+  apply: not-started
+  blocked_pending:
+    - review-and-approval
+    - delivery-strategy-decision
+    - stabilization-of-local-subscription-dependency
+  verify: not-started
+  archive: not-started
+delivery_strategy: ask-on-risk
+review_workload:
+  estimated_changed_lines: '>400'
+  chained_prs_recommended: true
+  decision_needed_before_apply: true
+  size_exception_approved: false
+constraints:
+  strict_tdd: true
+  docker_only_execution: true
+  builds_allowed: false
+  preserve_existing_tenant_flows: true
+  clinical_access: false
+  impersonation: false
+updated_at: '2026-10-11'

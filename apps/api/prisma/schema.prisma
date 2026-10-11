@@ -44,8 +44,138 @@ model Tenant {
   doctorPayouts   DoctorPayout[]
   representatives        Representative[]
   patientRepresentatives PatientRepresentative[]
+  subscription           TenantSubscription?
 
   @@map("tenants")
+}
+
+// ─── SaaS Subscriptions ───────────────────────────────────────────────────────
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELED
+}
+
+enum SubscriptionBillingCycle {
+  MONTHLY
+}
+
+enum SubscriptionInvoiceStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  VOIDED
+}
+
+enum SubscriptionPaymentStatus {
+  PENDING
+  CONFIRMED
+  VOIDED
+}
+
+model TenantSubscription {
+  id                   String             @id @default(uuid())
+  tenantId             String             @unique
+  subscriptionPeriodId String?            @unique
+  status               SubscriptionStatus @default(ACTIVE)
+  agreedPriceUsd       Decimal            @db.Decimal(12, 2)
+  promoExpiresAt       DateTime?          @db.Timestamptz(3)
+  gracePeriodDays      Int                @default(3)
+  canceledAt           DateTime?          @db.Timestamptz(3)
+  createdAt            DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime           @updatedAt @db.Timestamptz(3)
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  subscriptionPeriod SubscriptionPeriod? @relation("CurrentSubscriptionPeriod", fields: [subscriptionPeriodId, id], references: [id, subscriptionId], onDelete: Restrict, onUpdate: NoAction)
+  periods            SubscriptionPeriod[] @relation("SubscriptionPeriods")
+
+  @@unique([subscriptionPeriodId, id])
+  @@index([status])
+  @@map("tenant_subscriptions")
+}
+
+model SubscriptionPlan {
+  id           String                   @id @default(uuid())
+  code         String                   @unique
+  name         String
+  basePriceUsd Decimal                  @db.Decimal(12, 2)
+  billingCycle SubscriptionBillingCycle @default(MONTHLY)
+  features     Json                     @db.JsonB
+  limits       Json                     @db.JsonB
+  isActive     Boolean                  @default(true)
+  createdAt    DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime                 @updatedAt @db.Timestamptz(3)
+
+  periods SubscriptionPeriod[]
+
+  @@map("subscription_plans")
+}
+
+model SubscriptionPeriod {
+  id                 String   @id @default(uuid())
+  subscriptionId     String
+  subscriptionPlanId String
+  startsAt           DateTime @db.Timestamptz(3)
+  endsAt             DateTime @db.Timestamptz(3)
+  priceUsdSnapshot   Decimal  @db.Decimal(12, 2)
+  planCodeSnapshot   String
+  planNameSnapshot   String
+  featuresSnapshot   Json     @db.JsonB
+  limitsSnapshot     Json     @db.JsonB
+  createdAt          DateTime @default(now()) @db.Timestamptz(3)
+
+  subscription        TenantSubscription   @relation("SubscriptionPeriods", fields: [subscriptionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  subscriptionPlan    SubscriptionPlan     @relation(fields: [subscriptionPlanId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  currentSubscription TenantSubscription?  @relation("CurrentSubscriptionPeriod")
+  invoice             SubscriptionInvoice?
+
+  @@unique([id, subscriptionId])
+  @@unique([subscriptionId, startsAt, endsAt])
+  @@index([subscriptionPlanId])
+  @@index([endsAt])
+  @@map("subscription_periods")
+}
+
+model SubscriptionInvoice {
+  id                   String                    @id @default(uuid())
+  subscriptionPeriodId String                    @unique
+  number               String                    @unique
+  status               SubscriptionInvoiceStatus @default(PENDING)
+  totalUsd             Decimal                   @db.Decimal(12, 2)
+  issuedAt             DateTime                  @db.Timestamptz(3)
+  dueAt                DateTime                  @db.Timestamptz(3)
+  createdAt            DateTime                  @default(now()) @db.Timestamptz(3)
+
+  subscriptionPeriod SubscriptionPeriod    @relation(fields: [subscriptionPeriodId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  payments           SubscriptionPayment[]
+
+  @@index([status, dueAt])
+  @@map("subscription_invoices")
+}
+
+model SubscriptionPayment {
+  id                    String                    @id @default(uuid())
+  subscriptionInvoiceId String
+  status                SubscriptionPaymentStatus @default(PENDING)
+  amountUsd             Decimal                   @db.Decimal(12, 2)
+  paymentCurrency       Currency
+  amountPaid            Decimal                   @db.Decimal(12, 2)
+  exchangeRateSnapshot  Decimal?                  @db.Decimal(12, 4)
+  paymentMethod         PaymentMethod
+  referenceNumber       String?
+  idempotencyKey        String                    @unique
+  paidAt                DateTime                  @db.Timestamptz(3)
+  confirmedAt           DateTime?                 @db.Timestamptz(3)
+  createdAt             DateTime                  @default(now()) @db.Timestamptz(3)
+
+  subscriptionInvoice SubscriptionInvoice @relation(fields: [subscriptionInvoiceId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([subscriptionInvoiceId, status])
+  @@map("subscription_payments")
 }
 
 // ─── Auth / RBAC ──────────────────────────────────────────────────────────────
