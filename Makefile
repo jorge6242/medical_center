@@ -1,7 +1,7 @@
 .PHONY: setup dev down down-v restart restart-api restart-web \
         logs logs-api logs-web logs-db shell-api shell-web shell-db \
         db-migrate db-deploy db-seed db-studio deps-sync \
-        tenant-provision tenant-access-link tenant-subscription \
+        tenant-provision tenant-access-link tenant-subscription platform-bootstrap \
         docker-build-api docker-build-web docker-build docker-push-api docker-push-web docker-push \
         docker-release-api docker-release-web
 
@@ -129,6 +129,9 @@ tenant-access-link: ## Crea link temporal; requiere TENANT_SLUG (ACCESS_LINK_DAY
 		pnpm run tenant:access-link -- \
 		--slug "$(TENANT_SLUG)" \
 		--expires-days "$(ACCESS_LINK_DAYS)"
+
+platform-bootstrap: ## Crea/actualiza el admin global de plataforma (pide usuario y clave interactivamente)
+	bash scripts/platform-bootstrap.sh
 
 tenant-subscription: ## Carga un mes; ARGS='--tenant ... --plan ...'; preview por defecto
 	docker compose -f docker-compose.dev.yml exec -T api pnpm run tenant:subscription $(if $(ARGS),$(ARGS),--help)

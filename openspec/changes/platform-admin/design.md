@@ -18,11 +18,11 @@ Cookie `platform_access_token`, HttpOnly, host-only (sin Domain raíz), Path=/, 
 
 ## 3. Datos y migraciones aditivas
 
-| Modelo nuevo     | Campos mínimos propuestos                                                                                                                                                                                |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PlatformAdmin    | id UUID, email normalizado unique, name, passwordHash, isActive, sessionVersion, createdAt, updatedAt                                                                                                    |
-| PlatformSession  | id UUID, platformAdminId FK, expiresAt, revokedAt, createdAt; índices admin/expiry                                                                                                                       |
-| PlatformAuditLog | id, platformAdminId nullable para intento anónimo, actorKind, targetTenantId nullable, entity/entityId, action, oldValues/newValues, changedFields[], result, reason, requestId/correlationId, createdAt |
+| Modelo nuevo     | Campos mínimos propuestos                                                                                                                                                                                                                                                        |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PlatformAdmin    | id UUID, username unique (identificador de login del bootstrap, ej. `exiadmin`), email normalizado unique opcional, name, passwordHash, isActive, sessionVersion, createdAt, updatedAt. Desviación del diseño original (email obligatorio), pendiente de confirmación del owner. |
+| PlatformSession  | id UUID, platformAdminId FK, expiresAt, revokedAt, createdAt; índices admin/expiry                                                                                                                                                                                               |
+| PlatformAuditLog | id, platformAdminId nullable para intento anónimo, actorKind, targetTenantId nullable, entity/entityId, action, oldValues/newValues, changedFields[], result, reason, requestId/correlationId, createdAt                                                                         |
 
 Actor CLI autenticado operativamente se identifica como SYSTEM/BOOTSTRAP, nunca como usuario tenant. Sin passwords, cookies, tokens ni hashes en snapshots. No cascade delete financiero/auditoría. Logs de mutaciones se escriben en la misma transacción; fallo de auditoría revierte el cambio. Eventos de login fallidos se registran separadamente, sin crear identidad falsa.
 
@@ -64,7 +64,7 @@ Bloqueo transaccional de factura/contrato en cobro; validar cadena invoice→per
 
 Grupo/layout platform independiente del dashboard tenant; thin pages, services platform + TanStack Query, RHF/zod y skeletons. apiFetch platform redirige 401 a `/platform/login`; tenant conserva `/login`. Query keys incluyen realm/tenant seleccionado; logout limpia solo cache platform. Login global no pide tenantSlug/access/contextToken.
 
-Producción: admin host permite rutas platform y rechaza rutas clínicas; hosts tenant no sirven panel global. Local permite ambas rutas con sesiones coexistentes. Middleware es routing/UX, la API es autoridad. Preflight DB: si existe `Tenant.webSlug='admin'`, STOP despliegue hasta resolución explícita sin renombrar automáticamente. Configurar DNS/TLS y proxy sin tocar DNS de centros. Bootstrap mediante comando Make/Docker, sin registro público ni admin predeterminado; bcrypt async, secretos sin argumento visible/log.
+Producción: admin host permite rutas platform y rechaza rutas clínicas; hosts tenant no sirven panel global. Local permite ambas rutas con sesiones coexistentes. Middleware es routing/UX, la API es autoridad. Preflight DB: si existe `Tenant.webSlug='admin'`, STOP despliegue hasta resolución explícita sin renombrar automáticamente. Configurar DNS/TLS y proxy sin tocar DNS de centros. Bootstrap mediante `make platform-bootstrap` → `scripts/platform-bootstrap.sh`, sin registro público ni admin predeterminado. El script pide usuario (default `exiadmin`) y clave interactivamente (`read -s`, con confirmación); la clave NO se acepta como argumento de línea de comandos ni se guarda en repo, logs o historial. La creación se ejecuta dentro del contenedor API (`docker compose exec -T api`), con bcrypt async. Si el usuario ya existe, se requiere confirmación explícita para cambiar la clave. Variante no interactiva (CI, secreto Docker) queda fuera de V1 salvo decisión posterior.
 
 ## 7. Verificación, entrega y rollback
 
@@ -75,3 +75,20 @@ Primero revisar/estabilizar dependencia SaaS, luego migraciones aditivas, auth a
 ### Reglas complementarias de período e idempotencia
 
 La creación de período MUST bloquear contrato, rechazar rangos solapados y exigir startsAt < endsAt y dueAt >= startsAt; endsAt se calcula por mes calendario Caracas. Clave de alta/período se persiste con realm, operación, destino y fingerprint seguro; no guarda plaintext de password. Respuestas repetidas nunca vuelven a exponer credenciales. Si cambian condiciones futuras, el nuevo período captura su versión contractual vigente. Las claves/versiones de anulación de pago deben añadirse de manera aditiva si la dependencia SaaS todavía no las provee.
+
+## 8. Resoluciones de implementación (2026-10-12)
+
+- Entrega: owner autorizó “mejor un unico cambio grande”; `exception-ok` / `size:exception` para esta implementación, sin commits/PR/deploy automático.
+- Suscripción GET admite `periodPage`, `invoicePage`, `paymentPage` y `limit` (default20, máximo100), arrays más `pagination` con page/limit/total propios.
+- Proxy web same-origin `/api/platform/*`→API `/platform/*`, host-only cookie del host web. `PLATFORM_API_URL` apunta a API accesible por Next; producción necesita configurarlo al preparar imagen. API conserva Origin/CSRF como autoridad. Tenant requests sin cambios.
+- Login implementado usa username del bootstrap, email opcional; DTO real es `{username,password}`. CSRF de login usa Origin+header personalizado y de sesión HMAC, no CSRF-token prelogin adicional.
+- Retry key/payload congelados en RAM con ApiError.status; transporte/5xx/409 son inciertos y sólo se resuelven mediante replay exitoso. No persistir password. Beforeunload es aviso, no garantía: salida forzada requiere conciliación operativa.
+- Saldo pendiente dashboard incluye facturas OVERDUE además de PENDING/PARTIALLY_PAID; excluye PAID/VOIDED.
+
+## 9. Correcciones de revisión independiente
+
+Snapshots, continuidad y estado de contrato se leen tras lock FOR UPDATE dentro de la transacción; ediciones contractual/status participan el mismo lock. VOID/pago reevaluan replay y estado bajo invoice lock; saldo pendiente past-due retorna OVERDUE.
+
+Intentos frontend sobreviven SPA login/remount mediante registry RAM por actor+operación (sin storage), executor puro recibe CSRF fresco. Un banner global lista sólo operaciones del actor autenticado y permite reintentar originales aunque desaparezca el modal de factura pagada. API401 global no hard-reload: listener en Providers navega SPA. Reload/cierre real aún necesita conciliación.
+
+Auditoría platform usa ALS separado, IDs server-generated prefijo http/system, nunca encabezado client como identidad confiable; bootstrap comparte contexto SYSTEM por comando. IDs se consultan/renderizan sin secretos.

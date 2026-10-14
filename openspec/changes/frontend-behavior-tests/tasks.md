@@ -1,5 +1,7 @@
 # Tasks: Protección frontend por riesgo
 
+> **IMPLEMENTACIÓN NO INICIADA.** Solo se completó la planificación. Las 24 tareas de implementación siguen pendientes; no se implementaron ni ejecutaron pruebas como parte de este cambio. Se requiere autorización antes de comenzar.
+
 ## Review Workload Forecast
 
 | Field                   | Value                                                 |

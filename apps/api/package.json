@@ -27,6 +27,7 @@
     "tenant:provision": "ts-node --project tsconfig.json --transpile-only prisma/provision-tenant.ts",
     "tenant:access-link": "ts-node --project tsconfig.json --transpile-only prisma/create-tenant-access-link.ts",
     "tenant:subscription": "ts-node --project tsconfig.json --transpile-only prisma/provision-subscription.ts",
+    "platform:bootstrap": "ts-node --project tsconfig.json --transpile-only prisma/platform-bootstrap.ts",
     "db:studio": "prisma studio --config prisma/prisma.config.ts"
   },
   "dependencies": {

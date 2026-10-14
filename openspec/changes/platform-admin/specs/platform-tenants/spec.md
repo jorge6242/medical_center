@@ -49,3 +49,13 @@ Estado Tenant.isActive MUST cambiar solo por operación explícita con motivo y 
 - GIVEN centro activo
 - WHEN cambia subscription.status a PAST_DUE o SUSPENDED
 - THEN isActive no cambia automáticamente ni se interrumpe su login por una nueva regla comercial.
+
+### Requirement: Alta incierta sin nueva identidad
+
+Formulario de alta MUST usar la misma política de intento original inmutable ante respuesta perdida y MUST NOT persistir contraseña en localStorage.
+
+#### Scenario: Alta confirmada con respuesta perdida
+
+- GIVEN centro creado en servidor y respuesta perdida
+- WHEN se reintenta la operación original
+- THEN usa la misma key/payload y recupera resultado sin crear otro centro ni resetear credenciales.

@@ -1,15 +1,13 @@
-import { DEMO_TENANT_ID } from './types';
-
 import type { Consultation, PrismaClient, User } from '@prisma/client';
-
 
 export async function seedDemoPayments(
   prisma: PrismaClient,
   consultations: Consultation[],
   users: { admin: User; reception: User },
+  tenantId: string,
 ): Promise<void> {
   const completed = await prisma.payment.findMany({
-    where: { consultation: { tenantId: DEMO_TENANT_ID }, status: 'COMPLETED' },
+    where: { consultation: { tenantId }, status: 'COMPLETED' },
     include: { consultation: true },
   });
 
@@ -28,7 +26,7 @@ export async function seedDemoPayments(
 
   await prisma.auditLog.createMany({
     data: consultations.map((consultation) => ({
-      tenantId: DEMO_TENANT_ID,
+      tenantId,
       userId: users.admin.id,
       action: 'SEED_DEMO',
       entity: 'Consultation',

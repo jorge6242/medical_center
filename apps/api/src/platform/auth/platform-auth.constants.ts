@@ -1,0 +1,9 @@
+export const PLATFORM_ACCESS_COOKIE = 'platform_access_token';
+export const PLATFORM_JWT_ISSUER = 'centro-medico-platform';
+export const PLATFORM_JWT_AUDIENCE = 'platform';
+export const PLATFORM_JWT_PURPOSE = 'platform-access';
+export const PLATFORM_SESSION_TTL = '8h';
+export const PLATFORM_SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+export const PLATFORM_JWT_SECRET = 'PLATFORM_JWT_SECRET';
+export const PLATFORM_REALM_KEY = 'platformRealm';
+export const PLATFORM_ALLOWED_ORIGINS = 'PLATFORM_ALLOWED_ORIGINS';

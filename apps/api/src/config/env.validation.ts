@@ -8,6 +8,11 @@ export const envValidationSchema = Joi.object({
   DATABASE_URL: Joi.string().uri().required(),
   JWT_SECRET: Joi.string().min(32).required(),
   JWT_EXPIRES_IN: Joi.string().default('8h'),
+  PLATFORM_JWT_SECRET: Joi.string()
+    .min(32)
+    .invalid(Joi.ref('JWT_SECRET'))
+    .required(),
+  PLATFORM_ALLOWED_ORIGINS: Joi.string().allow('').optional(),
   APP_TIMEZONE: Joi.string().default('America/Caracas'),
   API_INTERNAL_SECRET: Joi.string().min(32).required(),
   RESEND_API_KEY: Joi.string().pattern(/^re_/).required(),

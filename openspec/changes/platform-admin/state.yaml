@@ -3,26 +3,31 @@ schema: spec-driven
 artifact_store:
   mode: openspec
   source_of_truth: openspec/changes/platform-admin
-status: planning-drafted
+status: implemented-awaiting-verification
 planning:
   proposal: drafted
-  spec: drafted
-  design: drafted
-  tasks: drafted
+  spec: updated-with-implementation-contracts
+  design: updated-with-implementation-decisions
+  tasks: progress-recorded
 implementation:
-  apply: not-started
-  blocked_pending:
-    - review-and-approval
-    - delivery-strategy-decision
-    - stabilization-of-local-subscription-dependency
-  verify: not-started
+  apply: completed-local
+  apply_progress: openspec/changes/platform-admin/apply-progress.md
+  verify: independent-code-and-local-tests-passed-external-qa-pending
+  verify_report: openspec/changes/platform-admin/verify-report.md
   archive: not-started
-delivery_strategy: ask-on-risk
+  pending:
+    - manual-browser-two-tenant-regression
+    - production-dns-tls-proxy-cookie-preflight
+    - prior-application-rollback-rehearsal
+    - unrelated-full-suite-and-web-lint-failures
+delivery_strategy: exception-ok
 review_workload:
   estimated_changed_lines: '>400'
   chained_prs_recommended: true
-  decision_needed_before_apply: true
-  size_exception_approved: false
+  decision_needed_before_apply: false
+  size_exception_approved: true
+  human_authorization: 'mejor un unico cambio grande'
+  authorization_context: 'User accepted a single large change after review-budget warning; no commits, PR, builds or production deployment authorized.'
 constraints:
   strict_tdd: true
   docker_only_execution: true
@@ -30,4 +35,9 @@ constraints:
   preserve_existing_tenant_flows: true
   clinical_access: false
   impersonation: false
-updated_at: '2026-10-11'
+local_preflight:
+  reserved_admin_webslug_conflicts: 0
+  prisma_migrations_found: 43
+  prisma_schema_status: up-to-date
+production_validation: not-performed
+updated_at: '2026-10-12'

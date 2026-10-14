@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
 const ROOT_DOMAIN = 'goratechlabs.com';
+const ADMIN_HOST = `admin.${ROOT_DOMAIN}`;
+const PLATFORM_PREFIX = '/platform';
 
 export function middleware(request: NextRequest): NextResponse {
   const hostname = request.headers.get('host') ?? '';
@@ -13,7 +15,21 @@ export function middleware(request: NextRequest): NextResponse {
     return NextResponse.redirect(new URL('/tenant-not-found', request.url));
   }
 
+  const path = request.nextUrl.pathname;
+  const isPlatformPath = path === PLATFORM_PREFIX || path.startsWith(`${PLATFORM_PREFIX}/`);
+  const isPlatformApiPath = path === '/api/platform' || path.startsWith('/api/platform/');
+
+  // Host de plataforma: sólo rutas /platform; ninguna pantalla clínica.
+  if (host === ADMIN_HOST) {
+    if (isPlatformPath || isPlatformApiPath) return NextResponse.next();
+    return NextResponse.redirect(new URL('/platform/login', request.url));
+  }
+
   if (isSubdomain) {
+    // Los centros nunca sirven el panel global.
+    if (isPlatformPath || isPlatformApiPath)
+      return NextResponse.redirect(new URL('/login', request.url));
+
     const webSlug = host.replace(`.${ROOT_DOMAIN}`, '');
     const token = request.cookies.get('access_token')?.value;
 

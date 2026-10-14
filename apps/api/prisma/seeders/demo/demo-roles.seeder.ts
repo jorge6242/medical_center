@@ -1,5 +1,3 @@
-import { DEMO_TENANT_ID } from './types';
-
 import type { PrismaClient } from '@prisma/client';
 
 const ROLES = [
@@ -69,15 +67,18 @@ const ROLES = [
   },
 ];
 
-export async function seedDemoRoles(prisma: PrismaClient): Promise<void> {
+export async function seedDemoRoles(
+  prisma: PrismaClient,
+  tenantId: string,
+): Promise<void> {
   for (const roleData of ROLES) {
     const role = await prisma.role.upsert({
       where: {
-        tenantId_name: { tenantId: DEMO_TENANT_ID, name: roleData.name },
+        tenantId_name: { tenantId, name: roleData.name },
       },
       update: {},
       create: {
-        tenantId: DEMO_TENANT_ID,
+        tenantId,
         name: roleData.name,
       },
     });

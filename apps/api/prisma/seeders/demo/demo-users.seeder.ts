@@ -1,7 +1,4 @@
-import { DEMO_TENANT_ID } from './types';
-
 import type { PrismaClient, User } from '@prisma/client';
-
 
 const USERS = [
   {
@@ -18,8 +15,11 @@ const USERS = [
   },
 ] as const;
 
-export async function seedDemoUsers(prisma: PrismaClient): Promise<{ admin: User; reception: User }> {
-  const roles = await prisma.role.findMany({ where: { tenantId: DEMO_TENANT_ID } });
+export async function seedDemoUsers(
+  prisma: PrismaClient,
+  tenantId: string,
+): Promise<{ admin: User; reception: User }> {
+  const roles = await prisma.role.findMany({ where: { tenantId } });
   const roleByName = new Map(roles.map((role) => [role.name, role]));
 
   const adminRole = roleByName.get('admin');
@@ -32,11 +32,11 @@ export async function seedDemoUsers(prisma: PrismaClient): Promise<{ admin: User
   const [adminUser, receptionUser] = USERS;
 
   const admin = await prisma.user.upsert({
-    where: { tenantId_email: { tenantId: DEMO_TENANT_ID, email: adminUser.email } },
+    where: { tenantId_email: { tenantId, email: adminUser.email } },
     update: { name: adminUser.name, roleId: adminRole.id },
     create: {
       id: adminUser.id,
-      tenantId: DEMO_TENANT_ID,
+      tenantId,
       email: adminUser.email,
       passwordHash: 'demo-password-hash',
       name: adminUser.name,
@@ -45,11 +45,11 @@ export async function seedDemoUsers(prisma: PrismaClient): Promise<{ admin: User
   });
 
   const reception = await prisma.user.upsert({
-    where: { tenantId_email: { tenantId: DEMO_TENANT_ID, email: receptionUser.email } },
+    where: { tenantId_email: { tenantId, email: receptionUser.email } },
     update: { name: receptionUser.name, roleId: receptionRole.id },
     create: {
       id: receptionUser.id,
-      tenantId: DEMO_TENANT_ID,
+      tenantId,
       email: receptionUser.email,
       passwordHash: 'demo-password-hash',
       name: receptionUser.name,

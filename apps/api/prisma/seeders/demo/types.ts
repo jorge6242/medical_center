@@ -1,4 +1,4 @@
-export const DEMO_TENANT_ID = 'tenant-demo-001';
+export { DEMO_TENANT_ID } from '../demo-tenant.constants';
 export const DEMO_YEAR = new Date().getFullYear();
 
 export type DemoDoctorRef = {

@@ -1,5 +1,3 @@
-import { DEMO_TENANT_ID } from './types';
-
 import type { PrismaClient, Specialty } from '@prisma/client';
 
 const SPECIALTIES = [
@@ -69,18 +67,19 @@ const SPECIALTIES = [
 
 export async function seedDemoSpecialties(
   prisma: PrismaClient,
+  tenantId: string,
 ): Promise<Specialty[]> {
   const specialties: Specialty[] = [];
 
   for (const specData of SPECIALTIES) {
     const specialty = await prisma.specialty.upsert({
       where: {
-        tenantId_name: { tenantId: DEMO_TENANT_ID, name: specData.name },
+        tenantId_name: { tenantId, name: specData.name },
       },
       update: { templateType: specData.templateType ?? null },
       create: {
         id: specData.id,
-        tenantId: DEMO_TENANT_ID,
+        tenantId,
         name: specData.name,
         templateType: specData.templateType ?? null,
       },
@@ -91,12 +90,12 @@ export async function seedDemoSpecialties(
     for (const svcData of specData.services) {
       await prisma.service.upsert({
         where: {
-          tenantId_name: { tenantId: DEMO_TENANT_ID, name: svcData.name },
+          tenantId_name: { tenantId, name: svcData.name },
         },
         update: {},
         create: {
           id: svcData.id,
-          tenantId: DEMO_TENANT_ID,
+          tenantId,
           name: svcData.name,
         },
       });

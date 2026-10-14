@@ -1,16 +1,16 @@
-import { DEMO_TENANT_ID } from './types';
+import { DEMO_DATA_TENANT_SLUG } from '../demo-tenant.constants';
+import { seedTenant } from '../tenant.seeder';
 
 import type { PrismaClient } from '@prisma/client';
 
-
-export async function seedDemoTenant(prisma: PrismaClient): Promise<void> {
-  await prisma.tenant.upsert({
-    where: { id: DEMO_TENANT_ID },
-    update: { name: 'Centro Médico Demo', slug: 'centro-medico-demo-demo' },
-    create: {
-      id: DEMO_TENANT_ID,
-      name: 'Centro Médico Demo',
-      slug: 'centro-medico-demo-demo',
-    },
+export async function seedDemoTenant(
+  prisma: PrismaClient,
+  resolvedTenantId?: string,
+): Promise<string> {
+  const tenantId = resolvedTenantId ?? (await seedTenant(prisma));
+  await prisma.tenant.update({
+    where: { id: tenantId },
+    data: { name: 'Centro Médico Demo', slug: DEMO_DATA_TENANT_SLUG },
   });
+  return tenantId;
 }

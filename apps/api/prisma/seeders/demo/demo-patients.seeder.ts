@@ -1,7 +1,4 @@
-import { DEMO_TENANT_ID } from './types';
-
 import type { PrismaClient, Patient } from '@prisma/client';
-
 
 const PATIENTS = [
   ['V', '91000001', 'Ariana Silva'],
@@ -16,21 +13,24 @@ const PATIENTS = [
   ['V', '91000010', 'Gabriela Díaz'],
 ] as const;
 
-export async function seedDemoPatients(prisma: PrismaClient): Promise<Patient[]> {
+export async function seedDemoPatients(
+  prisma: PrismaClient,
+  tenantId: string,
+): Promise<Patient[]> {
   const patients: Patient[] = [];
 
   for (const [documentType, documentId, name] of PATIENTS) {
     const patient = await prisma.patient.upsert({
       where: {
         tenantId_documentType_documentId: {
-          tenantId: DEMO_TENANT_ID,
+          tenantId,
           documentType,
           documentId,
         },
       },
       update: { name },
       create: {
-        tenantId: DEMO_TENANT_ID,
+        tenantId,
         documentType,
         documentId,
         name,

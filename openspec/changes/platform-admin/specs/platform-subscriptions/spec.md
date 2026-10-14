@@ -61,3 +61,29 @@ Pagos MUST registrar factura del tenant seleccionado, moneda/método compatibles
 - GIVEN monto cero/negativo, tasa VES ausente, moneda/método incompatible o sobrepago
 - WHEN intenta registrar pago
 - THEN recibe 400/409 y no cambia pago, saldo ni factura.
+
+### Requirement: Historial completo paginado
+
+El endpoint de suscripción MUST devolver paginación independiente de períodos, facturas y pagos, con total scoped, orden estable y límites validados (1..100, default20).
+
+#### Scenario: Registro antiguo accesible
+
+- GIVEN historial superior a una página
+- WHEN el operador avanza páginas de un historial
+- THEN obtiene registros antiguos y total sin mezclar contrato/tenant ni mover las otras páginas.
+
+### Requirement: Reintento ante resultado incierto
+
+UI MUST preservar key y payload originales en RAM ante error de transporte/5xx/409; MUST ofrecer reintento explícito sin nueva escritura distinta. Solo un rechazo inicial definitivo permite corregir; un rechazo posterior a incertidumbre MUST NOT descartar intento.
+
+#### Scenario: Respuesta perdida tras abono confirmado
+
+- GIVEN servidor confirmó abono pero se perdió la respuesta
+- WHEN operador pulsa reintentar original
+- THEN envía misma clave y payload y recibe replay sin duplicar cobro.
+
+#### Scenario: Sesión expirada durante reintento
+
+- GIVEN intento previo incierto
+- WHEN siguiente request devuelve 401
+- THEN no se interpreta como prueba de que la primera escritura falló ni se rota la clave; conciliación requiere confirmar el resultado previo.

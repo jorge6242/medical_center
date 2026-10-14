@@ -33,3 +33,13 @@ Solo sesión platform válida MUST consultar auditoría global; usuarios tenant 
 - GIVEN sesión tenant válida
 - WHEN solicita /platform/audit
 - THEN acceso se rechaza y no filtra eventos de otros centros.
+
+### Requirement: Trazabilidad confiable por realm
+
+Auditoría platform MUST incluir requestId/correlationId generados en servidor y compartidos por escrituras de la operación. MUST NOT tomar encabezado cliente como identidad confiable. Bootstrap/system MUST tener contexto distinto del HTTP.
+
+#### Scenario: Operaciones concurrentes
+
+- GIVEN dos requests platform concurrentes
+- WHEN cada request escribe eventos
+- THEN los eventos de cada request comparten IDs propios sin mezclarse con el otro request.

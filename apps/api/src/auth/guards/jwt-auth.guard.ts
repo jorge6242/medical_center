@@ -11,6 +11,8 @@ import { AuthGuard } from '@nestjs/passport';
 import { RequestContextService } from '../../common/context';
 import { INTERNAL_REQUEST_KEY } from '../../common/decorators/internal-request.decorator';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator';
+import { PLATFORM_REALM_KEY } from '../../platform/auth/platform-auth.constants';
+import { PlatformAuthGuard } from '../../platform/auth/platform-auth.guard';
 
 import type { JwtPayload } from '../../common/decorators/current-user.decorator';
 
@@ -19,6 +21,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   constructor(
     private readonly reflector: Reflector,
     private readonly requestContext: RequestContextService,
+    private readonly platformGuard: PlatformAuthGuard,
   ) {
     super();
   }
@@ -35,6 +38,13 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       context.getClass(),
     ]);
     if (isPublic) return true;
+
+    const isPlatformRealm = this.reflector.getAllAndOverride<boolean>(
+      PLATFORM_REALM_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    if (isPlatformRealm) return this.platformGuard.canActivate(context);
+
     return super.canActivate(context);
   }
 

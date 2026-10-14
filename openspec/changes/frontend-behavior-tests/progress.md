@@ -1,5 +1,7 @@
 # Progreso y evidencia
 
+> **IMPLEMENTACIÓN NO INICIADA — aclaración del 2026-10-14.** La planificación está completa, pero no se inició el bootstrap ni la implementación de pruebas de este cambio. No hay tareas de implementación completadas ni ejecuciones acreditadas. Esta actualización es documental y no autoriza iniciar implementación.
+
 **2026-10-11: planificación documentada; implementación pendiente.** 24 tareas comprometidas sin completar, 2 opcionales diferidas. 29 vistas recomendadas pendientes; 0 verificadas por este cambio. No se ejecutaron suites, instaló tooling ni modificó aplicación. No representa porcentaje de cobertura ni afirma commit/tracking Git.
 
 ## Estados y bloqueos

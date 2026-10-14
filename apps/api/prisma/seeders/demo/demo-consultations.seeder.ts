@@ -1,5 +1,3 @@
-import { DEMO_TENANT_ID } from './types';
-
 import type {
   Doctor,
   Patient,
@@ -13,30 +11,31 @@ export async function seedDemoConsultations(
   doctors: Doctor[],
   patients: Patient[],
   users: { admin: User; reception: User },
+  tenantId: string,
 ): Promise<Consultation[]> {
   await prisma.medicalRecord.deleteMany({
-    where: { tenantId: DEMO_TENANT_ID },
+    where: { tenantId },
   });
   await prisma.consultationService.deleteMany({
-    where: { consultation: { tenantId: DEMO_TENANT_ID } },
+    where: { consultation: { tenantId } },
   });
   await prisma.doctorReceipt.deleteMany({
-    where: { payment: { tenantId: DEMO_TENANT_ID } },
+    where: { payment: { tenantId } },
   });
   await prisma.paymentAdjustment.deleteMany({
-    where: { payment: { tenantId: DEMO_TENANT_ID } },
+    where: { payment: { tenantId } },
   });
   await prisma.paymentDetail.deleteMany({
-    where: { payment: { tenantId: DEMO_TENANT_ID } },
+    where: { payment: { tenantId } },
   });
   await prisma.paymentItem.deleteMany({
-    where: { payment: { tenantId: DEMO_TENANT_ID } },
+    where: { payment: { tenantId } },
   });
   await prisma.consultationPayment.deleteMany({
-    where: { consultation: { tenantId: DEMO_TENANT_ID } },
+    where: { consultation: { tenantId } },
   });
-  await prisma.payment.deleteMany({ where: { tenantId: DEMO_TENANT_ID } });
-  await prisma.consultation.deleteMany({ where: { tenantId: DEMO_TENANT_ID } });
+  await prisma.payment.deleteMany({ where: { tenantId } });
+  await prisma.consultation.deleteMany({ where: { tenantId } });
 
   const today = new Date();
   const now = new Date();
@@ -135,7 +134,7 @@ export async function seedDemoConsultations(
 
     const consultation = await prisma.consultation.create({
       data: {
-        tenantId: DEMO_TENANT_ID,
+        tenantId,
         patientId: patient.id,
         doctorId: doctor.id,
         date,
@@ -150,7 +149,7 @@ export async function seedDemoConsultations(
         ...(item.specialtyName
           ? {
               specialty: {
-                is: { tenantId: DEMO_TENANT_ID, name: item.specialtyName },
+                is: { tenantId, name: item.specialtyName },
               },
             }
           : { specialtyId: doctor.primarySpecialtyId }),
@@ -180,7 +179,7 @@ export async function seedDemoConsultations(
       const idempotencyKey = `demo-${index}-${now.getTime()}`;
       const payment = await prisma.payment.create({
         data: {
-          tenantId: DEMO_TENANT_ID,
+          tenantId,
           idempotencyKey,
           totalServiceUsd: total,
           bcvExchangeRate: 36.5,
@@ -228,7 +227,7 @@ export async function seedDemoConsultations(
         where: { paymentId: payment.id },
         update: {},
         create: {
-          receiptNumber: `CM-${DEMO_TENANT_ID}-${index + 1}`,
+          receiptNumber: `CM-${tenantId}-${index + 1}`,
           paymentId: payment.id,
           generatedById: users.reception.id,
           doctorName: doctor.name,

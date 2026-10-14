@@ -27,6 +27,11 @@ import { MedicalRecordsModule } from './medical-records/medical-records.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PatientsModule } from './patients/patients.module';
 import { PaymentsModule } from './payments/payments.module';
+import { PlatformAuditModule } from './platform/audit/platform-audit.module';
+import { PlatformAuthModule } from './platform/auth/platform-auth.module';
+import { PlatformDashboardModule } from './platform/dashboard/platform-dashboard.module';
+import { PlatformSubscriptionsModule } from './platform/subscriptions/platform-subscriptions.module';
+import { PlatformTenantsModule } from './platform/tenants/platform-tenants.module';
 import { ReceiptsModule } from './receipts/receipts.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { ReportsModule } from './reports/reports.module';
@@ -55,6 +60,11 @@ import { UsersModule } from './users/users.module';
     RolesModule,
     RequestContextModule,
     AuthModule,
+    PlatformAuthModule,
+    PlatformTenantsModule,
+    PlatformSubscriptionsModule,
+    PlatformAuditModule,
+    PlatformDashboardModule,
     PatientsModule,
     SpecialtiesModule,
     DoctorsModule,

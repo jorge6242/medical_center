@@ -1,9 +1,9 @@
 import { PaymentsService } from './payments.service';
+import { MailerService } from '../mailer/mailer.service';
 
 import type { PaymentItemDto } from './dto/create-payment.dto';
 import type { AuditLogService } from '../audit-log/audit-log.service';
 import type { PrismaService } from '../database/prisma.service';
-import type { MailerService } from '../mailer/mailer.service';
 import type { ReceiptsService } from '../receipts/receipts.service';
 
 describe('PaymentsService receipt side effects', () => {
@@ -17,24 +17,22 @@ describe('PaymentsService receipt side effects', () => {
       paymentId: 'payment-1',
     }),
   } as unknown as ReceiptsService;
-  const mailerService = {
-    renderTemplate: jest.fn(),
-    sendReceiptEmail: jest.fn(),
-  } as unknown as MailerService;
+  const sendReceiptEmail = jest
+    .spyOn(MailerService.prototype, 'sendReceiptEmail')
+    .mockResolvedValue(undefined);
 
   const auditLog = { log: jest.fn() } as unknown as AuditLogService;
-  const service = new PaymentsService(
-    prisma,
-    receiptsService,
-    mailerService,
-    auditLog,
-  );
+  const service = new PaymentsService(prisma, receiptsService, auditLog);
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('generates a receipt inline and sends the receipt email when the doctor has email', async () => {
+  afterAll(() => {
+    sendReceiptEmail.mockRestore();
+  });
+
+  it('generates a receipt inline without emailing the doctor', async () => {
     (receiptsService.createForPayment as jest.Mock).mockResolvedValue({
       id: 'receipt-1',
       receiptNumber: 'CM-2026-1',
@@ -42,22 +40,11 @@ describe('PaymentsService receipt side effects', () => {
       doctorShare: '67.50',
       paymentId: 'payment-1',
     });
-    (mailerService.renderTemplate as jest.Mock).mockReturnValue({
-      subject: 'Recibo CM-2026-1',
-      html: '<p>Recibo</p>',
-      template: {
-        name: 'receipt-generated',
-        version: 1,
-        category: 'receipt',
-        audience: 'doctor',
-      },
-    });
 
     const result = await service.processReceiptSideEffects(
       'tenant-1',
       'payment-1',
       'user-1',
-      'doctor@example.com',
     );
 
     expect(receiptsService.createForPayment).toHaveBeenCalledWith(
@@ -65,14 +52,11 @@ describe('PaymentsService receipt side effects', () => {
       'payment-1',
       'user-1',
     );
-    expect(mailerService.sendReceiptEmail).toHaveBeenCalledWith(
-      'doctor@example.com',
-      'Recibo CM-2026-1',
-      '<p>Recibo</p>',
-    );
+    expect(sendReceiptEmail).not.toHaveBeenCalled();
+    expect(receiptsService.findByPayment).not.toHaveBeenCalled();
     expect(result).toEqual({
       receiptId: 'receipt-1',
-      emailDeliveryStatus: 'sent',
+      emailDeliveryStatus: 'skipped',
       warnings: [],
     });
   });
@@ -86,50 +70,13 @@ describe('PaymentsService receipt side effects', () => {
       'tenant-1',
       'payment-1',
       'user-1',
-      'doctor@example.com',
     );
 
-    expect(mailerService.sendReceiptEmail).not.toHaveBeenCalled();
+    expect(sendReceiptEmail).not.toHaveBeenCalled();
     expect(result).toEqual({
       receiptId: undefined,
       emailDeliveryStatus: 'failed',
       warnings: ['Receipt generation failed: doctor data missing'],
-    });
-  });
-
-  it('keeps the receipt valid and returns an email warning when SMTP delivery fails', async () => {
-    (receiptsService.createForPayment as jest.Mock).mockResolvedValue({
-      id: 'receipt-1',
-      receiptNumber: 'CM-2026-1',
-      doctorName: 'Dra. Ana',
-      doctorShare: '67.50',
-      paymentId: 'payment-1',
-    });
-    (mailerService.renderTemplate as jest.Mock).mockReturnValue({
-      subject: 'Recibo CM-2026-1',
-      html: '<p>Recibo</p>',
-      template: {
-        name: 'receipt-generated',
-        version: 1,
-        category: 'receipt',
-        audience: 'doctor',
-      },
-    });
-    (mailerService.sendReceiptEmail as jest.Mock).mockRejectedValue(
-      new Error('SMTP unreachable'),
-    );
-
-    const result = await service.processReceiptSideEffects(
-      'tenant-1',
-      'payment-1',
-      'user-1',
-      'doctor@example.com',
-    );
-
-    expect(result).toEqual({
-      receiptId: 'receipt-1',
-      emailDeliveryStatus: 'failed',
-      warnings: ['Receipt email failed: SMTP unreachable'],
     });
   });
 });

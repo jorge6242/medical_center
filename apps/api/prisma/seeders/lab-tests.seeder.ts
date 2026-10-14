@@ -1,7 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
 
-const TENANT_ID = 'tenant-demo-001';
-
 const LAB_TESTS = [
   { name: 'Hemograma Completo', priceUsd: 15 },
   { name: 'Glucosa en Ayunas', priceUsd: 10 },
@@ -17,15 +15,18 @@ const LAB_TESTS = [
   { name: 'Grupo Sanguíneo y Factor Rh', priceUsd: 10 },
 ];
 
-export async function seedLabTests(prisma: PrismaClient): Promise<void> {
+export async function seedLabTests(
+  prisma: PrismaClient,
+  tenantId: string,
+): Promise<void> {
   for (const test of LAB_TESTS) {
     await prisma.labTestCatalog.upsert({
       where: {
-        tenantId_name: { tenantId: TENANT_ID, name: test.name },
+        tenantId_name: { tenantId, name: test.name },
       },
       update: {},
       create: {
-        tenantId: TENANT_ID,
+        tenantId,
         name: test.name,
         priceUsd: test.priceUsd,
         isActive: true,

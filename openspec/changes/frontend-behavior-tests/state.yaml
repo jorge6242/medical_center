@@ -2,8 +2,10 @@ change: frontend-behavior-tests
 artifact_store: openspec
 execution_mode: auto
 delivery_strategy: ask-on-risk
-updated: '2026-10-11'
+updated: '2026-10-14'
 status: planning-complete
+implementation_status: not-started
+status_note: 'Solo planificación completada; implementación y ejecución de pruebas no iniciadas. Se requiere autorización antes de apply.'
 scope_authorized: planning-only
 phases:
   explore: complete

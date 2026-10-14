@@ -9,6 +9,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { RequestContextService } from './common/context';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { withPlatformAuditContext } from './platform/audit/platform-audit-context';
 
 import type { NextFunction, Request, Response } from 'express';
 
@@ -23,17 +24,23 @@ async function bootstrap() {
     const correlationId = (
       typeof header === 'string' ? header : randomUUID()
     ).slice(0, 128);
-    requestContext.run(
-      {
-        correlationId,
-        requestId: correlationId,
-        method: req.method,
-        route: req.path,
-        ip: req.ip,
-        userAgent: req.get('user-agent')?.slice(0, 256),
-      },
-      next,
-    );
+    const runRequest = () =>
+      requestContext.run(
+        {
+          correlationId,
+          requestId: correlationId,
+          method: req.method,
+          route: req.path,
+          ip: req.ip,
+          userAgent: req.get('user-agent')?.slice(0, 256),
+        },
+        next,
+      );
+    if (req.path === '/platform' || req.path.startsWith('/platform/')) {
+      withPlatformAuditContext('HTTP', runRequest);
+      return;
+    }
+    runRequest();
   });
 
   app.enableCors({

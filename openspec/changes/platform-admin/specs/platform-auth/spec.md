@@ -67,3 +67,19 @@ Producción MUST reservar admin.goratechlabs.com y desarrollo MUST aceptar local
 - GIVEN un subdominio de centro o el host admin en producción
 - WHEN se solicita respectivamente panel platform o rutas clínicas
 - THEN el routing rechaza/redirige sin exponer esa interfaz y la API conserva su autenticación.
+
+### Requirement: Recuperación SPA segura de operaciones inciertas
+
+401 platform MUST navegar a login vía SPA sin hard-reload. Registry RAM MUST quedar fuera del layout de panel y scoped por administrador/operación, conservar payload/key y recibir CSRF fresco al reintentar. MUST NOT persistir contraseña ni mostrar intentos de otro actor.
+
+#### Scenario: Reauth del mismo administrador
+
+- GIVEN abono o alta con respuesta perdida y posterior sesión vencida
+- WHEN mismo administrador vuelve a login y regresa al panel
+- THEN banner global ofrece replay original con mismo payload/key y nuevo CSRF sin duplicar escritura, aunque el modal inicial ya no exista.
+
+#### Scenario: Otro administrador inicia sesión
+
+- GIVEN intento incierto del administrador A en RAM
+- WHEN administrador B inicia sesión en esa pestaña
+- THEN B no recibe el payload ni acceso al reintento de A; cierre/recarga real requiere conciliación operativa.

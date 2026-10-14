@@ -1,7 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
 
-const TENANT_ID = 'tenant-demo-001';
-
 const SPECIALTIES = [
   {
     id: 'spec-gin-001',
@@ -45,14 +43,17 @@ const SPECIALTIES = [
   },
 ];
 
-export async function seedSpecialties(prisma: PrismaClient): Promise<void> {
+export async function seedSpecialties(
+  prisma: PrismaClient,
+  tenantId: string,
+): Promise<void> {
   for (const specData of SPECIALTIES) {
     await prisma.specialty.upsert({
-      where: { tenantId_name: { tenantId: TENANT_ID, name: specData.name } },
+      where: { tenantId_name: { tenantId, name: specData.name } },
       update: {},
       create: {
         id: specData.id,
-        tenantId: TENANT_ID,
+        tenantId,
         name: specData.name,
       },
     });
@@ -60,10 +61,10 @@ export async function seedSpecialties(prisma: PrismaClient): Promise<void> {
     for (const svcData of specData.services) {
       await prisma.service.upsert({
         where: {
-          tenantId_name: { tenantId: TENANT_ID, name: svcData.name },
+          tenantId_name: { tenantId, name: svcData.name },
         },
         update: {},
-        create: { id: svcData.id, tenantId: TENANT_ID, name: svcData.name },
+        create: { id: svcData.id, tenantId, name: svcData.name },
       });
     }
   }

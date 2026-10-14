@@ -17,7 +17,6 @@ import {
   type PaginatedResponseDto,
 } from '../common/dto/paginated-response.dto';
 import { PrismaService } from '../database/prisma.service';
-import { MailerService } from '../mailer/mailer.service';
 import { ReceiptsService } from '../receipts/receipts.service';
 
 import type { CreatePaymentAdjustmentDto } from './dto/create-payment-adjustment.dto';
@@ -38,7 +37,6 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly receiptsService: ReceiptsService,
-    private readonly mailerService: MailerService,
     private readonly auditLog: AuditLogService,
   ) {}
 
@@ -253,12 +251,7 @@ export class PaymentsService {
         },
       });
 
-      await this.processReceiptSideEffects(
-        tenantId,
-        full.id,
-        generatedById,
-        existingConsultation.doctor.email ?? undefined,
-      );
+      await this.processReceiptSideEffects(tenantId, full.id, generatedById);
 
       return this.buildResponse(full);
     }
@@ -472,12 +465,7 @@ export class PaymentsService {
       },
     });
 
-    await this.processReceiptSideEffects(
-      tenantId,
-      full.id,
-      generatedById,
-      doctorRecord?.email ?? undefined,
-    );
+    await this.processReceiptSideEffects(tenantId, full.id, generatedById);
 
     return this.buildResponse(full);
   }
@@ -957,8 +945,7 @@ export class PaymentsService {
         consultationId: item?.consultationId ?? undefined,
         labOrderId: item?.labOrderId ?? undefined,
         patientName: item?.consultation?.patient.name ?? undefined,
-        patientDocumentId:
-          item?.consultation?.patient.documentId ?? undefined,
+        patientDocumentId: item?.consultation?.patient.documentId ?? undefined,
         doctorName: item?.consultation?.doctor
           ? `${item.consultation.doctor.name} ${item.consultation.doctor.lastName}`.trim()
           : undefined,
@@ -998,7 +985,6 @@ export class PaymentsService {
     tenantId: string,
     paymentId: string,
     generatedById: string,
-    doctorEmail?: string,
   ): Promise<{
     receiptId?: string;
     emailDeliveryStatus: string;
@@ -1020,33 +1006,6 @@ export class PaymentsService {
         `Receipt generation failed for payment ${paymentId}: ${message}`,
       );
       warnings.push(`Receipt generation failed: ${message}`);
-    }
-
-    if (doctorEmail && receiptId) {
-      try {
-        const receipt = await this.receiptsService.findByPayment(
-          tenantId,
-          paymentId,
-        );
-        const { subject, html } = this.mailerService.renderTemplate(
-          'receiptEmail',
-          {
-            receiptNumber: receipt.receiptNumber,
-            doctorName: receipt.doctorName,
-            doctorShare: receipt.doctorShare,
-            paymentId: receipt.paymentId,
-          },
-        );
-        await this.mailerService.sendReceiptEmail(doctorEmail, subject, html);
-        return { receiptId, emailDeliveryStatus: 'sent', warnings };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        this.logger.error(
-          `Receipt email failed for payment ${paymentId}: ${message}`,
-        );
-        warnings.push(`Receipt email failed: ${message}`);
-        return { receiptId, emailDeliveryStatus: 'failed', warnings };
-      }
     }
 
     return {

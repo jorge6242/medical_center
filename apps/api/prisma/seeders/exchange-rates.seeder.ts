@@ -1,16 +1,17 @@
 import type { PrismaClient } from '@prisma/client';
 
-const TENANT_ID = 'tenant-demo-001';
-
-export async function seedExchangeRates(prisma: PrismaClient): Promise<void> {
+export async function seedExchangeRates(
+  prisma: PrismaClient,
+  tenantId: string,
+): Promise<void> {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
 
   await prisma.exchangeRate.upsert({
-    where: { tenantId_date: { tenantId: TENANT_ID, date: today } },
+    where: { tenantId_date: { tenantId, date: today } },
     update: {},
     create: {
-      tenantId: TENANT_ID,
+      tenantId,
       rate: 36.5,
       date: today,
       source: 'MANUAL',
