@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 
 import { usePlatformLogout } from '../hooks/use-platform-logout';
 import { usePlatformSession } from '../hooks/use-platform-session';
+import { ThemeSwitch } from '@/shared/design-system/theme-controls';
 import { Button } from '@/shared/components/ui/button';
 import { PlatformPendingOperations } from '@/features/platform-shared/platform-pending-operations';
 
@@ -48,14 +49,17 @@ export function PlatformShell({ children }: { readonly children: React.ReactNode
             </Link>
           </nav>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          isLoading={logout.isPending}
-          onClick={() => logout.mutate()}
-        >
-          Cerrar sesión
-        </Button>
+        <div className="flex items-center gap-4">
+          <ThemeSwitch />
+          <Button
+            variant="outline"
+            size="sm"
+            isLoading={logout.isPending}
+            onClick={() => logout.mutate()}
+          >
+            Cerrar sesión
+          </Button>
+        </div>
       </header>
       <PlatformPendingOperations actorId={session.data.id} csrfToken={session.data.csrfToken} />
       <main className="flex-1 p-6">{children}</main>

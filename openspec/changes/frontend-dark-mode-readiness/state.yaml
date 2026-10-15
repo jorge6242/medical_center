@@ -1,0 +1,95 @@
+change: frontend-dark-mode-readiness
+artifact_store: openspec
+updated: '2026-10-15'
+status: phase-2-implemented-awaiting-visual-acceptance
+scope_authorized: phase-1-alignment-and-phase-2-light-dark-switch
+execution_mode: auto
+delivery_strategy: exception-ok
+delivery_decision: 'size:exception autorizado por usuario: entrega única, sin divisiones, ejecución automática.'
+strict_tdd: true
+test_runner: node-test-runner-in-web-container
+implementation_status: phase-2-implemented
+visual_validation_status: user-reported-global-acceptance-no-granular-evidence
+sdd_cycle_executed: planning-apply-independent-verify-phase-1-acceptance
+status_note: 'Fase 1 aceptada. Fase 2 switch light/dark implementado: 39 tests, typecheck y lint dirigido aprobados; sin aceptación visual autenticada. Lint global conserva deuda previa 6 errores/3 warnings. Sin builds.'
+artifacts:
+  overview: README.md
+  inventory: inventory.md
+  follow_up: checklist.md
+  proposal: proposal.md
+  spec: specs/frontend-color-alignment/spec.md
+  design: design.md
+  tasks: tasks.md
+  apply_progress: apply-progress.md
+  verification: verify-report.md
+  acceptance: acceptance.md
+baseline:
+  source_files: 230
+  tsx_files: 130
+  page_files: 41
+  app_router_entry_files: 47
+  reachable_source_files: 224
+  reachable_tsx_files: 128
+  unreachable_tsx_files: 2
+  color_tokens: 22
+  missing_color_tokens: 4
+  reachable_direct_palette_occurrences: 35
+  reachable_direct_palette_lines: 23
+  reachable_direct_palette_files: 7
+  findings_tracked: 32
+progress:
+  code_files_updated: 16
+  source_contract_tools_added: 3
+  color_tokens_after_apply: 31
+  routes_visually_validated: 0
+  tsx_files_visually_validated: 0
+  builds_run: 0
+  tests_passing_final_run: 39
+  existing_tests_passing: 16
+  source_contract_tests_passing: 13
+  typecheck: passed
+  global_lint: preexisting-failures-6-errors-3-warnings
+  targeted_lint_and_format: passed
+work_phases:
+  phase_1:
+    name: cleanup-and-design-system-token-alignment
+    status: completed-accepted
+    scope: all-inventoried-reachable-components
+    static_acceptance: independent-review-passed-no-open-structural-defects
+    visual_acceptance: user-reported-global-acceptance
+    closure_audit: accepted-with-documented-limitations
+  phase_2:
+    name: design-system-dark-theme
+    status: implemented-awaiting-visual-acceptance
+    static_acceptance: tests-typecheck-targeted-lint-passed
+    visual_acceptance: not-started
+gate:
+  status: phase-1-closed-phase-2-planning-unblocked
+  phase_2_requires:
+    - Phase 1 audited and closed.
+    - All UI aligned with color tokens and design system.
+    - Missing tokens defined with explicit semantics.
+    - Exceptions documented and confirmed.
+    - Static and visual acceptance recorded separately.
+pending:
+  - Validate phase 2 authenticated switch, keyboard, persistence, hydration and effective contrast.
+  - Validate dark native controls, Sonner, logos and document outputs.
+  - Preserve W01/W02 and no React profiler evidence; do not claim full rendered acceptance.
+known_theme_architecture_limit:
+  current: tailwind-theme-utilities-reference-runtime-variables
+  print_mitigation: explicit-unlayered-document-subtree-paint
+  runtime_theme_decision: tailwind-theme-runtime-variables-root-data-theme
+  runtime_theme_ready: true
+
+phase_2_delivery:
+  preference: light-dark-switch-no-system
+  storage: browser-localStorage-theme-only
+  default: light
+  tests: 39-passed
+  typecheck: passed
+  targeted_lint: passed
+  reachable_tsx: 129
+  runtime_color_roles_per_theme: 31
+  render_isolation: external-store-only-switch-toaster-subscribers-no-profiler-evidence
+  visual_acceptance: pending-authenticated-qa
+  phase_2_spec: specs/frontend-dark-theme/spec.md

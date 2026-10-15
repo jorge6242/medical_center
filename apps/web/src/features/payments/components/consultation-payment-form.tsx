@@ -478,7 +478,7 @@ export function ConsultationPaymentForm({
                       type="button"
                       onClick={() => setMaximumAmount(i, field.id)}
                       disabled={!hasValidExchangeRate || getLineMaxAmount(i) <= 0}
-                      className="mb-0.5 rounded-lg border border-outline px-2 py-2 text-xs font-semibold text-primary hover:bg-primary-container disabled:text-on-surface-variant"
+                      className="mb-0.5 rounded-lg border border-outline px-2 py-2 text-xs font-semibold text-primary hover:bg-primary-container hover:text-on-primary-container disabled:text-on-surface-variant"
                     >
                       Max
                     </button>

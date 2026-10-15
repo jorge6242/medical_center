@@ -41,7 +41,7 @@ export function MedicalRecordDetailPanel({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div data-document-print className="flex flex-col gap-4">
       {showActions ? (
         <div className="flex justify-end print:hidden">
           <Button

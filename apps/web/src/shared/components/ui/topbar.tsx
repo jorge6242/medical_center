@@ -8,6 +8,8 @@ import { LogOut } from 'lucide-react';
 import { logout } from '@/features/auth/services/auth.service';
 import { useAuthStore } from '@/stores/auth.store';
 
+import { ThemeSwitch } from '@/shared/design-system/theme-controls';
+
 import { Button } from './button';
 
 export function Topbar() {
@@ -24,7 +26,7 @@ export function Topbar() {
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-outline-variant bg-surface px-6">
-      <div />
+      <ThemeSwitch />
       <div className="flex items-center gap-4">
         <div className="text-right">
           <p className="text-sm font-medium text-on-surface">{email}</p>

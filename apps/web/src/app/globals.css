@@ -1,6 +1,6 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
-@theme inline {
+@theme {
   /* MD3 Semantic Tokens — primary */
   --color-primary: #1a56db;
   --color-on-primary: #ffffff;
@@ -18,6 +18,21 @@
   --color-on-surface: #0f172a;
   --color-surface-variant: #f1f5f9;
   --color-on-surface-variant: #475569;
+  --color-surface-container: #f1f5f9;
+  --color-surface-container-high: #e2e8f0;
+
+  /* State fill/on-fill and container/on-container are paired roles. */
+  --color-success: #166534;
+  --color-on-success: #ffffff;
+  --color-success-container: #dcfce7;
+  --color-on-success-container: #166534;
+  --color-warning: #92400e;
+  --color-on-warning: #ffffff;
+  --color-warning-container: #fef3c7;
+  --color-on-warning-container: #78350f;
+
+  /* Overlay base; opacity belongs to the overlay, not its content. */
+  --color-scrim: #000000;
 
   /* outline */
   --color-outline: #cbd5e1;
@@ -48,4 +63,173 @@ body {
     system-ui,
     -apple-system,
     sans-serif;
+}
+
+/* Screen controls have one contract; OS popovers still require visual QA. */
+:root {
+  color-scheme: light;
+}
+
+/* Runtime overrides: Tailwind utilities reference these variables. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-primary: #93c5fd;
+  --color-on-primary: #172554;
+  --color-primary-container: #1e3a5f;
+  --color-on-primary-container: #dbeafe;
+  --color-secondary: #c7d2fe;
+  --color-on-secondary: #312e81;
+  --color-secondary-container: #37306b;
+  --color-on-secondary-container: #e0e7ff;
+  --color-surface: #111827;
+  --color-on-surface: #f1f5f9;
+  --color-surface-variant: #1e293b;
+  --color-on-surface-variant: #cbd5e1;
+  --color-surface-container: #1e293b;
+  --color-surface-container-high: #334155;
+  --color-success: #86efac;
+  --color-on-success: #052e16;
+  --color-success-container: #14532d;
+  --color-on-success-container: #dcfce7;
+  --color-warning: #fcd34d;
+  --color-on-warning: #451a03;
+  --color-warning-container: #78350f;
+  --color-on-warning-container: #fef3c7;
+  --color-scrim: #000000;
+  --color-outline: #64748b;
+  --color-outline-variant: #475569;
+  --color-error: #fca5a5;
+  --color-on-error: #450a0a;
+  --color-error-container: #7f1d1d;
+  --color-on-error-container: #fee2e2;
+  --color-background: #0b1120;
+  --color-on-background: #f1f5f9;
+  --shadow-elevation-1: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-elevation-2: 0 2px 4px 0 rgb(0 0 0 / 0.4);
+  --shadow-elevation-3: 0 4px 10px 0 rgb(0 0 0 / 0.5);
+}
+
+@layer base {
+  :where(input, select, textarea) {
+    color: var(--color-on-surface);
+    accent-color: var(--color-primary);
+  }
+
+  :where(input:not([type='checkbox']):not([type='radio']), select, textarea, option) {
+    background-color: var(--color-surface);
+    color: var(--color-on-surface);
+  }
+
+  :where(input, select, textarea)::placeholder {
+    color: var(--color-on-surface-variant);
+  }
+
+  :where(button, a, input, select, textarea, summary):focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  :where(input, select, textarea, button):disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+/* Sonner 2.x public CSS variables; specificity beats its light defaults. */
+:root [data-sonner-toaster].medical-toaster {
+  --gray2: var(--color-surface-variant);
+  --gray5: var(--color-outline);
+  --gray11: var(--color-on-surface-variant);
+  --normal-bg: var(--color-surface);
+  --normal-text: var(--color-on-surface);
+  --normal-border: var(--color-outline);
+  --success-bg: var(--color-success-container);
+  --success-text: var(--color-on-success-container);
+  --success-border: var(--color-success);
+  --warning-bg: var(--color-warning-container);
+  --warning-text: var(--color-on-warning-container);
+  --warning-border: var(--color-warning);
+  --error-bg: var(--color-error-container);
+  --error-text: var(--color-on-error-container);
+  --error-border: var(--color-error);
+  --info-bg: var(--color-primary-container);
+  --info-text: var(--color-on-primary-container);
+  --info-border: var(--color-primary);
+}
+
+:root [data-sonner-toaster].medical-toaster [data-description] {
+  color: inherit;
+}
+
+:root [data-sonner-toaster].medical-toaster [data-sonner-toast] {
+  box-shadow: var(--shadow-elevation-3);
+}
+
+:root [data-sonner-toaster].medical-toaster [data-button] {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+:root [data-sonner-toaster].medical-toaster [data-cancel] {
+  background: var(--color-surface-variant);
+  color: var(--color-on-surface-variant);
+}
+
+:root [data-sonner-toaster].medical-toaster [data-close-button] {
+  background: var(--color-surface);
+  color: var(--color-on-surface);
+  border-color: var(--color-outline);
+}
+
+:root [data-sonner-toaster].medical-toaster [data-close-button]:hover {
+  background: var(--color-surface-variant);
+  border-color: var(--color-outline);
+}
+
+:root [data-sonner-toaster].medical-toaster :is([data-button], [data-close-button]):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+/* Documentary colors deliberately do not belong to the screen theme. */
+@media print {
+  :root {
+    color-scheme: light;
+    --document-paper: #ffffff;
+    --document-ink: #000000;
+    --document-outline: #777777;
+  }
+
+  :root[data-theme='dark'] {
+    color-scheme: light;
+  }
+
+  body {
+    background: var(--document-paper);
+    color: var(--document-ink);
+  }
+
+  [data-document-print] {
+    --color-background: var(--document-paper);
+    --color-on-background: var(--document-ink);
+    --color-surface: var(--document-paper);
+    --color-surface-variant: var(--document-paper);
+    --color-surface-container: var(--document-paper);
+    --color-surface-container-high: var(--document-paper);
+    --color-on-surface: var(--document-ink);
+    --color-on-surface-variant: var(--document-ink);
+    --color-outline: var(--document-outline);
+    --color-outline-variant: var(--document-outline);
+    background: var(--document-paper);
+    color: var(--document-ink);
+  }
+
+  /* Preserve explicit document paint independently of the screen theme. */
+  [data-document-print] * {
+    background-color: var(--document-paper);
+    color: var(--document-ink);
+    border-color: var(--document-outline);
+    box-shadow: none;
+  }
 }

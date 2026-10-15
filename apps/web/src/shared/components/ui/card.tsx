@@ -13,7 +13,7 @@ export function Card({ className, elevation = 1, children, ...props }: CardProps
 
   return (
     <div
-      className={cn('rounded-xl bg-surface p-6', shadows[elevation], className)}
+      className={cn('rounded-xl bg-surface p-6 text-on-surface', shadows[elevation], className)}
       {...props}
     >
       {children}

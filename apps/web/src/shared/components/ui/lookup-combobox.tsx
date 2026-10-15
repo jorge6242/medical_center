@@ -97,7 +97,7 @@ export function LookupCombobox<T extends LookupItem>({
       />
       {error && <p className="text-xs text-error">{error}</p>}
       {open && query.length > 0 && (
-        <div className="absolute z-20 mt-[4.5rem] max-h-60 w-full overflow-y-auto rounded-lg border border-outline bg-surface shadow-lg">
+        <div className="absolute z-20 mt-[4.5rem] max-h-60 w-full overflow-y-auto rounded-lg border border-outline bg-surface shadow-elevation-3">
           {!canSearch && (
             <p className="p-3 text-sm text-on-surface-variant">Escribí al menos 2 caracteres.</p>
           )}

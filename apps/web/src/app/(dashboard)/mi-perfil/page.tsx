@@ -6,7 +6,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import { useDoctorProfile, useUpdateDoctorProfile, useVerifyDoctorLicense } from '@/features/doctors-profile/hooks/use-doctor-profile';
+import {
+  useDoctorProfile,
+  useUpdateDoctorProfile,
+  useVerifyDoctorLicense,
+} from '@/features/doctors-profile/hooks/use-doctor-profile';
 import { Card } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -44,14 +48,14 @@ export default function MiPerfilPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'VERIFIED':
-        return 'bg-green-100 text-green-800';
+        return 'bg-success-container text-on-success-container';
       case 'PENDING':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-warning-container text-on-warning-container';
       case 'REJECTED':
       case 'NOT_FOUND':
-        return 'bg-red-100 text-red-800';
+        return 'bg-error-container text-on-error-container';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-surface-variant text-on-surface-variant';
     }
   };
 
@@ -121,10 +125,12 @@ export default function MiPerfilPage() {
           {isEditing ? (
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium text-on-surface">Nombre completo</label>
+                <label className="mb-1 block text-sm font-medium text-on-surface">
+                  Nombre completo
+                </label>
                 <Input {...form.register('name')} placeholder="Tu nombre" />
                 {form.formState.errors.name && (
-                  <p className="mt-1 text-sm text-red-500">{form.formState.errors.name.message}</p>
+                  <p className="mt-1 text-sm text-error">{form.formState.errors.name.message}</p>
                 )}
               </div>
 
@@ -132,7 +138,7 @@ export default function MiPerfilPage() {
                 <label className="mb-1 block text-sm font-medium text-on-surface">Email</label>
                 <Input {...form.register('email')} type="email" placeholder="tu@email.com" />
                 {form.formState.errors.email && (
-                  <p className="mt-1 text-sm text-red-500">{form.formState.errors.email.message}</p>
+                  <p className="mt-1 text-sm text-error">{form.formState.errors.email.message}</p>
                 )}
               </div>
 
@@ -166,7 +172,9 @@ export default function MiPerfilPage() {
               </div>
               <div>
                 <label className="text-xs text-on-surface-variant">Cédula</label>
-                <p className="text-on-surface">{profile.documentType}-{profile.documentId}</p>
+                <p className="text-on-surface">
+                  {profile.documentType}-{profile.documentId}
+                </p>
               </div>
             </div>
           )}
@@ -215,10 +223,10 @@ export default function MiPerfilPage() {
             </Button>
 
             {verifyMutation.isSuccess && (
-              <p className="text-sm text-green-600">Licencia verificada exitosamente</p>
+              <p className="text-sm text-success">Licencia verificada exitosamente</p>
             )}
             {verifyMutation.isError && (
-              <p className="text-sm text-red-600">Error al verificar. Intenta de nuevo.</p>
+              <p className="text-sm text-error">Error al verificar. Intenta de nuevo.</p>
             )}
           </div>
         </Card>

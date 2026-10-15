@@ -28,10 +28,10 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute inset-0 bg-scrim/40" onClick={onClose} />
       <div
         className={cn(
-          'relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-surface shadow-elevation-3',
+          'relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-surface text-on-surface shadow-elevation-3',
           className,
         )}
       >
@@ -44,9 +44,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="max-h-[70vh] overflow-y-auto px-6 pb-6">
-          {children}
-        </div>
+        <div className="max-h-[70vh] overflow-y-auto px-6 pb-6">{children}</div>
       </div>
     </div>
   );

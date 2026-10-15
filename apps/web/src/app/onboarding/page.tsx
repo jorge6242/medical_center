@@ -73,7 +73,7 @@ export default function OnboardingPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface">
         <Card className="w-full max-w-md p-8">
-          <h1 className="mb-2 text-2xl font-bold text-green-600">¡Cuenta activada!</h1>
+          <h1 className="mb-2 text-2xl font-bold text-success">¡Cuenta activada!</h1>
           <p className="mb-4 text-on-surface-variant">
             Tu cuenta ha sido activada exitosamente. Ya puedes iniciar sesión.
           </p>
@@ -102,7 +102,7 @@ export default function OnboardingPage() {
               placeholder="Mínimo 8 caracteres"
             />
             {form.formState.errors.password && (
-              <p className="mt-1 text-sm text-red-500">{form.formState.errors.password.message}</p>
+              <p className="mt-1 text-sm text-error">{form.formState.errors.password.message}</p>
             )}
           </div>
 
@@ -116,14 +116,16 @@ export default function OnboardingPage() {
               placeholder="Repite tu contraseña"
             />
             {form.formState.errors.confirmPassword && (
-              <p className="mt-1 text-sm text-red-500">
+              <p className="mt-1 text-sm text-error">
                 {form.formState.errors.confirmPassword.message}
               </p>
             )}
           </div>
 
           {isError && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{errorMessage}</div>
+            <div className="rounded-lg bg-error-container p-3 text-sm text-on-error-container">
+              {errorMessage}
+            </div>
           )}
 
           <Button type="submit" disabled={form.formState.isSubmitting} className="w-full">

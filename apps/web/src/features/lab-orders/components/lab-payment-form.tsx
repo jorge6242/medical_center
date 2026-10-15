@@ -1,53 +1,51 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Plus, Trash2 } from 'lucide-react';
+import { useFieldArray, useForm } from 'react-hook-form';
+import { z } from 'zod/v4';
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2 } from "lucide-react";
-import { useFieldArray, useForm } from "react-hook-form";
-import { z } from "zod/v4";
-
-import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
-import { Select } from "@/shared/components/ui/select";
-import { formatUsd } from "@/shared/utils/format";
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Select } from '@/shared/components/ui/select';
+import { formatUsd } from '@/shared/utils/format';
 import {
   calculatePaidUsdEquivalent,
   getMaxPaymentAmount,
   getPaymentCurrency,
   paymentTotalsMatch,
-} from "@/features/payments/utils/payment-calculations";
+} from '@/features/payments/utils/payment-calculations';
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from '@tanstack/react-query';
 
-import { useCreatePayment } from "@/features/payments/hooks/use-payments";
+import { useCreatePayment } from '@/features/payments/hooks/use-payments';
 
-import type { LabOrderDetail } from "@/features/lab-orders/services/lab-orders.service";
+import type { LabOrderDetail } from '@/features/lab-orders/services/lab-orders.service';
 
 const PAYMENT_METHODS = [
-  { value: "CASH_USD", label: "Efectivo USD" },
-  { value: "ZELLE", label: "Zelle" },
-  { value: "WIRE_TRANSFER_USD", label: "Transferencia USD" },
-  { value: "POS_USD_CARD", label: "POS USD (exento IGTF)" },
-  { value: "POS_BS", label: "POS Bs" },
-  { value: "PAGO_MOVIL", label: "Pago Móvil" },
+  { value: 'CASH_USD', label: 'Efectivo USD' },
+  { value: 'ZELLE', label: 'Zelle' },
+  { value: 'WIRE_TRANSFER_USD', label: 'Transferencia USD' },
+  { value: 'POS_USD_CARD', label: 'POS USD (exento IGTF)' },
+  { value: 'POS_BS', label: 'POS Bs' },
+  { value: 'PAGO_MOVIL', label: 'Pago Móvil' },
 ];
 
 const CURRENCIES = [
-  { value: "USD", label: "USD" },
-  { value: "VES", label: "VES (Bs)" },
+  { value: 'USD', label: 'USD' },
+  { value: 'VES', label: 'VES (Bs)' },
 ];
 
 const lineSchema = z.object({
   paymentMethod: z.string().min(1),
-  currency: z.enum(["USD", "VES"]),
-  amount: z.number().positive("Monto debe ser positivo"),
+  currency: z.enum(['USD', 'VES']),
+  amount: z.number().positive('Monto debe ser positivo'),
   referenceNumber: z.string().optional(),
 });
 
 const schema = z.object({
-  bcvExchangeRate: z.number().positive("Tasa BCV requerida"),
-  paymentLines: z.array(lineSchema).min(1, "Agrega al menos una línea de pago"),
+  bcvExchangeRate: z.number().positive('Tasa BCV requerida'),
+  paymentLines: z.array(lineSchema).min(1, 'Agrega al menos una línea de pago'),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -64,7 +62,7 @@ interface LabPaymentFormProps {
 export function LabPaymentForm({ order, onClose }: LabPaymentFormProps) {
   const queryClient = useQueryClient();
   const { mutate, isPending, error } = useCreatePayment(() => {
-    void queryClient.invalidateQueries({ queryKey: ["lab-orders"] });
+    void queryClient.invalidateQueries({ queryKey: ['lab-orders'] });
     onClose();
   });
 
@@ -78,30 +76,23 @@ export function LabPaymentForm({ order, onClose }: LabPaymentFormProps) {
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    mode: "onChange",
+    mode: 'onChange',
     defaultValues: {
-      paymentLines: [{ paymentMethod: "CASH_USD", currency: "USD", amount: 0 }],
+      paymentLines: [{ paymentMethod: 'CASH_USD', currency: 'USD', amount: 0 }],
     },
   });
 
   const { fields, append, remove } = useFieldArray({
     control,
-    name: "paymentLines",
+    name: 'paymentLines',
   });
-  const paymentLines = watch("paymentLines");
+  const paymentLines = watch('paymentLines');
 
   const orderTotal = parseFloat(order.totalUsd);
-  const bcvExchangeRate = watch("bcvExchangeRate");
-  const totalPaidUsdEquivalent = calculatePaidUsdEquivalent(
-    paymentLines,
-    bcvExchangeRate,
-  );
-  const canRegisterPayment = paymentTotalsMatch(
-    totalPaidUsdEquivalent,
-    orderTotal,
-  );
-  const hasValidExchangeRate =
-    Number.isFinite(bcvExchangeRate) && bcvExchangeRate > 0;
+  const bcvExchangeRate = watch('bcvExchangeRate');
+  const totalPaidUsdEquivalent = calculatePaidUsdEquivalent(paymentLines, bcvExchangeRate);
+  const canRegisterPayment = paymentTotalsMatch(totalPaidUsdEquivalent, orderTotal);
+  const hasValidExchangeRate = Number.isFinite(bcvExchangeRate) && bcvExchangeRate > 0;
 
   const getLineMaxAmount = (index: number) =>
     getMaxPaymentAmount(paymentLines, index, orderTotal, bcvExchangeRate);
@@ -113,35 +104,31 @@ export function LabPaymentForm({ order, onClose }: LabPaymentFormProps) {
     });
   };
 
-  const handleAmountChange = (
-    index: number,
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleAmountChange = (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
     const amount = Number(event.target.value);
-    setValue(
-      `paymentLines.${index}.amount`,
-      Math.min(amount, getLineMaxAmount(index)),
-      { shouldValidate: true, shouldDirty: true },
-    );
+    setValue(`paymentLines.${index}.amount`, Math.min(amount, getLineMaxAmount(index)), {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
   };
 
   const onSubmit = (data: FormData) => {
     if (!paymentTotalsMatch(totalPaidUsdEquivalent, orderTotal)) {
-      setError("paymentLines", {
-        type: "manual",
+      setError('paymentLines', {
+        type: 'manual',
         message: `El pago debe totalizar ${formatUsd(orderTotal)}. Equivalente recibido: ${formatUsd(totalPaidUsdEquivalent)}`,
       });
       return;
     }
 
-    const testNames = order.tests.map((t) => t.testName).join(", ");
+    const testNames = order.tests.map((t) => t.testName).join(', ');
 
     mutate({
       patientId: order.patient.id,
       bcvExchangeRate: data.bcvExchangeRate,
       idempotencyKey: generateUUID(),
       item: {
-        itemType: "LAB" as const,
+        itemType: 'LAB' as const,
         description: `Laboratorio - ${testNames}`,
         labOrderId: order.id,
       },
@@ -155,9 +142,7 @@ export function LabPaymentForm({ order, onClose }: LabPaymentFormProps) {
       <div className="rounded-lg bg-surface-variant p-4">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-sm text-on-surface-variant">Paciente</span>
-          <span className="text-sm font-medium text-on-surface">
-            {order.patient.name}
-          </span>
+          <span className="text-sm font-medium text-on-surface">{order.patient.name}</span>
         </div>
         <div className="mb-3 border-b border-outline-variant pb-3">
           <span className="text-sm text-on-surface-variant">Documento</span>
@@ -168,30 +153,21 @@ export function LabPaymentForm({ order, onClose }: LabPaymentFormProps) {
         <p className="mb-2 text-sm font-medium text-on-surface">Tests:</p>
         <div className="flex flex-col gap-1">
           {order.tests.map((test) => (
-            <div
-              key={test.labTestId}
-              className="flex items-center justify-between text-sm"
-            >
+            <div key={test.labTestId} className="flex items-center justify-between text-sm">
               <span className="text-on-surface">{test.testName}</span>
-              <span className="text-on-surface-variant">
-                {formatUsd(test.priceUsd)}
-              </span>
+              <span className="text-on-surface-variant">{formatUsd(test.priceUsd)}</span>
             </div>
           ))}
         </div>
         <div className="mt-3 flex items-center justify-between border-t border-outline-variant pt-3">
-          <span className="text-sm font-medium text-on-surface">
-            Total orden:
-          </span>
-          <span className="text-lg font-bold text-primary">
-            {formatUsd(order.totalUsd)}
-          </span>
+          <span className="text-sm font-medium text-on-surface">Total orden:</span>
+          <span className="text-lg font-bold text-primary">{formatUsd(order.totalUsd)}</span>
         </div>
       </div>
 
       {/* BCV Rate */}
       <Input
-        {...register("bcvExchangeRate", { valueAsNumber: true })}
+        {...register('bcvExchangeRate', { valueAsNumber: true })}
         id="bcvExchangeRate"
         label="Tasa BCV (Bs/USD)"
         type="number"
@@ -209,9 +185,7 @@ export function LabPaymentForm({ order, onClose }: LabPaymentFormProps) {
             variant="outline"
             size="sm"
             disabled={!hasValidExchangeRate}
-            onClick={() =>
-              append({ paymentMethod: "CASH_USD", currency: "USD", amount: 0 })
-            }
+            onClick={() => append({ paymentMethod: 'CASH_USD', currency: 'USD', amount: 0 })}
           >
             <Plus className="mr-1 h-3 w-3" />
             Agregar
@@ -234,13 +208,9 @@ export function LabPaymentForm({ order, onClose }: LabPaymentFormProps) {
                   setValue(`paymentLines.${index}.paymentMethod`, method, {
                     shouldValidate: true,
                   });
-                  setValue(
-                    `paymentLines.${index}.currency`,
-                    getPaymentCurrency(method),
-                    {
-                      shouldValidate: true,
-                    },
-                  );
+                  setValue(`paymentLines.${index}.currency`, getPaymentCurrency(method), {
+                    shouldValidate: true,
+                  });
                 }}
                 id={`paymentMethod-${index}`}
                 label="Método"
@@ -277,7 +247,7 @@ export function LabPaymentForm({ order, onClose }: LabPaymentFormProps) {
                 type="button"
                 onClick={() => setMaximumAmount(index)}
                 disabled={!hasValidExchangeRate || getLineMaxAmount(index) <= 0}
-                className="mb-0.5 rounded-lg border border-outline px-2 py-2 text-xs font-semibold text-primary hover:bg-primary-container disabled:text-on-surface-variant"
+                className="mb-0.5 rounded-lg border border-outline px-2 py-2 text-xs font-semibold text-primary hover:bg-primary-container hover:text-on-primary-container disabled:text-on-surface-variant"
               >
                 Max
               </button>
@@ -298,25 +268,19 @@ export function LabPaymentForm({ order, onClose }: LabPaymentFormProps) {
           </div>
         ))}
 
-        {errors.paymentLines && (
-          <p className="text-xs text-error">{errors.paymentLines.message}</p>
-        )}
+        {errors.paymentLines && <p className="text-xs text-error">{errors.paymentLines.message}</p>}
       </div>
 
       {/* Totals */}
       <div className="flex items-center justify-between rounded-lg bg-surface-variant px-4 py-3">
         <span className="text-sm text-on-surface-variant">Total pagado:</span>
-        <span
-          className={`text-sm font-bold ${canRegisterPayment ? "text-success" : "text-error"}`}
-        >
-          {formatUsd(totalPaidUsdEquivalent)} {canRegisterPayment ? "✓" : ""}
+        <span className={`text-sm font-bold ${canRegisterPayment ? 'text-success' : 'text-error'}`}>
+          {formatUsd(totalPaidUsdEquivalent)} {canRegisterPayment ? '✓' : ''}
         </span>
       </div>
 
       {/* Error */}
-      {error && (
-        <p className="text-sm text-error">{(error as Error).message}</p>
-      )}
+      {error && <p className="text-sm text-error">{(error as Error).message}</p>}
 
       {/* Actions */}
       <div className="flex justify-end gap-3">

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useAuditLogs } from '@/features/audit-logs/hooks/use-audit-logs';
 import { AuditLogTable } from '@/features/audit-logs/components/audit-log-table';
+import { Input } from '@/shared/components/ui/input';
 
 export default function AuditoriaPage() {
   const [filters, setFilters] = useState({ limit: 25 });
@@ -29,14 +30,14 @@ export default function AuditoriaPage() {
     <main className="space-y-4">
       <h1 className="text-2xl font-semibold">Auditoría</h1>
       <div className="flex gap-2">
-        <input
+        <Input
           aria-label="Entidad"
           placeholder="Entidad"
           onChange={(event) =>
             setFilters((current) => ({ ...current, entity: event.target.value, cursor: undefined }))
           }
         />
-        <input
+        <Input
           aria-label="Acción"
           placeholder="Acción"
           onChange={(event) =>
