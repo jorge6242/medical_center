@@ -171,5 +171,13 @@ Corrida final del incidente: **40/40 tests** con integración activada (24 desig
 
 ## Key Learnings:
 
+## Corrección precommit — import sin uso (2026-10-15)
+
+- Causa verificada: `lab-payment-form.tsx` importaba `useState` sin utilizarlo. El import ya existía antes del cambio de colores; al incluir el archivo en staging, lint-staged lo detectó con `--max-warnings 0`.
+- Corrección: eliminado únicamente ese import; sin cambios de comportamiento.
+- Validación dentro del contenedor web: ESLint del archivo con `--max-warnings 0` y Prettier `--check` aprobados. Sin builds ni navegador.
+- Se preservó el index del usuario: la corrección y esta evidencia requieren agregarse nuevamente a staging antes de reintentar el commit. No se ejecutaron git add/reset/stash/commit.
+- Engram no está disponible en esta sesión; causa y evidencia quedan preservadas en este OpenSpec.
+
 1. Un control cuyo nombre cambia para describir destino funciona semánticamente como botón de acción, no como switch con label variable.
 2. Track/thumb pueden distinguirse usando tokens existentes contrastados sin modificar el switch genérico de formularios.
