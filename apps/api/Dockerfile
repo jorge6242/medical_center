@@ -41,6 +41,7 @@ COPY --from=builder --chown=nestjs:nodejs /app/apps/api/tsconfig.json ./apps/api
 COPY --from=builder --chown=nestjs:nodejs /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=builder --chown=nestjs:nodejs /app/apps/api/dist ./apps/api/dist
 COPY --from=builder --chown=nestjs:nodejs /app/apps/api/prisma ./apps/api/prisma
+COPY --from=builder --chown=nestjs:nodejs /app/apps/api/src/common/provisioning ./apps/api/src/common/provisioning
 COPY --from=builder --chown=nestjs:nodejs \
   /app/apps/api/src/audit-log/audit-writer.ts \
   /app/apps/api/src/audit-log/audit-catalog.ts \
