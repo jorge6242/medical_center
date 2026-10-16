@@ -10,7 +10,12 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+interface ApiRequestInit extends RequestInit {
+  redirectOnUnauthorized?: boolean;
+}
+
+export async function apiFetch(path: string, init?: ApiRequestInit): Promise<Response> {
+  const { redirectOnUnauthorized = true, ...requestInit } = init ?? {};
   const isServer = typeof window === 'undefined';
   const isFormData = typeof FormData !== 'undefined' && init?.body instanceof FormData;
 
@@ -29,12 +34,12 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   const isPlatformRequest = path === '/platform' || path.startsWith('/platform/');
   const url = !isServer && isPlatformRequest ? `/api${path}` : `${API_URL}${path}`;
   const res = await fetch(url, {
-    ...init,
+    ...requestInit,
     headers,
     credentials: isServer ? undefined : 'include',
   });
 
-  if (!isServer && res.status === 401) {
+  if (!isServer && res.status === 401 && redirectOnUnauthorized) {
     redirectToLogin(path);
   }
 
@@ -54,7 +59,7 @@ function redirectToLogin(apiPath: string): void {
 
 export async function apiJson<T>(
   path: string,
-  init?: RequestInit & { responseType?: 'json' | 'blob' },
+  init?: ApiRequestInit & { responseType?: 'json' | 'blob' },
 ): Promise<T> {
   const res = await apiFetch(path, init);
   if (!res.ok) {

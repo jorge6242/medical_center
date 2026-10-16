@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { pdf } from '@react-pdf/renderer';
 import { FileDown } from 'lucide-react';
@@ -26,40 +26,63 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 export function DoctorPayoutDetailPanel({ payoutId }: { payoutId: string }) {
-  const { data: payout, isLoading, error } = useDoctorPayout(payoutId);
+  const { data: payout, isLoading, isFetching, error } = useDoctorPayout(payoutId);
   const { data: appConfig } = useAppConfig();
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
+  const downloadGeneration = useRef(0);
   const notification = useNotification();
+  useEffect(() => {
+    downloadGeneration.current += 1;
+    setIsDownloading(false);
+    setDownloadError('');
+    return () => {
+      downloadGeneration.current += 1;
+    };
+  }, [payoutId]);
 
   if (isLoading) return <Card className="p-4">Cargando pago de honorarios...</Card>;
-  if (!payout)
+  if (error)
     return (
-      <Card className="p-4">
-        {error instanceof Error ? error.message : 'Pago de honorarios no encontrado.'}
+      <Card role="alert" className="p-4">
+        {error.message}
+      </Card>
+    );
+  if (!payout || payout.id !== payoutId)
+    return (
+      <Card role="alert" className="p-4">
+        Pago de honorarios no encontrado.
       </Card>
     );
 
   const downloadPdf = async () => {
+    if (isFetching || isDownloading) return;
+    const generation = ++downloadGeneration.current;
     setIsDownloading(true);
+    setDownloadError('');
     try {
       const blob = await pdf(
         <DoctorPayoutPDF payout={payout} tenantName={appConfig?.tenant.name} />,
       ).toBlob();
+      if (generation !== downloadGeneration.current) return;
       downloadBlob(blob, `pago-honorarios-${payout.id}.pdf`);
       notification.success('El comprobante de pago de honorarios se descargó correctamente');
     } catch (downloadError: unknown) {
-      notification.error(
+      if (generation !== downloadGeneration.current) return;
+      const message =
         downloadError instanceof Error
           ? downloadError.message
-          : 'No se pudo generar el comprobante de pago de honorarios',
-      );
+          : 'No se pudo generar el comprobante de pago de honorarios';
+      setDownloadError(message);
+      notification.error(message);
     } finally {
-      setIsDownloading(false);
+      if (generation === downloadGeneration.current) setIsDownloading(false);
     }
   };
 
   return (
     <div className="flex flex-col gap-6">
+      {downloadError && <p role="alert">{downloadError}</p>}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-on-surface">Detalle de pago de honorarios</h1>
@@ -67,7 +90,7 @@ export function DoctorPayoutDetailPanel({ payoutId }: { payoutId: string }) {
             Consultas incluidas y monto pagado al profesional.
           </p>
         </div>
-        <Button onClick={downloadPdf} isLoading={isDownloading}>
+        <Button onClick={downloadPdf} isLoading={isDownloading} disabled={isFetching}>
           <FileDown className="h-4 w-4" />
           Descargar detalle PDF
         </Button>

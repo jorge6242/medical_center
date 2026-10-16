@@ -35,7 +35,7 @@ export function LoginForm({ webSlug }: Props) {
     queryKey: accessToken ? ['tenant-access-context', accessToken] : ['tenant-by-webslug', webSlug],
     queryFn: () =>
       accessToken ? resolveAccessContext(accessToken) : resolveByWebSlug(webSlug as string),
-    enabled: Boolean(accessToken ?? webSlug),
+    enabled: Boolean(accessToken || webSlug),
     retry: false,
   });
 
@@ -76,7 +76,7 @@ export function LoginForm({ webSlug }: Props) {
         <h1 className="mb-2 text-2xl font-bold text-on-surface">Iniciar sesión</h1>
         <p className="mb-6 text-sm text-on-surface-variant">Accede al panel administrativo</p>
 
-        {contextQuery.isPending && (
+        {contextQuery.isLoading && (
           <p className="text-sm text-on-surface-variant">Validando acceso…</p>
         )}
         {!accessToken && !webSlug && (
@@ -122,7 +122,10 @@ export function LoginForm({ webSlug }: Props) {
             />
 
             {error && (
-              <p className="rounded-lg bg-error-container px-3 py-2 text-sm text-on-error-container">
+              <p
+                role="alert"
+                className="rounded-lg bg-error-container px-3 py-2 text-sm text-on-error-container"
+              >
                 {error.message}
               </p>
             )}

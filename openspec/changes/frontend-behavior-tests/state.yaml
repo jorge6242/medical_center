@@ -2,19 +2,25 @@ change: frontend-behavior-tests
 artifact_store: openspec
 execution_mode: auto
 delivery_strategy: ask-on-risk
-updated: '2026-10-14'
-status: planning-complete
-implementation_status: not-started
-status_note: 'Solo planificación completada; implementación y ejecución de pruebas no iniciadas. Se requiere autorización antes de apply.'
-scope_authorized: planning-only
+updated: '2026-10-16'
+status: Honorarios-components-verified-awaiting-new-scope-approval
+implementation_status: in-progress
+status_note: 'E047 Honorarios54C verificados(V08=10,V09=28,V10=16);179tests/21suites,8/24principales completas,16pendientes+2opcionales. Sin E2E/rutas integrales;otras vistas requieren autorización.'
+scope_authorized: previous-scopes-plus-V08-V10-scoped-auto-chain
+v01_component_scope_implemented: true
+v01_component_scope_verified: true
+v01_independent_verification_pending: false
+v03_component_scope_verified: true
+v03_independent_reverification_pending: false
+latest_apply_evidence: E046
 phases:
   explore: complete
   proposal: complete
   spec: complete
   design: complete
   tasks: complete
-  apply: not-started
-  verify: not-started
+  apply: in-progress
+  verify: partial-V01-V03-V04-V05-V06-V07-V08-V09-V10-authorized-scopes-passed
   archive: not-started
 artifacts:
   exploration: exploration.md
@@ -24,21 +30,184 @@ artifacts:
   design: design.md
   tasks: tasks.md
   progress: progress.md
+  apply_progress: apply-progress.md
+  verify_report: verify-report.md
+  impact_summary: impact-summary.md
+latest_summary_evidence: E048
+impact_audit:
+  audit_kind: runtime-source-diff-and-regression-rerun
+  production_runtime_changes: true
+  existing_web_runtime_files_modified: 19
+  evidence: E048
+verification:
+  scope: infrastructure-V01-V03-V04-V05-V06-V07-V08-V09-V10-components-and-api-control
+  verdict: pass-authorized-component-scopes-with-warnings
+  critical: 0
+  warnings: 2
+  suggestions: 1
+  evidence: E047
+  previous_evidence: E045
+  ledger_evidence: E047
+  resolved_critical: 'E010 login401 navigation resolved E011 and independently verified E012'
+  task_2_1_complete: true
+  documentation_followup: 'Metadata warning resolved in E004; historical E003/verify-report unchanged. Global lint warning remains.'
+  full_change_verified: false
+  v03_components_tests_passed: 10
+  v01_components_tests_executed_green: 14
+  v01_api_boundary_controls_passed: 1
+  v01_task_3_1_1_verified: true
+  task_3_1_complete: false
+  total_web_tests_passed: 179
+  task_2_3_complete: true
+  v05_components_tests_passed: 26
+  task_3_2_complete: true
+  v04_components_tests_passed: 25
+  v04_b_tests_passed: 8
+  v06_components_tests_passed: 22
+  v07_components_tests_passed: 23
+  task_3_3_complete: true
+  task_3_4_complete: true
+  task_3_5_complete: true
+  honorarios_components_tests_passed: 54
 progress:
   implementation_tasks_total: 24
-  implementation_tasks_verified: 0
+  implementation_tasks_verified: 8
+  implementation_tasks_pending: 16
+  v01_components_tests_executed: 14
+  v01_api_boundary_controls_executed: 1
+  total_web_tests_executed: 179
   optional_tasks_deferred: 2
   routes_total: 34
-  recommended_routes_pending: 29
+  recommended_routes_pending: 20
+  recommended_routes_partial: 9
   routes_verified: 0
   routes_deferred: 2
   routes_without_own_suite: 3
-  test_execution: none
-next_phase: apply
-next_slice: '1.1'
+  test_execution: 174-business-components-1-api-control-4-harness-controls-179-passing-tests
+next_phase: await-scope-authorization
+next_slice: 'Honorarios verificados;otras vistas/2.2/E2E requieren autorización;no archive'
+v10_delivery_strategy: root-subdivided-A-B-within-authorized-auto-chain
+v08_v10_delivery_strategy: scoped-auto-chain-with-root-B1-B2-subdivision
+v08_implemented: true
+v08_independent_verification_pending: false
+v08_component_scope_verified: true
+v08_verification_evidence: E035
+v08_tests_passed: 10
+v08_task_3_5_1_verified: true
 prerequisites_before_apply:
-  - Obtain implementation authorization.
-  - Resolve chained delivery or explicit size exception (forecast exceeds 400 lines).
+  - V01 component scope verified E012; parent 3.1 remains open for V02, not authorized.
+  - V03 authorized as independent slice under 400 new lines; infrastructure/lock separate. Whole-roadmap chain strategy still pending.
+  - V03 E008,V04 E014/E016,V05 A/B/C E018/E020/E022 verified; ConsultationPaymentForm2.2 and E2E excluded.
 prerequisites_for_behavior_suites:
-  - Bootstrap frontend runner and Docker mounts (tasks 1.1 and 1.2).
+  - Infrastructure 1.1 and 1.2 independently verified in E003; full change verification remains pending.
   - Resolve domain contract discrepancies before affected suites (task 1.3).
+v04_delivery_strategy: approved-chain-V04-two-slices
+v04_a_implemented: true
+v04_a_independent_verification_pending: false
+v04_a_verified: true
+v04_a_verification_evidence: E014
+v04_b_implemented: true
+v04_component_scope_verified: true
+v04_component_scope_implemented: true
+v04_b_independent_verification_pending: false
+v04_b_verification_evidence: E016
+implementation_tasks_completed: 8
+
+# E017: avance V05-A; verificación acumulada E016 sigue histórica hasta revisión.
+v05_delivery_strategy: approved-chain-V05-three-slices
+v05_a_implemented: true
+v05_a_independent_verification_pending: false
+v05_a_verified: true
+v05_a_verification_evidence: E018
+v05_a_tests_passed: 10
+v05_b_implemented: true
+v05_b_independent_verification_pending: false
+v05_b_verified: true
+v05_b_verification_evidence: E020
+v05_b_tests_passed: 8
+v05_c_implemented: true
+v05_c_independent_verification_pending: false
+v05_c_verified: true
+v05_c_verification_evidence: E022
+v05_c_tests_passed: 8
+v05_component_scope_implemented: true
+v05_component_scope_verified: true
+
+# E019: PaymentForm B implementado; E018/A preservada; C pendiente, padre2.3 abierto.
+
+# E024: solo V06-A implementada; B/C y V07 autorizadas secuenciales, no verificadas.
+v06_v07_delivery_strategy: approved-chain-V06-V07-five-slices
+v06_a_implemented: true
+v06_a_verified: true
+v06_a_independent_verification_pending: false
+v06_a_verification_evidence: E025
+v06_a_tests_passed: 9
+v06_component_scope_verified: true
+
+# E026: V06-B ejecutada, revisión independiente pendiente; C/V07 aún pendientes.
+v06_b_implemented: true
+v06_b_verified: true
+v06_b_independent_verification_pending: false
+v06_b_verification_evidence: E027
+v06_b_tests_passed: 6
+
+# E028: V06-C ejecutada7C;A/B verificadas,alcance total pendiente revisión C.
+v06_c_implemented: true
+v06_c_verified: true
+v06_c_independent_verification_pending: false
+v06_c_tests_passed: 7
+v06_component_scope_implemented: true
+v06_c_verification_evidence: E029
+
+# E030: V07-A ejecutada11C;B pendiente,3.4 abierta,6/24principales completas.
+v07_a_implemented: true
+v07_a_verified: true
+v07_a_independent_verification_pending: false
+v07_a_tests_passed: 11
+v07_component_scope_verified: true
+v07_a_verification_evidence: E031
+
+# E032: V07-B ejecutada12C;A verificada,3.4 ejecutada pendiente revisión B.
+v07_b_implemented: true
+v07_b_verified: true
+v07_b_independent_verification_pending: false
+v07_b_tests_passed: 12
+v07_component_scope_implemented: true
+v07_b_verification_evidence: E033
+v09_a1_component_scope_verified: true
+v09_a1_independent_verification_pending: false
+v09_a1_task_3_5_2_1_verified: true
+v09_a1_verification_evidence: E037
+v09_a1_tests_passed: 6
+v09_a2_component_scope_verified: true
+v09_a2_independent_verification_pending: false
+v09_a2_task_3_5_2_2_verified: true
+v09_a2_verification_evidence: E039
+v09_a2_tests_passed: 8
+v09_a_task_3_5_2_verified: true
+v09_b1_component_scope_verified: true
+v09_b1_independent_verification_pending: false
+v09_b1_task_3_5_3_1_verified: true
+v09_b1_verification_evidence: E041
+v09_b1_tests_passed: 4
+v09_b2_component_scope_verified: true
+v09_b2_independent_verification_pending: false
+v09_b2_task_3_5_3_2_verified: true
+v09_b2_verification_evidence: E043
+v09_b2_tests_passed: 10
+v09_b_task_3_5_3_verified: true
+v09_component_scope_verified: true
+v09_component_tests_passed: 28
+v10_a_component_scope_verified: true
+v10_a_independent_verification_pending: false
+v10_a_task_3_5_4_1_verified: true
+v10_a_verification_evidence: E045
+v10_a_tests_passed: 9
+v10_b_component_scope_verified: true
+v10_b_independent_verification_pending: false
+v10_b_task_3_5_4_2_verified: true
+v10_b_verification_evidence: E047
+v10_b_tests_passed: 7
+v10_task_3_5_4_verified: true
+v10_component_scope_verified: true
+v10_component_tests_passed: 16

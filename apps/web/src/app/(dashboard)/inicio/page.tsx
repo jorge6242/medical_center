@@ -30,7 +30,7 @@ function SpecialtyConsultation({ onClose }: { onClose: () => void }) {
   const [search, setSearch] = useState('');
   const [specialtyId, setSpecialtyId] = useState('');
   const [doctorId, setDoctorId] = useState('');
-  const { data: specialties = [] } = useSpecialties();
+  const { data: specialties = [], isError: specialtiesError } = useSpecialties();
   const filtered = useMemo(
     () =>
       specialties.filter((specialty) =>
@@ -38,12 +38,16 @@ function SpecialtyConsultation({ onClose }: { onClose: () => void }) {
       ),
     [specialties, search],
   );
-  const { data, isLoading } = useQuery({
+  const {
+    data,
+    isLoading,
+    isError: doctorsError,
+  } = useQuery({
     queryKey: ['specialty-doctors', specialtyId],
     queryFn: () => apiJson<SpecialtyDoctorsResponse>(`/doctors/by-specialty/${specialtyId}`),
     enabled: Boolean(specialtyId),
   });
-  const doctor = data?.doctors.find((item) => item.id === doctorId);
+  const doctor = doctorsError ? undefined : data?.doctors.find((item) => item.id === doctorId);
   return (
     <div className="flex flex-col gap-4">
       <Input
@@ -52,28 +56,31 @@ function SpecialtyConsultation({ onClose }: { onClose: () => void }) {
         label="Buscar especialidad"
         placeholder="Ej. Cardiología"
       />
+      {specialtiesError && <p role="alert">No se pudieron cargar las especialidades.</p>}
       <div className="max-h-40 overflow-y-auto rounded-lg border border-outline p-2">
-        {filtered.map((specialty) => (
-          <button
-            key={specialty.id}
-            type="button"
-            onClick={() => {
-              setSpecialtyId(specialty.id);
-              setDoctorId('');
-            }}
-            className={`w-full rounded-md px-3 py-2 text-left text-sm ${specialtyId === specialty.id ? 'bg-primary-container text-on-primary-container' : 'hover:bg-surface-variant'}`}
-          >
-            {specialty.name}
-          </button>
-        ))}
-        {filtered.length === 0 && (
+        {!specialtiesError &&
+          filtered.map((specialty) => (
+            <button
+              key={specialty.id}
+              type="button"
+              onClick={() => {
+                setSpecialtyId(specialty.id);
+                setDoctorId('');
+              }}
+              className={`w-full rounded-md px-3 py-2 text-left text-sm ${specialtyId === specialty.id ? 'bg-primary-container text-on-primary-container' : 'hover:bg-surface-variant'}`}
+            >
+              {specialty.name}
+            </button>
+          ))}
+        {!specialtiesError && filtered.length === 0 && (
           <p className="p-2 text-sm text-on-surface-variant">
             No hay especialidades que coincidan.
           </p>
         )}
       </div>
+      {doctorsError && <p role="alert">No se pudieron cargar los doctores.</p>}
       {isLoading && <p className="text-sm text-on-surface-variant">Buscando doctores…</p>}
-      {data && (
+      {data && !doctorsError && (
         <div className="flex flex-col gap-2">
           <p className="text-sm font-semibold">Doctores de {data.specialty.name}</p>
           {data.doctors.map((item) => (
@@ -125,7 +132,7 @@ function SpecialtyConsultation({ onClose }: { onClose: () => void }) {
 }
 
 export default function InicioPage() {
-  const { data, isLoading } = useHomeStats();
+  const { data, isLoading, isError } = useHomeStats();
 
   const [showConsultationModal, setShowConsultationModal] = useState(false);
   const [showLabPricesModal, setShowLabPricesModal] = useState(false);
@@ -177,45 +184,55 @@ export default function InicioPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <MetricCard label="Pacientes hoy" value={data?.patientsToday ?? 0} loading={isLoading} />
-        <MetricCard label="Doctores hoy" value={data?.doctorsToday ?? 0} loading={isLoading} />
-        <MetricCard
-          label="Doctores con honorarios pendientes"
-          value={data?.pendingPayoutDoctors ?? 0}
-          loading={isLoading}
-        />
-        <MetricCard
-          label="Honorarios pendientes"
-          value={data ? formatUsd(data.pendingPayoutAmountUsd) : '$0.00'}
-          loading={isLoading}
-        />
-      </div>
+      {isError ? (
+        <p role="alert">No se pudo cargar el resumen.</p>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <MetricCard
+              label="Pacientes hoy"
+              value={data?.patientsToday ?? 0}
+              loading={isLoading}
+            />
+            <MetricCard label="Doctores hoy" value={data?.doctorsToday ?? 0} loading={isLoading} />
+            <MetricCard
+              label="Doctores con honorarios pendientes"
+              value={data?.pendingPayoutDoctors ?? 0}
+              loading={isLoading}
+            />
+            <MetricCard
+              label="Honorarios pendientes"
+              value={data ? formatUsd(data.pendingPayoutAmountUsd) : '$0.00'}
+              loading={isLoading}
+            />
+          </div>
 
-      <Card>
-        <div className="flex flex-col gap-4">
-          <h2 className="text-lg font-semibold text-on-surface">Alertas</h2>
-          {data?.alerts?.length ? (
-            <div className="space-y-3">
-              {data.alerts.map((alert, index) => (
-                <div key={index} className="rounded-lg border border-outline-variant p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium text-on-surface">{alert.title}</p>
-                      <p className="text-sm text-on-surface-variant">{alert.message}</p>
+          <Card>
+            <div className="flex flex-col gap-4">
+              <h2 className="text-lg font-semibold text-on-surface">Alertas</h2>
+              {data?.alerts?.length ? (
+                <div className="space-y-3">
+                  {data.alerts.map((alert, index) => (
+                    <div key={index} className="rounded-lg border border-outline-variant p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-on-surface">{alert.title}</p>
+                          <p className="text-sm text-on-surface-variant">{alert.message}</p>
+                        </div>
+                        <Badge variant={alert.severity === 'warning' ? 'warning' : 'secondary'}>
+                          {alert.severity}
+                        </Badge>
+                      </div>
                     </div>
-                    <Badge variant={alert.severity === 'warning' ? 'warning' : 'secondary'}>
-                      {alert.severity}
-                    </Badge>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <p className="text-sm text-on-surface-variant">Sin alertas por ahora.</p>
+              )}
             </div>
-          ) : (
-            <p className="text-sm text-on-surface-variant">Sin alertas por ahora.</p>
-          )}
-        </div>
-      </Card>
+          </Card>
+        </>
+      )}
 
       <Modal
         open={showConsultationModal}

@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Trash2 } from 'lucide-react';
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -57,14 +59,19 @@ function generateUUID(): string {
 interface LabPaymentFormProps {
   order: LabOrderDetail;
   onClose: () => void;
+  onPendingChange?: (pending: boolean, order: LabOrderDetail) => void;
 }
 
-export function LabPaymentForm({ order, onClose }: LabPaymentFormProps) {
+export function LabPaymentForm({ order, onClose, onPendingChange }: LabPaymentFormProps) {
   const queryClient = useQueryClient();
   const { mutate, isPending, error } = useCreatePayment(() => {
     void queryClient.invalidateQueries({ queryKey: ['lab-orders'] });
     onClose();
   });
+
+  useEffect(() => {
+    onPendingChange?.(isPending, order);
+  }, [isPending, order, onPendingChange]);
 
   const {
     register,
@@ -113,6 +120,7 @@ export function LabPaymentForm({ order, onClose }: LabPaymentFormProps) {
   };
 
   const onSubmit = (data: FormData) => {
+    if (isPending) return;
     if (!paymentTotalsMatch(totalPaidUsdEquivalent, orderTotal)) {
       setError('paymentLines', {
         type: 'manual',
@@ -138,163 +146,174 @@ export function LabPaymentForm({ order, onClose }: LabPaymentFormProps) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
-      {/* Order Summary */}
-      <div className="rounded-lg bg-surface-variant p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm text-on-surface-variant">Paciente</span>
-          <span className="text-sm font-medium text-on-surface">{order.patient.name}</span>
-        </div>
-        <div className="mb-3 border-b border-outline-variant pb-3">
-          <span className="text-sm text-on-surface-variant">Documento</span>
-          <span className="ml-2 text-sm font-medium text-on-surface">
-            {order.patient.documentType}-{order.patient.documentId}
-          </span>
-        </div>
-        <p className="mb-2 text-sm font-medium text-on-surface">Tests:</p>
-        <div className="flex flex-col gap-1">
-          {order.tests.map((test) => (
-            <div key={test.labTestId} className="flex items-center justify-between text-sm">
-              <span className="text-on-surface">{test.testName}</span>
-              <span className="text-on-surface-variant">{formatUsd(test.priceUsd)}</span>
-            </div>
-          ))}
-        </div>
-        <div className="mt-3 flex items-center justify-between border-t border-outline-variant pt-3">
-          <span className="text-sm font-medium text-on-surface">Total orden:</span>
-          <span className="text-lg font-bold text-primary">{formatUsd(order.totalUsd)}</span>
-        </div>
-      </div>
-
-      {/* BCV Rate */}
-      <Input
-        {...register('bcvExchangeRate', { valueAsNumber: true })}
-        id="bcvExchangeRate"
-        label="Tasa BCV (Bs/USD)"
-        type="number"
-        step="0.0001"
-        placeholder="36.50"
-        error={errors.bcvExchangeRate?.message}
-      />
-
-      {/* Payment Lines */}
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-on-surface">Líneas de pago</p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={!hasValidExchangeRate}
-            onClick={() => append({ paymentMethod: 'CASH_USD', currency: 'USD', amount: 0 })}
-          >
-            <Plus className="mr-1 h-3 w-3" />
-            Agregar
-          </Button>
+      <fieldset disabled={isPending} className="contents">
+        {/* Order Summary */}
+        <div className="rounded-lg bg-surface-variant p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-sm text-on-surface-variant">Paciente</span>
+            <span className="text-sm font-medium text-on-surface">{order.patient.name}</span>
+          </div>
+          <div className="mb-3 border-b border-outline-variant pb-3">
+            <span className="text-sm text-on-surface-variant">Documento</span>
+            <span className="ml-2 text-sm font-medium text-on-surface">
+              {order.patient.documentType}-{order.patient.documentId}
+            </span>
+          </div>
+          <p className="mb-2 text-sm font-medium text-on-surface">Tests:</p>
+          <div className="flex flex-col gap-1">
+            {order.tests.map((test) => (
+              <div key={test.labTestId} className="flex items-center justify-between text-sm">
+                <span className="text-on-surface">{test.testName}</span>
+                <span className="text-on-surface-variant">{formatUsd(test.priceUsd)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 flex items-center justify-between border-t border-outline-variant pt-3">
+            <span className="text-sm font-medium text-on-surface">Total orden:</span>
+            <span className="text-lg font-bold text-primary">{formatUsd(order.totalUsd)}</span>
+          </div>
         </div>
 
-        {!hasValidExchangeRate && (
-          <p className="text-xs text-error">
-            Ingresá la tasa BCV para habilitar las formas de pago.
-          </p>
-        )}
+        {/* BCV Rate */}
+        <Input
+          {...register('bcvExchangeRate', { valueAsNumber: true })}
+          id="bcvExchangeRate"
+          label="Tasa BCV (Bs/USD)"
+          type="number"
+          step="0.0001"
+          placeholder="36.50"
+          error={errors.bcvExchangeRate?.message}
+        />
 
-        {fields.map((field, index) => (
-          <div key={field.id} className="grid grid-cols-12 gap-2">
-            <div className="col-span-4">
-              <Select
-                {...register(`paymentLines.${index}.paymentMethod`)}
-                onChange={(event) => {
-                  const method = event.target.value;
-                  setValue(`paymentLines.${index}.paymentMethod`, method, {
-                    shouldValidate: true,
-                  });
-                  setValue(`paymentLines.${index}.currency`, getPaymentCurrency(method), {
-                    shouldValidate: true,
-                  });
-                }}
-                id={`paymentMethod-${index}`}
-                label="Método"
-                options={PAYMENT_METHODS}
-                disabled={!hasValidExchangeRate}
-              />
-            </div>
-            <div className="col-span-3">
-              <Select
-                {...register(`paymentLines.${index}.currency`)}
-                id={`currency-${index}`}
-                label="Moneda"
-                options={CURRENCIES}
-                disabled
-              />
-            </div>
-            <div className="col-span-3 flex min-w-0 items-end gap-2">
-              <div className="min-w-0 flex-1">
-                <Input
-                  {...register(`paymentLines.${index}.amount`, {
-                    valueAsNumber: true,
-                  })}
-                  onChange={(event) => handleAmountChange(index, event)}
-                  id={`amount-${index}`}
-                  label="Monto"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max={getLineMaxAmount(index)}
+        {/* Payment Lines */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-on-surface">Líneas de pago</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!hasValidExchangeRate}
+              onClick={() => append({ paymentMethod: 'CASH_USD', currency: 'USD', amount: 0 })}
+            >
+              <Plus className="mr-1 h-3 w-3" />
+              Agregar
+            </Button>
+          </div>
+
+          {!hasValidExchangeRate && (
+            <p className="text-xs text-error">
+              Ingresá la tasa BCV para habilitar las formas de pago.
+            </p>
+          )}
+
+          {fields.map((field, index) => (
+            <div key={field.id} className="grid grid-cols-12 gap-2">
+              <div className="col-span-4">
+                <Select
+                  {...register(`paymentLines.${index}.paymentMethod`)}
+                  onChange={(event) => {
+                    const method = event.target.value;
+                    setValue(`paymentLines.${index}.paymentMethod`, method, {
+                      shouldValidate: true,
+                    });
+                    setValue(`paymentLines.${index}.currency`, getPaymentCurrency(method), {
+                      shouldValidate: true,
+                    });
+                  }}
+                  id={`paymentMethod-${index}`}
+                  label="Método"
+                  options={PAYMENT_METHODS}
                   disabled={!hasValidExchangeRate}
                 />
               </div>
-              <button
-                type="button"
-                onClick={() => setMaximumAmount(index)}
-                disabled={!hasValidExchangeRate || getLineMaxAmount(index) <= 0}
-                className="mb-0.5 rounded-lg border border-outline px-2 py-2 text-xs font-semibold text-primary hover:bg-primary-container hover:text-on-primary-container disabled:text-on-surface-variant"
-              >
-                Max
-              </button>
-            </div>
-            <div className="col-span-2 flex items-end">
-              {fields.length > 1 && (
-                <Button
+              <div className="col-span-3">
+                <Select
+                  {...register(`paymentLines.${index}.currency`)}
+                  id={`currency-${index}`}
+                  label="Moneda"
+                  options={CURRENCIES}
+                  disabled
+                />
+              </div>
+              <div className="col-span-3 flex min-w-0 items-end gap-2">
+                <div className="min-w-0 flex-1">
+                  <Input
+                    {...register(`paymentLines.${index}.amount`, {
+                      valueAsNumber: true,
+                    })}
+                    onChange={(event) => handleAmountChange(index, event)}
+                    id={`amount-${index}`}
+                    label="Monto"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max={getLineMaxAmount(index)}
+                    disabled={!hasValidExchangeRate}
+                  />
+                </div>
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => remove(index)}
-                  className="text-error hover:text-error"
+                  onClick={() => setMaximumAmount(index)}
+                  disabled={!hasValidExchangeRate || getLineMaxAmount(index) <= 0}
+                  className="mb-0.5 rounded-lg border border-outline px-2 py-2 text-xs font-semibold text-primary hover:bg-primary-container hover:text-on-primary-container disabled:text-on-surface-variant"
                 >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
+                  Max
+                </button>
+              </div>
+              <div className="col-span-2 flex items-end">
+                {fields.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Eliminar línea de pago ${index + 1}`}
+                    onClick={() => remove(index)}
+                    className="text-error hover:text-error"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
 
-        {errors.paymentLines && <p className="text-xs text-error">{errors.paymentLines.message}</p>}
-      </div>
+          {errors.paymentLines && (
+            <p className="text-xs text-error">{errors.paymentLines.message}</p>
+          )}
+        </div>
 
-      {/* Totals */}
-      <div className="flex items-center justify-between rounded-lg bg-surface-variant px-4 py-3">
-        <span className="text-sm text-on-surface-variant">Total pagado:</span>
-        <span className={`text-sm font-bold ${canRegisterPayment ? 'text-success' : 'text-error'}`}>
-          {formatUsd(totalPaidUsdEquivalent)} {canRegisterPayment ? '✓' : ''}
-        </span>
-      </div>
+        {/* Totals */}
+        <div className="flex items-center justify-between rounded-lg bg-surface-variant px-4 py-3">
+          <span className="text-sm text-on-surface-variant">Total pagado:</span>
+          <span
+            className={`text-sm font-bold ${canRegisterPayment ? 'text-success' : 'text-error'}`}
+          >
+            {formatUsd(totalPaidUsdEquivalent)} {canRegisterPayment ? '✓' : ''}
+          </span>
+        </div>
 
-      {/* Error */}
-      {error && <p className="text-sm text-error">{(error as Error).message}</p>}
+        {/* Error */}
+        {error && (
+          <p role="alert" className="text-sm text-error">
+            {(error as Error).message}
+          </p>
+        )}
 
-      {/* Actions */}
-      <div className="flex justify-end gap-3">
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          isLoading={isPending}
-          disabled={!hasValidExchangeRate || !canRegisterPayment}
-        >
-          Completar pago
-        </Button>
-      </div>
+        {/* Actions */}
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            isLoading={isPending}
+            disabled={!hasValidExchangeRate || !canRegisterPayment}
+          >
+            Completar pago
+          </Button>
+        </div>
+      </fieldset>
     </form>
   );
 }

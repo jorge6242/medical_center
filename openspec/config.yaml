@@ -3,9 +3,9 @@ schema: spec-driven
 context: |
   Tech stack: NestJS (backend) + Next.js App Router (frontend) + PostgreSQL + Prisma + pnpm monorepo
   Architecture: Modular NestJS (payments, patients, doctors, receipts, stats), Feature-Sliced Next.js
-  Testing: Jest (backend), no test runner (frontend - only typecheck)
+  Testing: Jest backend; frontend Jest 30/jsdom/RTL/MSW, 19 business component suites + two harness suites, 179 tests; no browser E2E
   Style: ESLint + Prettier, TypeScript strict, Clean Code / SOLID conventions
-  Docker: docker-compose dev/prod, all commands run inside containers
+  Docker: compose dev locally; production images on Railway; all runtime commands inside containers
 
 strict_tdd: true
 
@@ -45,16 +45,34 @@ testing:
     framework: "jest"
     workspaces:
       - "apps/api"
+      - "apps/web"
   layers:
     unit:
       available: true
-      tool: "jest (backend)"
+      tool: "jest (backend and frontend)"
     integration:
       available: true
-      tool: "jest + supertest (backend)"
+      tool: "jest + supertest (backend); Jest/jsdom + RTL + MSW (frontend harness verified)"
     e2e:
       available: true
       tool: "jest e2e (backend)"
+  frontend:
+    workspace: "apps/web"
+    command: "docker compose -f docker-compose.dev.yml exec -T web pnpm run test --runInBand"
+    component_integration_available: true
+    business_view_suites_available: true
+    business_view_suites_count: 19
+    business_view_tests_count: 174
+    business_view_scope: "E047: V03=10,V01=14,V04=25,V05=26,V06=22,V07=23,V08=10,V09=28,V10=16;174 business+1 API+4 harness=179 tests/21 suites;no fully verified route or E2E"
+    api_boundary_controls_count: 1
+    harness_controls_count: 4
+    web_tests_count: 179
+    business_view_command: "docker compose -f docker-compose.dev.yml exec -T web pnpm run test --runInBand --detectOpenHandles"
+    browser_e2e_available: false
+    browser_e2e_tool: "not configured; backend e2e is not browser coverage"
+    coverage_command: "docker compose -f docker-compose.dev.yml exec -T web pnpm run test:coverage --runInBand"
+    coverage_report_verified: true
+    coverage_report_scope: "Targeted file reports verified through E047; not full-application or route coverage"
   coverage:
     available: true
     command: "jest --coverage"

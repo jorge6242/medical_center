@@ -24,6 +24,7 @@ export const login = (dto: LoginDto): Promise<LoginResponse> =>
   apiJson('/auth/login', {
     method: 'POST',
     body: JSON.stringify(dto),
+    redirectOnUnauthorized: false,
   });
 
 export const resolveAccessContext = (accessToken: string): Promise<TenantAccessContext> =>

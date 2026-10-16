@@ -79,6 +79,8 @@ services:
       - ./apps/web/package.json:/app/apps/web/package.json
       - ./packages/shared:/app/packages/shared
       - ./apps/web/next.config.ts:/app/apps/web/next.config.ts
+      - ./apps/web/jest.config.ts:/app/apps/web/jest.config.ts
+      - ./apps/web/tsconfig.json:/app/apps/web/tsconfig.json
       - ./apps/web/src:/app/apps/web/src
       - ./apps/web/public:/app/apps/web/public
     depends_on:

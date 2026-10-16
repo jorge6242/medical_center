@@ -1,17 +1,10 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import type { ColumnDef, PaginationState } from "@tanstack/react-table";
-import {
-  CalendarPlus,
-  CheckCircle2,
-  CreditCard,
-  Pencil,
-  Send,
-  XCircle,
-} from "lucide-react";
+import { useState } from 'react';
+import type { ColumnDef, PaginationState } from '@tanstack/react-table';
+import { CalendarPlus, CheckCircle2, CreditCard, Pencil, Send, XCircle } from 'lucide-react';
 
-import { ScheduleConsultationForm } from "@/features/consultations/components/schedule-consultation-form";
+import { ScheduleConsultationForm } from '@/features/consultations/components/schedule-consultation-form';
 import {
   useConsultations,
   useDoctorAvailability,
@@ -19,52 +12,46 @@ import {
   useResendScheduledNotifications,
   useUpdateScheduledConsultation,
   useVoidConsultation,
-} from "@/features/consultations/hooks/use-consultations";
+} from '@/features/consultations/hooks/use-consultations';
 import type {
   ConsultationResponse,
   ConsultationStatus,
-} from "@/features/consultations/services/consultations.service";
-import { ConsultationPaymentForm } from "@/features/payments/components/consultation-payment-form";
-import { Button } from "@/shared/components/ui/button";
-import { Card } from "@/shared/components/ui/card";
-import { DataTable } from "@/shared/components/ui/data-table";
-import { Input } from "@/shared/components/ui/input";
-import { Modal } from "@/shared/components/ui/modal";
-import {
-  formatDate,
-  formatDateShort,
-  formatTime,
-  formatUsd,
-} from "@/shared/utils/format";
+} from '@/features/consultations/services/consultations.service';
+import { ConsultationPaymentForm } from '@/features/payments/components/consultation-payment-form';
+import { Button } from '@/shared/components/ui/button';
+import { Card } from '@/shared/components/ui/card';
+import { DataTable } from '@/shared/components/ui/data-table';
+import { Input } from '@/shared/components/ui/input';
+import { Modal } from '@/shared/components/ui/modal';
+import { formatDate, formatDateShort, formatTime, formatUsd } from '@/shared/utils/format';
 import {
   addMinutesToUtc,
   formatDateInput,
   formatTimeInput,
   parseDateTimeToUtc,
-} from "@/shared/utils/timezone";
+} from '@/shared/utils/timezone';
 
 const labels: Record<ConsultationStatus, string> = {
-  SCHEDULED: "Agendada",
-  PENDING: "Pendiente de cobro",
-  PAID: "Pagada",
-  VOIDED: "Anulada",
+  SCHEDULED: 'Agendada',
+  PENDING: 'Pendiente de cobro',
+  PAID: 'Pagada',
+  VOIDED: 'Anulada',
 };
 export default function AgendaPage() {
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
-  const [status, setStatus] = useState<ConsultationStatus | "">("");
-  const [date, setDate] = useState("");
+  const [status, setStatus] = useState<ConsultationStatus | ''>('');
+  const [date, setDate] = useState('');
   const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [schedulePayment, setSchedulePayment] =
-    useState<ConsultationResponse | null>(null);
+  const [schedulePayment, setSchedulePayment] = useState<ConsultationResponse | null>(null);
   const [editing, setEditing] = useState<ConsultationResponse | null>(null);
   const [paying, setPaying] = useState<ConsultationResponse | null>(null);
-  const [editDate, setEditDate] = useState("");
-  const [editStartTime, setEditStartTime] = useState("");
+  const [editDate, setEditDate] = useState('');
+  const [editStartTime, setEditStartTime] = useState('');
   const [editDurationMinutes, setEditDurationMinutes] = useState(30);
-  const [editNotes, setEditNotes] = useState("");
+  const [editNotes, setEditNotes] = useState('');
   const { data, isLoading, error } = useConsultations({
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
@@ -78,34 +65,35 @@ export default function AgendaPage() {
 
   const editStartsAt =
     editDate && editStartTime ? parseDateTimeToUtc(editDate, editStartTime) : null;
-  const editEndsAt = editStartsAt
-    ? addMinutesToUtc(editStartsAt, editDurationMinutes)
-    : null;
-  const editStartsAtIso = editStartsAt?.toISOString() ?? "";
-  const editEndsAtIso = editEndsAt?.toISOString() ?? "";
+  const editEndsAt = editStartsAt ? addMinutesToUtc(editStartsAt, editDurationMinutes) : null;
+  const editStartsAtIso = editStartsAt?.toISOString() ?? '';
+  const editEndsAtIso = editEndsAt?.toISOString() ?? '';
   const editAvailability = useDoctorAvailability(
-    editing?.doctorId ?? "",
+    editing?.doctorId ?? '',
     editDate,
     editStartsAtIso,
     editEndsAtIso,
     editing?.id,
   );
   const isEditIntervalAvailable =
-    editAvailability.data?.isRequestedSlotAvailable === true;
+    !editAvailability.isError && editAvailability.data?.isRequestedSlotAvailable === true;
+  const mutationError =
+    attend.error ?? resendNotifications.error ?? update.error ?? voidConsultation.error;
 
   const openEdit = (consultation: ConsultationResponse) => {
+    attend.reset();
+    resendNotifications.reset();
+    update.reset();
+    voidConsultation.reset();
     setEditing(consultation);
     const start = consultation.startsAt ?? consultation.date;
     setEditDate(formatDateInput(start));
     setEditStartTime(formatTimeInput(start));
     const duration = consultation.endsAt
-      ? Math.round(
-          (new Date(consultation.endsAt).getTime() - new Date(start).getTime()) /
-            60_000,
-        )
+      ? Math.round((new Date(consultation.endsAt).getTime() - new Date(start).getTime()) / 60_000)
       : 30;
     setEditDurationMinutes(duration);
-    setEditNotes(consultation.notes ?? "");
+    setEditNotes(consultation.notes ?? '');
   };
   const cancel = (consultation: ConsultationResponse) => {
     const reason = window.prompt(
@@ -119,7 +107,7 @@ export default function AgendaPage() {
   };
   const columns: ColumnDef<ConsultationResponse>[] = [
     {
-      header: "Día",
+      header: 'Día',
       cell: ({ row }) => (
         <p className="text-sm text-on-surface">
           {formatDateShort(row.original.startsAt ?? row.original.date)}
@@ -127,48 +115,40 @@ export default function AgendaPage() {
       ),
     },
     {
-      header: "Hora",
+      header: 'Hora',
       cell: ({ row }) => (
         <div>
           <p className="text-sm font-medium text-on-surface">
-            {formatTime(row.original.startsAt ?? row.original.date)} –{" "}
-            {row.original.endsAt
-              ? formatTime(row.original.endsAt)
-              : "sin fin"}
+            {formatTime(row.original.startsAt ?? row.original.date)} –{' '}
+            {row.original.endsAt ? formatTime(row.original.endsAt) : 'sin fin'}
           </p>
-          {row.original.endsAt ? null : (
-            <p className="text-xs text-error">Actualizá el API</p>
-          )}
+          {row.original.endsAt ? null : <p className="text-xs text-error">Actualizá el API</p>}
         </div>
       ),
     },
     {
-      header: "Paciente",
+      header: 'Paciente',
       cell: ({ row }) => (
         <div>
           <p>{row.original.patientName}</p>
-          <p className="text-xs text-on-surface-variant">
-            {row.original.patientDocument}
-          </p>
+          <p className="text-xs text-on-surface-variant">{row.original.patientDocument}</p>
         </div>
       ),
     },
     {
-      header: "Doctor y servicios",
+      header: 'Doctor y servicios',
       cell: ({ row }) => (
         <div>
           <p>{row.original.doctorName}</p>
           <p className="text-xs text-on-surface-variant">
-            {row.original.services
-              .map((service) => service.serviceName)
-              .join(", ")}
+            {row.original.services.map((service) => service.serviceName).join(', ')}
           </p>
         </div>
       ),
     },
-    { header: "Total", cell: ({ row }) => formatUsd(row.original.totalUsd) },
+    { header: 'Total', cell: ({ row }) => formatUsd(row.original.totalUsd) },
     {
-      header: "Estado",
+      header: 'Estado',
       cell: ({ row }) => (
         <span className="rounded-full bg-surface-variant px-2 py-1 text-xs font-medium">
           {labels[row.original.status]}
@@ -176,16 +156,12 @@ export default function AgendaPage() {
       ),
     },
     {
-      header: "Acciones",
+      header: 'Acciones',
       cell: ({ row }) =>
-        row.original.status === "VOIDED" ? (
+        row.original.status === 'VOIDED' ? (
           <span className="text-xs text-on-surface-variant">Sin acciones</span>
         ) : (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => openEdit(row.original)}
-          >
+          <Button size="sm" variant="outline" onClick={() => openEdit(row.original)}>
             <Pencil className="h-3.5 w-3.5" /> Editar
           </Button>
         ),
@@ -205,55 +181,61 @@ export default function AgendaPage() {
           <CalendarPlus className="h-4 w-4" /> Agendar consulta
         </Button>
       </div>
-      {error ? <p className="text-sm text-error">{error.message}</p> : null}
-      <Card className="p-4">
-        <DataTable
-          data={data?.data ?? []}
-          columns={columns}
-          isLoading={isLoading}
-          pagination={pagination}
-          onPaginationChange={setPagination}
-          pageCount={data?.meta.totalPages ?? 0}
-          rowCount={data?.meta.total ?? 0}
-          toolbar={
-            <>
-              <Input
-                id="agenda-date"
-                label="Fecha"
-                type="date"
-                value={date}
-                onChange={(event) => {
-                  setDate(event.target.value);
-                  setPagination((value) => ({ ...value, pageIndex: 0 }));
-                }}
-              />
-              <select
-                aria-label="Estado"
-                value={status}
-                onChange={(event) => {
-                  setStatus(event.target.value as ConsultationStatus | "");
-                  setPagination((value) => ({ ...value, pageIndex: 0 }));
-                }}
-                className="h-10 rounded-lg border border-outline bg-surface px-3 text-sm"
-              >
-                <option value="">Todos los estados</option>
-                {Object.entries(labels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </>
-          }
-        />
-      </Card>
+      {error ? (
+        <p role="alert" className="text-sm text-error">
+          {error.message}
+        </p>
+      ) : null}
+      {!error ? (
+        <Card className="p-4">
+          <DataTable
+            data={data?.data ?? []}
+            columns={columns}
+            isLoading={isLoading}
+            pagination={pagination}
+            onPaginationChange={setPagination}
+            pageCount={data?.meta.totalPages ?? 0}
+            rowCount={data?.meta.total ?? 0}
+            toolbar={
+              <>
+                <Input
+                  id="agenda-date"
+                  label="Fecha"
+                  type="date"
+                  value={date}
+                  onChange={(event) => {
+                    setDate(event.target.value);
+                    setPagination((value) => ({ ...value, pageIndex: 0 }));
+                  }}
+                />
+                <select
+                  aria-label="Estado"
+                  value={status}
+                  onChange={(event) => {
+                    setStatus(event.target.value as ConsultationStatus | '');
+                    setPagination((value) => ({ ...value, pageIndex: 0 }));
+                  }}
+                  className="h-10 rounded-lg border border-outline bg-surface px-3 text-sm"
+                >
+                  <option value="">Todos los estados</option>
+                  {Object.entries(labels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </>
+            }
+          />
+        </Card>
+      ) : null}
       <Modal
         open={scheduleOpen}
         onClose={() => {
           setScheduleOpen(false);
           setSchedulePayment(null);
         }}
-        title={schedulePayment ? "Registrar pago" : "Agendar consulta"}
+        title={schedulePayment ? 'Registrar pago' : 'Agendar consulta'}
         className="max-w-3xl"
       >
         {schedulePayment ? (
@@ -295,17 +277,13 @@ export default function AgendaPage() {
           />
         ) : null}
       </Modal>
-      <Modal
-        open={!!editing}
-        onClose={() => setEditing(null)}
-        title="Editar consulta"
-      >
+      <Modal open={!!editing} onClose={() => setEditing(null)} title="Editar consulta">
         {editing ? (
           <form
             className="flex flex-col gap-4"
             onSubmit={(event) => {
               event.preventDefault();
-              if (editing.status === "SCHEDULED" && editStartsAt && editEndsAt)
+              if (editing.status === 'SCHEDULED' && editStartsAt && editEndsAt)
                 update.mutate({
                   id: editing.id,
                   startsAt: editStartsAt.toISOString(),
@@ -314,7 +292,7 @@ export default function AgendaPage() {
                 });
             }}
           >
-            {editing.status === "SCHEDULED" ? (
+            {editing.status === 'SCHEDULED' ? (
               <>
                 {!editing.endsAt ? (
                   <p className="text-sm text-error">
@@ -337,18 +315,13 @@ export default function AgendaPage() {
                     onChange={(event) => setEditStartTime(event.target.value)}
                   />
                   <div className="flex flex-col gap-1">
-                    <label
-                      htmlFor="edit-duration"
-                      className="text-sm font-medium text-on-surface"
-                    >
+                    <label htmlFor="edit-duration" className="text-sm font-medium text-on-surface">
                       Duración
                     </label>
                     <select
                       id="edit-duration"
                       value={editDurationMinutes}
-                      onChange={(event) =>
-                        setEditDurationMinutes(Number(event.target.value))
-                      }
+                      onChange={(event) => setEditDurationMinutes(Number(event.target.value))}
                       className="h-10 rounded-lg border border-outline bg-surface px-3 text-sm text-on-surface"
                     >
                       {[15, 30, 45, 60, 90, 120].map((minutes) => (
@@ -361,15 +334,18 @@ export default function AgendaPage() {
                 </div>
                 {editEndsAt ? (
                   <p className="text-sm text-on-surface-variant">
-                    Termina a las{" "}
-                    <span className="font-medium text-on-surface">
-                      {formatTime(editEndsAt)}
-                    </span>
+                    Termina a las{' '}
+                    <span className="font-medium text-on-surface">{formatTime(editEndsAt)}</span>
                   </p>
                 ) : null}
                 {editAvailability.data?.isRequestedSlotAvailable === false ? (
                   <p className="text-sm font-medium text-error">
                     El doctor ya tiene otra consulta dentro de este intervalo.
+                  </p>
+                ) : null}
+                {editAvailability.error ? (
+                  <p role="alert" className="text-sm text-error">
+                    {editAvailability.error.message}
                   </p>
                 ) : null}
                 <Input
@@ -389,15 +365,19 @@ export default function AgendaPage() {
                 La llegada del paciente todavía no fue confirmada.
               </p>
             )}
-            {editing.status === "PAID" ? (
+            {editing.status === 'PAID' ? (
               <p className="rounded-lg bg-surface-variant p-3 text-sm">
-                Pago registrado. La llegada se mantiene como un registro
-                independiente.
+                Pago registrado. La llegada se mantiene como un registro independiente.
+              </p>
+            ) : null}
+            {mutationError ? (
+              <p role="alert" className="text-sm text-error">
+                {mutationError.message}
               </p>
             ) : null}
             <div className="flex flex-wrap justify-between gap-2">
               <div className="flex flex-wrap gap-2">
-                {editing.status !== "PAID" ? (
+                {editing.status !== 'PAID' ? (
                   <Button
                     type="button"
                     variant="destructive"
@@ -407,8 +387,7 @@ export default function AgendaPage() {
                     <XCircle className="h-4 w-4" /> Anular agenda
                   </Button>
                 ) : null}
-                {editing.status === "SCHEDULED" ||
-                editing.status === "PENDING" ? (
+                {editing.status === 'SCHEDULED' || editing.status === 'PENDING' ? (
                   <Button
                     type="button"
                     onClick={() => {
@@ -419,7 +398,7 @@ export default function AgendaPage() {
                     <CreditCard className="h-4 w-4" /> Registrar pago
                   </Button>
                 ) : null}
-                {editing.status === "SCHEDULED" ? (
+                {editing.status === 'SCHEDULED' ? (
                   <Button
                     type="button"
                     variant="outline"
@@ -431,16 +410,11 @@ export default function AgendaPage() {
                 ) : null}
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setEditing(null)}
-                >
+                <Button type="button" variant="outline" onClick={() => setEditing(null)}>
                   Cerrar
                 </Button>
                 {!editing.attendedAt &&
-                (editing.status === "SCHEDULED" ||
-                  editing.status === "PAID") ? (
+                (editing.status === 'SCHEDULED' || editing.status === 'PAID') ? (
                   <Button
                     type="button"
                     variant="secondary"
@@ -454,7 +428,7 @@ export default function AgendaPage() {
                     <CheckCircle2 className="h-4 w-4" /> Confirmar llegada
                   </Button>
                 ) : null}
-                {editing.status === "SCHEDULED" ? (
+                {editing.status === 'SCHEDULED' ? (
                   <Button
                     type="submit"
                     isLoading={update.isPending}

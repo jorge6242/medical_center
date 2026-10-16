@@ -20,7 +20,13 @@ export function useLogin() {
     onSuccess: (data) => {
       setAuth(data);
       void queryClient.invalidateQueries({ queryKey: ['config', 'init'] });
-      router.replace(searchParams.get('redirect') ?? '/inicio');
+      const redirect = searchParams.get('redirect');
+      const isLocalPath =
+        redirect !== null &&
+        redirect.startsWith('/') &&
+        !redirect.startsWith('//') &&
+        !/[\\\u0000-\u0020]/.test(redirect);
+      router.replace(isLocalPath ? redirect : '/inicio');
     },
   });
 }

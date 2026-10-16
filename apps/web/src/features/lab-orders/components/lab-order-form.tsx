@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { usePatients } from '@/features/patients/hooks/use-patients';
 import { useLaboratoryCatalog } from '@/features/labs/hooks/use-labs';
@@ -13,11 +13,16 @@ import { formatUsd } from '@/shared/utils/format';
 interface LabOrderFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
+  onPendingChange?: (pending: boolean) => void;
 }
 
-export function LabOrderForm({ onSuccess, onCancel }: LabOrderFormProps) {
-  const { data: patients = [] } = usePatients();
-  const { data: labTests = [] } = useLaboratoryCatalog();
+export function LabOrderForm({ onSuccess, onCancel, onPendingChange }: LabOrderFormProps) {
+  const { data: patients = [], isFetching: patientsLoading, error: patientsError } = usePatients();
+  const {
+    data: labTests = [],
+    isFetching: testsLoading,
+    error: testsError,
+  } = useLaboratoryCatalog();
 
   const [patientId, setPatientId] = useState('');
   const [selectedTestIds, setSelectedTestIds] = useState<string[]>([]);
@@ -25,10 +30,12 @@ export function LabOrderForm({ onSuccess, onCancel }: LabOrderFormProps) {
 
   const { mutate, isPending, error } = useCreateLabOrder(() => {
     setSuccess(true);
-    setTimeout(() => {
-      onSuccess?.();
-    }, 1200);
+    onSuccess?.();
   });
+
+  useEffect(() => {
+    onPendingChange?.(isPending);
+  }, [isPending, onPendingChange]);
 
   const selectedTests = labTests.filter((t) => selectedTestIds.includes(t.id));
   const total = selectedTests.reduce((sum, t) => sum + parseFloat(t.priceUsd), 0);
@@ -40,6 +47,7 @@ export function LabOrderForm({ onSuccess, onCancel }: LabOrderFormProps) {
   };
 
   const handleSubmit = () => {
+    if (isPending || patientsLoading || testsLoading || patientsError || testsError) return;
     if (!patientId || selectedTestIds.length === 0) return;
     mutate({ patientId, labTestIds: selectedTestIds });
   };
@@ -63,12 +71,17 @@ export function LabOrderForm({ onSuccess, onCancel }: LabOrderFormProps) {
     );
   }
 
+  if (patientsError || testsError)
+    return <p role="alert">{(patientsError ?? testsError)?.message}</p>;
+  if (patientsLoading || testsLoading) return <p role="status">Cargando pacientes y tests...</p>;
+
   return (
     <div className="flex flex-col gap-5">
       {/* Patient Selection */}
       <Card>
         <p className="mb-3 text-sm font-semibold text-on-surface">Paciente</p>
         <Select
+          id="labPatientId"
           value={patientId}
           onChange={(e) => setPatientId(e.target.value)}
           label="Seleccionar paciente"
@@ -126,7 +139,10 @@ export function LabOrderForm({ onSuccess, onCancel }: LabOrderFormProps) {
 
       {/* Error */}
       {error && (
-        <p className="rounded-lg bg-error-container px-3 py-2 text-sm text-on-error-container">
+        <p
+          role="alert"
+          className="rounded-lg bg-error-container px-3 py-2 text-sm text-on-error-container"
+        >
           {error.message}
         </p>
       )}
@@ -134,7 +150,7 @@ export function LabOrderForm({ onSuccess, onCancel }: LabOrderFormProps) {
       {/* Actions */}
       <div className="flex justify-end gap-2">
         {onCancel && (
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" onClick={onCancel} disabled={isPending}>
             Cancelar
           </Button>
         )}

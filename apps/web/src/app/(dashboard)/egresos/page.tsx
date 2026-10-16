@@ -13,19 +13,30 @@ import { Button } from '@/shared/components/ui/button';
 import { Card } from '@/shared/components/ui/card';
 import { DataTable } from '@/shared/components/ui/data-table';
 import { Modal } from '@/shared/components/ui/modal';
-import { formatUsd } from '@/shared/utils/format';
+import { formatBs, formatUsd } from '@/shared/utils/format';
 
 export default function EgresosPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creatingExpense, setCreatingExpense] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
-  const { mutate: doVoid, isPending: voiding } = useVoidExpense();
+  const {
+    mutate: doVoid,
+    isPending: voiding,
+    error: voidError,
+    reset: resetVoid,
+  } = useVoidExpense();
   const [voidingId, setVoidingId] = useState<string | null>(null);
   const [voidReason, setVoidReason] = useState('');
   const [selectedExpense, setSelectedExpense] = useState<ExpenseResponse | null>(null);
   const [search, setSearch] = useState('');
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
-  const { data, isLoading } = usePaginatedExpenses({
+  const {
+    data,
+    isLoading,
+    isError,
+    error: listError,
+  } = usePaginatedExpenses({
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
     search,
@@ -34,11 +45,29 @@ export default function EgresosPage() {
   const expenses = data?.data ?? [];
   const meta = data?.meta;
 
-  const handleVoid = (id: string) => {
-    if (!voidReason.trim()) return;
-    doVoid({ id, reason: voidReason });
+  const closeVoid = () => {
+    if (voiding) return;
     setVoidingId(null);
     setVoidReason('');
+    resetVoid();
+  };
+  const openVoid = (expense: ExpenseResponse) => {
+    if (voiding) return;
+    resetVoid();
+    setVoidReason('');
+    setVoidingId(expense.id);
+  };
+  const handleVoid = (id: string) => {
+    if (voiding || voidReason.trim().length < 5) return;
+    doVoid(
+      { id, reason: voidReason.trim() },
+      {
+        onSuccess: () => {
+          setVoidingId(null);
+          setVoidReason('');
+        },
+      },
+    );
   };
 
   return (
@@ -52,30 +81,51 @@ export default function EgresosPage() {
       </div>
 
       <Card className="p-4">
-        <DataTable
-          data={expenses}
-          columns={getExpenseColumns()}
-          toolbar={<ExpenseToolbar search={search} onSearchChange={(value) => {
-            setSearch(value);
-            setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-          }} />}
-          isLoading={isLoading}
-          pagination={pagination}
-          onPaginationChange={setPagination}
-          pageCount={meta?.totalPages ?? 0}
-          rowCount={meta?.total ?? 0}
-          meta={{
-            onView: (expense: ExpenseResponse) => {
-              setSelectedExpense(expense);
-              setShowViewModal(true);
-            },
-            onVoid: (expense: ExpenseResponse) => setVoidingId(expense.id),
-          }}
-        />
+        {isError ? (
+          <p role="alert">{listError.message}</p>
+        ) : (
+          <DataTable
+            data={expenses}
+            columns={getExpenseColumns()}
+            toolbar={
+              <ExpenseToolbar
+                search={search}
+                onSearchChange={(value) => {
+                  setSearch(value);
+                  setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                }}
+              />
+            }
+            isLoading={isLoading}
+            pagination={pagination}
+            onPaginationChange={setPagination}
+            pageCount={meta?.totalPages ?? 0}
+            rowCount={meta?.total ?? 0}
+            meta={{
+              onView: (expense: ExpenseResponse) => {
+                setSelectedExpense(expense);
+                setShowViewModal(true);
+              },
+              onVoid: openVoid,
+            }}
+          />
+        )}
       </Card>
 
-      <Modal open={showCreateModal} onClose={() => setShowCreateModal(false)} title="Nuevo egreso">
-        <ExpenseForm onClose={() => setShowCreateModal(false)} />
+      <Modal
+        open={showCreateModal}
+        onClose={() => {
+          if (!creatingExpense) setShowCreateModal(false);
+        }}
+        title="Nuevo egreso"
+      >
+        <ExpenseForm
+          onPendingChange={setCreatingExpense}
+          onClose={() => {
+            setCreatingExpense(false);
+            setShowCreateModal(false);
+          }}
+        />
       </Modal>
 
       <Modal
@@ -99,12 +149,14 @@ export default function EgresosPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-on-surface-variant">Monto USD</p>
-                <p className="font-medium text-on-surface">{formatUsd(selectedExpense.amountUsd)}</p>
+                <p className="font-medium text-on-surface">
+                  {formatUsd(selectedExpense.amountUsd)}
+                </p>
               </div>
               <div>
                 <p className="text-on-surface-variant">Monto Bs</p>
                 <p className="font-medium text-on-surface">
-                  {selectedExpense.amountBs ? formatUsd(selectedExpense.amountBs) : '—'}
+                  {selectedExpense.amountBs ? formatBs(selectedExpense.amountBs) : '—'}
                 </p>
               </div>
             </div>
@@ -115,7 +167,9 @@ export default function EgresosPage() {
               </div>
               <div>
                 <p className="text-on-surface-variant">Registro</p>
-                <p className="font-medium text-on-surface">{new Date(selectedExpense.createdAt).toLocaleDateString('es-VE')}</p>
+                <p className="font-medium text-on-surface">
+                  {new Date(selectedExpense.createdAt).toLocaleDateString('es-VE')}
+                </p>
               </div>
             </div>
             {selectedExpense.voidReason && (
@@ -128,11 +182,7 @@ export default function EgresosPage() {
         )}
       </Modal>
 
-      <Modal
-        open={!!voidingId}
-        onClose={() => { setVoidingId(null); setVoidReason(''); }}
-        title="Anular egreso"
-      >
+      <Modal open={!!voidingId} onClose={closeVoid} title="Anular egreso">
         <div className="flex flex-col gap-4">
           <p className="text-sm text-on-surface-variant">
             Esta acción no se puede deshacer. Ingresa el motivo de la anulación.
@@ -143,6 +193,7 @@ export default function EgresosPage() {
             </label>
             <textarea
               id="voidReason"
+              disabled={voiding}
               value={voidReason}
               onChange={(e) => setVoidReason(e.target.value)}
               rows={3}
@@ -150,22 +201,16 @@ export default function EgresosPage() {
               placeholder="Describe el motivo de la anulación…"
             />
           </div>
+          {voidError && <p role="alert">{voidError.message}</p>}
           <div className="flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setVoidingId(null);
-                setVoidReason('');
-              }}
-            >
+            <Button type="button" variant="outline" onClick={closeVoid} disabled={voiding}>
               Cancelar
             </Button>
             <Button
               type="button"
               variant="destructive"
               isLoading={voiding}
-              disabled={!voidReason.trim()}
+              disabled={voiding || voidReason.trim().length < 5}
               onClick={() => voidingId && handleVoid(voidingId)}
             >
               Confirmar anulación

@@ -57,10 +57,19 @@ function currentDateTimeLocal(): string {
   return localDate.toISOString().slice(0, 16);
 }
 
-export function PaymentForm({ onClose }: { readonly onClose: () => void }) {
-  const { data: patients = [] } = usePatients();
-  const { data: doctors = [] } = useDoctors();
+export function PaymentForm({
+  onClose,
+  onPendingChange,
+}: {
+  readonly onClose: () => void;
+  readonly onPendingChange?: (pending: boolean) => void;
+}) {
+  const { data: patients = [], error: patientError, isFetching: patientsFetching } = usePatients();
+  const { data: doctors = [], error: doctorError, isFetching: doctorsFetching } = useDoctors();
   const { mutate, isPending, error } = useCreatePayment(onClose);
+  useEffect(() => {
+    onPendingChange?.(isPending);
+  }, [isPending, onPendingChange]);
 
   const {
     register,
@@ -83,7 +92,13 @@ export function PaymentForm({ onClose }: { readonly onClose: () => void }) {
   const selectedDoctorId = watch('doctorId');
   const selectedServiceIds = watch('doctorServiceIds');
 
-  const { data: servicePrices = [] } = useDoctorServices(selectedDoctorId || null);
+  const {
+    data: servicePrices = [],
+    error: serviceError,
+    isFetching: servicesFetching,
+  } = useDoctorServices(selectedDoctorId || null);
+  const lookupError = patientError || doctorError || serviceError;
+  const lookupLoading = patientsFetching || doctorsFetching || servicesFetching;
 
   const [totalService, setTotalService] = useState(0);
 
@@ -101,6 +116,7 @@ export function PaymentForm({ onClose }: { readonly onClose: () => void }) {
   };
 
   const onSubmit = (data: FormData) => {
+    if (isPending || lookupError || lookupLoading) return;
     const selectedServices = servicePrices.filter((sp) => data.doctorServiceIds.includes(sp.id));
     const serviceNames = selectedServices.map((s) => s.serviceName).join(', ');
 
@@ -121,6 +137,8 @@ export function PaymentForm({ onClose }: { readonly onClose: () => void }) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+      {lookupError && <p role="alert">{lookupError.message}</p>}
+      {lookupLoading && <p role="status">Cargando opciones de pago…</p>}
       {/* Patient + Doctor */}
       <div className="grid grid-cols-2 gap-4">
         <Select
@@ -140,7 +158,9 @@ export function PaymentForm({ onClose }: { readonly onClose: () => void }) {
           ]}
         />
         <Select
-          {...register('doctorId')}
+          {...register('doctorId', {
+            onChange: () => setValue('doctorServiceIds', [], { shouldValidate: true }),
+          })}
           id="doctorId"
           label="Doctor"
           error={errors.doctorId?.message}
@@ -158,7 +178,7 @@ export function PaymentForm({ onClose }: { readonly onClose: () => void }) {
       {selectedDoctorId && (
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium text-on-surface">Servicios</p>
-          {servicePrices.length === 0 ? (
+          {serviceError || servicesFetching ? null : servicePrices.length === 0 ? (
             <p className="text-sm text-on-surface-variant">
               No hay servicios disponibles para este doctor
             </p>
@@ -186,7 +206,7 @@ export function PaymentForm({ onClose }: { readonly onClose: () => void }) {
           {errors.doctorServiceIds && (
             <p className="text-xs text-error">{errors.doctorServiceIds.message}</p>
           )}
-          {totalService > 0 && (
+          {totalService > 0 && !serviceError && !servicesFetching && (
             <p className="text-sm font-medium text-on-surface">
               Total servicios: <span className="text-primary">{formatUsd(totalService)}</span>
             </p>
@@ -261,6 +281,7 @@ export function PaymentForm({ onClose }: { readonly onClose: () => void }) {
               <button
                 type="button"
                 onClick={() => remove(i)}
+                aria-label={`Eliminar línea ${i + 1}`}
                 className="mb-[2px] rounded-lg p-2 text-on-surface-variant hover:bg-surface hover:text-error"
               >
                 <Trash2 className="h-4 w-4" />
@@ -272,16 +293,26 @@ export function PaymentForm({ onClose }: { readonly onClose: () => void }) {
       </div>
 
       {error && (
-        <p className="rounded-lg bg-error-container px-3 py-2 text-sm text-on-error-container">
+        <p
+          role="alert"
+          className="rounded-lg bg-error-container px-3 py-2 text-sm text-on-error-container"
+        >
           {error.message}
         </p>
       )}
 
       <div className="flex justify-end gap-3 pt-2">
-        <Button type="button" variant="outline" onClick={onClose}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={isPending}
+          onClick={() => {
+            if (!isPending) onClose();
+          }}
+        >
           Cancelar
         </Button>
-        <Button type="submit" isLoading={isPending}>
+        <Button type="submit" isLoading={isPending} disabled={!!lookupError || lookupLoading}>
           Registrar pago
         </Button>
       </div>
