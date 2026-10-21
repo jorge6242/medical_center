@@ -22,7 +22,7 @@ export const patientFormSchema = z
     gender: z.enum(['MASCULINE', 'FEMININE', 'OTHER']).optional(),
     representative: representativeSchema.optional(),
   })
-  .refine((data) => data.documentType === 'M' || (data.documentId?.trim().length ?? 0) >= 6, {
+  .refine((data) => (data.documentId?.trim().length ?? 0) >= 6, {
     message: 'Número de documento requerido (mínimo 6 caracteres)',
     path: ['documentId'],
   });

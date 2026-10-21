@@ -37,6 +37,7 @@ export function usePaidConsultations(query?: PaidConsultationsQuery) {
       query?.page ?? 1,
       query?.limit ?? 10,
       query?.search ?? '',
+      query?.date ?? '',
     ],
     queryFn: () => getPaidConsultations(query),
     placeholderData: (previousData) => previousData,

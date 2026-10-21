@@ -30,12 +30,11 @@ export class UpdatePatientDto {
   declare documentType?: DocumentType;
 
   /**
-   * Requerido si se envía documentType y éste no es M.
-   * Si se envía documentType M, el backend ignora este campo (ID ya fue generado).
+   * Requerido si se envía documentType, incluido M.
    */
   @ValidateIf(
     (o: UpdatePatientDto) =>
-      o.documentType !== undefined && o.documentType !== DocumentType.M,
+      o.documentType !== undefined || o.documentId !== undefined,
   )
   @IsString()
   @MinLength(6)

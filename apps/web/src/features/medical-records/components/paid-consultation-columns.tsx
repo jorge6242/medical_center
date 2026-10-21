@@ -21,10 +21,14 @@ export function getPaidConsultationColumns(): ColumnDef<PaidConsultation>[] {
       accessorKey: 'patientName',
       header: 'Paciente',
       cell: ({ row }) => (
-        <div>
+        <Link
+          href={`/consultas/${row.original.id}`}
+          aria-label={`Ver consulta de ${row.original.patientName}`}
+          className="block rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
           <p className="font-medium text-on-surface">{row.original.patientName}</p>
           <p className="text-xs text-on-surface-variant">{row.original.patientDocument}</p>
-        </div>
+        </Link>
       ),
     },
     {
@@ -85,7 +89,7 @@ export function getPaidConsultationColumns(): ColumnDef<PaidConsultation>[] {
       header: 'Estado',
       cell: ({ row }) => (
         <Badge variant={row.original.status === 'PAID' ? 'success' : 'warning'}>
-          {row.original.status === 'PAID' ? 'Pagada' : 'Agendada'}
+          {{ PAID: 'Pagada', SCHEDULED: 'Agendada', PENDING: 'Pendiente' }[row.original.status]}
         </Badge>
       ),
     },

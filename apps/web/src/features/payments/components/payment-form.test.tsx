@@ -39,6 +39,25 @@ beforeEach(() =>
   ),
 );
 const submit = () => screen.getByRole('button', { name: 'Registrar pago' });
+it('requires a nonblank mobile payment reference and allows blank after changing method', async () => {
+  const bodies: unknown[] = [];
+  server.use(
+    http.post('*/payments', async ({ request }) => {
+      bodies.push(await request.json());
+      return HttpResponse.json(paymentsFixture[0]);
+    }),
+  );
+  const result = renderWithClient(<PaymentForm onClose={jest.fn()} />);
+  await fill(result);
+  await result.user.selectOptions(screen.getByDisplayValue('Efectivo USD'), 'PAGO_MOVIL');
+  await result.user.type(screen.getByPlaceholderText('Referencia requerida'), '   ');
+  await result.user.click(submit());
+  expect(await screen.findByText('Referencia requerida para Pago Móvil')).toBeVisible();
+  expect(bodies).toEqual([]);
+  await result.user.selectOptions(screen.getByDisplayValue('Pago Móvil'), 'CASH_USD');
+  await result.user.click(submit());
+  await waitFor(() => expect(bodies).toHaveLength(1));
+});
 async function fill({ user }: RenderWithClientResult) {
   await screen.findByRole('option', { name: /María González/ });
   await user.selectOptions(screen.getByLabelText('Paciente'), 'patient-maria');
@@ -107,7 +126,7 @@ it('envía IDs/fecha UTC y líneas elegidas sin recalcular autoridad financiera'
   );
   await result.user.selectOptions(screen.getAllByDisplayValue('USD')[1] as HTMLElement, 'VES');
   await result.user.type(screen.getAllByPlaceholderText('0.00')[1] as HTMLElement, '1000');
-  await result.user.type(screen.getAllByPlaceholderText('Opcional')[1] as HTMLElement, 'REF-2');
+  await result.user.type(screen.getByPlaceholderText('Referencia requerida'), 'REF-2');
   await result.user.click(screen.getByRole('button', { name: 'Agregar línea' }));
   await result.user.click(screen.getByRole('button', { name: 'Eliminar línea 3' }));
   await result.user.click(submit());

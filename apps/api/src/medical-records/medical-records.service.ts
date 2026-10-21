@@ -5,18 +5,20 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
+import { DateTime } from 'luxon';
 
 import {
   toMedicalRecordResponse,
   toPatientMedicalRecordResponse,
 } from './medical-records.mapper';
 import { AuditLogService } from '../audit-log/audit-log.service';
+import { type ConsultationsQueryDto } from './dto/consultations-query.dto';
 import {
   createPaginatedResponse,
   type PaginatedResponseDto,
 } from '../common/dto/paginated-response.dto';
-import { type PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { PrismaService } from '../database/prisma.service';
 
 import type { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
@@ -30,6 +32,7 @@ export class MedicalRecordsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLog?: AuditLogService,
+    private readonly config?: ConfigService,
   ) {}
 
   async create(tenantId: string, userId: string, dto: CreateMedicalRecordDto) {
@@ -180,14 +183,26 @@ export class MedicalRecordsService {
 
   async findPaidConsultations(
     user: JwtPayload,
-    query: PaginationQueryDto,
+    query: ConsultationsQueryDto,
   ): Promise<PaginatedResponseDto<PaidConsultationResponseDto>> {
     const { page, limit, search } = query;
     const skip = (page - 1) * limit;
+    const day = query.date
+      ? DateTime.fromISO(query.date, {
+          zone: this.config?.get<string>('app.timezone') ?? 'America/Caracas',
+        }).startOf('day')
+      : null;
 
     const where: Prisma.ConsultationWhereInput = {
       tenantId: user.tenantId,
-      status: { in: ['SCHEDULED', 'PAID'] },
+      status: {
+        in: day ? ['SCHEDULED', 'PENDING', 'PAID'] : ['SCHEDULED', 'PAID'],
+      },
+      ...(day
+        ? {
+            date: { gte: day.toJSDate(), lt: day.plus({ days: 1 }).toJSDate() },
+          }
+        : {}),
       ...(user.role === 'doctor' && user.doctorId
         ? { doctorId: user.doctorId }
         : {}),
@@ -303,7 +318,7 @@ export class MedicalRecordsService {
         return {
           id: consultation.id,
           date: consultation.date,
-          status: consultation.status as 'SCHEDULED' | 'PAID',
+          status: consultation.status as 'SCHEDULED' | 'PENDING' | 'PAID',
           patientId: consultation.patientId,
           patientName: consultation.patient.name,
           patientDocument: patientDoc,

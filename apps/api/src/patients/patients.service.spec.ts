@@ -1,8 +1,46 @@
+import { ConflictException, NotFoundException } from '@nestjs/common';
+
 import { PatientsService } from './patients.service';
 
 import type { PrismaService } from '../database/prisma.service';
 import type { NotificationService } from '../notifications/notifications.service';
 import type { RailwayBucketService } from '../railway-bucket/railway-bucket.service';
+
+const patientWithRepresentatives = {
+  id: 'patient-1',
+  tenantId: 'tenant-1',
+  documentType: 'M',
+  documentId: '20260930A3F1',
+  name: 'Ana menor',
+  phone: '04140000000',
+  email: null,
+  birthDate: null,
+  gender: null,
+  isActive: true,
+  clinicalHistory: { antecedentesPersonales: { alergias: 'Polen' } },
+  createdAt: new Date('2026-09-30T00:00:00.000Z'),
+  updatedAt: new Date('2026-09-30T00:00:00.000Z'),
+  representatives: [
+    {
+      relationship: 'Madre',
+      representative: {
+        name: 'Maria Lopez',
+        documentType: 'V',
+        documentId: '12345678',
+        phone: '04141111111',
+      },
+    },
+    {
+      relationship: 'Padre',
+      representative: {
+        name: 'Juan Lopez',
+        documentType: 'V',
+        documentId: '87654321',
+        phone: '04142222222',
+      },
+    },
+  ],
+};
 
 describe('PatientsService', () => {
   const prisma = {
@@ -43,6 +81,74 @@ describe('PatientsService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (railwayBucket.resolveLogoUrl as jest.Mock).mockResolvedValue(null);
+  });
+
+  it('persists the manually entered minor document on create', async () => {
+    (prisma.patient.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.patient.create as jest.Mock).mockResolvedValue(
+      patientWithRepresentatives,
+    );
+    (prisma.$transaction as jest.Mock).mockImplementation((callback) =>
+      callback(prisma),
+    );
+    await service.create('tenant-1', {
+      documentType: 'M',
+      documentId: '87654321',
+      name: 'Ana menor',
+    });
+    expect(prisma.patient.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          tenantId: 'tenant-1',
+          documentType: 'M',
+          documentId: '87654321',
+        }),
+      }),
+    );
+  });
+
+  it('persists the manually entered minor document on update', async () => {
+    (prisma.patient.findFirst as jest.Mock).mockResolvedValue(
+      patientWithRepresentatives,
+    );
+    (prisma.patient.findFirstOrThrow as jest.Mock).mockResolvedValue(
+      patientWithRepresentatives,
+    );
+    await service.update('tenant-1', 'patient-1', {
+      documentType: 'M',
+      documentId: '87654321',
+    });
+    expect(prisma.patient.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'patient-1', tenantId: 'tenant-1' },
+        data: expect.objectContaining({
+          documentType: 'M',
+          documentId: '87654321',
+        }),
+      }),
+    );
+  });
+
+  it('rejects duplicate minor documents within the tenant before creating', async () => {
+    (prisma.patient.findFirst as jest.Mock).mockResolvedValue(
+      patientWithRepresentatives,
+    );
+    await expect(
+      service.create('tenant-1', {
+        documentType: 'M',
+        documentId: '87654321',
+        name: 'Ana menor',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.patient.findFirst).toHaveBeenCalledWith({
+      where: {
+        tenantId: 'tenant-1',
+        documentType: 'M',
+        documentId: '87654321',
+        isActive: true,
+      },
+    });
+    expect(prisma.patient.create).not.toHaveBeenCalled();
   });
 
   it('sends a tenant-scoped birthday email and records it', async () => {
@@ -86,6 +192,7 @@ describe('PatientsService', () => {
         documentType: 'V',
         documentId: '12345678',
         birthDate: new Date('2000-09-01T00:00:00.000Z'),
+        representatives: [],
       },
     ]);
 
@@ -121,6 +228,9 @@ describe('PatientsService', () => {
 
     expect(prisma.patient.findFirst).toHaveBeenCalledWith({
       where: { id: 'patient-1', tenantId: 'tenant-1', isActive: true },
+      include: {
+        representatives: { include: { representative: true } },
+      },
     });
     expect(result).toMatchObject({
       id: 'patient-1',
@@ -154,6 +264,93 @@ describe('PatientsService', () => {
       },
     });
   });
+
+  it('returns all existing representatives after a personal-data update', async () => {
+    (prisma.patient.findFirst as jest.Mock).mockResolvedValue(
+      patientWithRepresentatives,
+    );
+    (prisma.patient.findFirstOrThrow as jest.Mock).mockImplementation(
+      (query: { include?: { representatives?: unknown } }) =>
+        Promise.resolve({
+          ...patientWithRepresentatives,
+          name: 'Ana Lopez',
+          representatives: query.include?.representatives
+            ? patientWithRepresentatives.representatives
+            : undefined,
+        }),
+    );
+
+    const result = await service.update('tenant-1', 'patient-1', {
+      name: 'Ana Lopez',
+    });
+
+    expect(result).toMatchObject({
+      name: 'Ana Lopez',
+      documentId: '20260930A3F1',
+      clinicalHistory: patientWithRepresentatives.clinicalHistory,
+      representatives: patientWithRepresentatives.representatives.map(
+        ({ relationship, representative }) => ({
+          relationship,
+          ...representative,
+        }),
+      ),
+    });
+    expect(result).not.toHaveProperty('tenantId');
+    expect(prisma.patient.findFirstOrThrow).toHaveBeenCalledWith({
+      where: { id: 'patient-1', tenantId: 'tenant-1' },
+      include: { representatives: { include: { representative: true } } },
+    });
+    expect(prisma.patient.updateMany).toHaveBeenCalledWith({
+      where: { id: 'patient-1', tenantId: 'tenant-1' },
+      data: {
+        name: 'Ana Lopez',
+        phone: undefined,
+        email: undefined,
+        birthDate: undefined,
+        gender: undefined,
+        clinicalHistory: undefined,
+      },
+    });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.consultation.findMany).not.toHaveBeenCalled();
+  });
+
+  it('returns an empty representative list for an adult without links', async () => {
+    const patient = {
+      ...patientWithRepresentatives,
+      documentType: 'V',
+      representatives: [],
+    };
+    (prisma.patient.findFirst as jest.Mock).mockResolvedValue(patient);
+    (prisma.patient.findFirstOrThrow as jest.Mock).mockResolvedValue({
+      ...patient,
+      phone: '04143333333',
+    });
+
+    const result = await service.update('tenant-1', 'patient-1', {
+      phone: '04143333333',
+    });
+
+    expect(result).toMatchObject({ phone: '04143333333', representatives: [] });
+  });
+
+  it.each(['tenant-other', 'tenant-1'])(
+    'rejects missing/foreign or inactive patient before writing for %s',
+    async (tenantId) => {
+      (prisma.patient.findFirst as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        service.update(tenantId, 'patient-1', { name: 'No permitido' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(prisma.patient.findFirst).toHaveBeenCalledWith({
+        where: { id: 'patient-1', tenantId, isActive: true },
+        include: { representatives: { include: { representative: true } } },
+      });
+      expect(prisma.patient.updateMany).not.toHaveBeenCalled();
+      expect(prisma.patient.findFirstOrThrow).not.toHaveBeenCalled();
+    },
+  );
 
   it('queries only paid consultations without medical records for report creation', async () => {
     (prisma.patient.findFirst as jest.Mock).mockResolvedValue({

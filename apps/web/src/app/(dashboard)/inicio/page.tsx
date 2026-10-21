@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { FlaskConical, Search, Stethoscope } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
@@ -16,6 +17,8 @@ import { apiJson } from '@/config/api';
 import { useSpecialties } from '@/features/specialties/hooks/use-specialties';
 import { ConsultationPaymentForm } from '@/features/payments/components/consultation-payment-form';
 import { LaboratoryPriceCatalog } from '@/features/labs/components/laboratory-price-catalog';
+import { useAuthStore } from '@/stores/auth.store';
+import { formatDateInput } from '@/shared/utils/timezone';
 
 interface SpecialtyDoctorsResponse {
   specialty: { id: string; name: string };
@@ -133,6 +136,7 @@ function SpecialtyConsultation({ onClose }: { onClose: () => void }) {
 
 export default function InicioPage() {
   const { data, isLoading, isError } = useHomeStats();
+  const canReadPatients = useAuthStore((state) => state.hasPermission('patients', 'read'));
 
   const [showConsultationModal, setShowConsultationModal] = useState(false);
   const [showLabPricesModal, setShowLabPricesModal] = useState(false);
@@ -190,7 +194,8 @@ export default function InicioPage() {
         <>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <MetricCard
-              label="Pacientes hoy"
+              label="Pacientes con consulta hoy"
+              href={canReadPatients ? `/consultas?date=${formatDateInput(new Date())}` : undefined}
               value={data?.patientsToday ?? 0}
               loading={isLoading}
             />
@@ -271,15 +276,27 @@ function MetricCard({
   label,
   value,
   loading,
+  href,
 }: {
   readonly label: string;
   readonly value: string | number;
   readonly loading: boolean;
+  readonly href?: string;
 }) {
-  return (
+  const content = (
     <Card>
       <p className="text-sm text-on-surface-variant">{label}</p>
       <p className="mt-2 text-2xl font-semibold text-on-surface">{loading ? '...' : value}</p>
     </Card>
+  );
+  return href ? (
+    <Link
+      href={href}
+      className="rounded-xl focus-visible:outline-2 focus-visible:outline-primary hover:opacity-90"
+    >
+      {content}
+    </Link>
+  ) : (
+    content
   );
 }

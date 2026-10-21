@@ -274,8 +274,7 @@ export class PatientsService {
     tenantId: string,
     dto: CreatePatientDto,
   ): Promise<PatientResponseDto> {
-    const isMinor = dto.documentType === 'M';
-    const documentId = isMinor ? generateMinorDocumentId() : dto.documentId;
+    const documentId = dto.documentId;
     if (!documentId) {
       throw new BadRequestException('El documento de identidad es obligatorio');
     }
@@ -361,7 +360,7 @@ export class PatientsService {
       );
       return mapPatientResponse(patient);
     } catch (err) {
-      // P2002: unique constraint — puede ocurrir en menores si hay colisión de ID generado
+      // P2002: conflicto de unicidad, incluso ante altas concurrentes.
       if (
         err instanceof Error &&
         'code' in err &&
@@ -386,9 +385,9 @@ export class PatientsService {
       throw new ConflictException('Historial clínico inválido');
     }
 
-    // Promoción de menor a adulto: solo se permite si se envían ambos campos
+    // Actualización de documento: se envían ambos campos, incluido el tipo M.
     const documentUpdate =
-      dto.documentType && dto.documentType !== 'M' && dto.documentId
+      dto.documentType && dto.documentId
         ? { documentType: dto.documentType, documentId: dto.documentId }
         : {};
 
@@ -448,6 +447,11 @@ export class PatientsService {
 
     const patient = await this.prisma.patient.findFirstOrThrow({
       where: { id, tenantId },
+      include: {
+        representatives: {
+          include: { representative: true },
+        },
+      },
     });
     await this.auditLog?.log(
       {
@@ -657,23 +661,4 @@ function calculateAge(birthDate: Date): number {
       today.getUTCDate() < birthDate.getUTCDate());
 
   return birthdayHasNotOccurred ? age - 1 : age;
-}
-
-/**
- * Genera un ID único para pacientes menores sin cédula.
- * Formato: YYYYMMDD + 4 caracteres aleatorios hexadecimales.
- * Ejemplo: 20260930A3F1
- */
-function generateMinorDocumentId(): string {
-  const today = new Date();
-  const datePart = [
-    today.getUTCFullYear(),
-    String(today.getUTCMonth() + 1).padStart(2, '0'),
-    String(today.getUTCDate()).padStart(2, '0'),
-  ].join('');
-  const randomPart = Math.floor(Math.random() * 0xffff)
-    .toString(16)
-    .toUpperCase()
-    .padStart(4, '0');
-  return `${datePart}${randomPart}`;
 }

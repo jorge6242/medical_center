@@ -54,7 +54,7 @@ export interface RepresentativeLookupResponse {
 export interface CreatePatientDto {
   name: string;
   documentType: string;
-  documentId?: string;
+  documentId: string;
   phone?: string;
   email?: string;
   birthDate?: string;
@@ -64,6 +64,8 @@ export interface CreatePatientDto {
 
 export interface UpdatePatientDto {
   name?: string;
+  documentType?: CreatePatientDto['documentType'];
+  documentId?: string;
   phone?: string;
   email?: string;
   birthDate?: string;

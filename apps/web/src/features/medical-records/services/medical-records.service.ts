@@ -88,7 +88,7 @@ export interface PatientConsultation {
 export interface PaidConsultation {
   id: string;
   date: string;
-  status: 'SCHEDULED' | 'PAID';
+  status: 'SCHEDULED' | 'PENDING' | 'PAID';
   patientId: string;
   patientName: string;
   patientDocument: string;
@@ -113,6 +113,7 @@ export interface PaginatedResponse<T> {
 }
 
 export interface PaidConsultationsQuery {
+  date?: string;
   page?: number;
   limit?: number;
   search?: string;
@@ -138,6 +139,7 @@ export const getPaidConsultations = (
   if (query?.page) params.append('page', String(query.page));
   if (query?.limit) params.append('limit', String(query.limit));
   if (query?.search) params.append('search', query.search);
+  if (query?.date) params.append('date', query.date);
 
   const queryString = params.toString();
   return apiJson(`/medical-records/paid-consultations${queryString ? `?${queryString}` : ''}`);

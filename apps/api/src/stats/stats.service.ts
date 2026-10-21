@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
+import { DateTime } from 'luxon';
 
 import { PrismaService } from '../database/prisma.service';
 
@@ -7,13 +9,19 @@ import type { HomeStatsAlertDto, HomeStatsDto } from './dto/home-stats.dto';
 
 @Injectable()
 export class StatsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config?: ConfigService,
+  ) {}
 
   async getHomeStats(tenantId: string): Promise<HomeStatsDto> {
     const now = new Date();
     const todayStart = startOfDay(now);
     const tomorrowStart = addDays(todayStart, 1);
     const monthStart = startOfMonth(now);
+    const day = DateTime.fromJSDate(now, {
+      zone: this.config?.get<string>('app.timezone') ?? 'America/Caracas',
+    }).startOf('day');
 
     const [
       todayConsultations,
@@ -26,10 +34,10 @@ export class StatsService {
       this.prisma.consultation.findMany({
         where: {
           tenantId,
-          status: 'PAID',
-          date: { gte: todayStart, lt: tomorrowStart },
+          status: { not: 'VOIDED' },
+          date: { gte: day.toJSDate(), lt: day.plus({ days: 1 }).toJSDate() },
         },
-        select: { patientId: true, doctorId: true },
+        select: { patientId: true, doctorId: true, status: true },
       }),
       this.prisma.payment.findMany({
         where: {
@@ -84,7 +92,9 @@ export class StatsService {
       todayConsultations.map((consultation) => consultation.patientId),
     );
     const doctorIdsToday = new Set(
-      todayConsultations.map((consultation) => consultation.doctorId),
+      todayConsultations
+        .filter((consultation) => consultation.status === 'PAID')
+        .map((consultation) => consultation.doctorId),
     );
     const pendingPayoutDoctorIds = new Set(
       pendingPayments
@@ -154,7 +164,7 @@ function buildAlerts(
     alerts.push({
       severity: 'info',
       title: 'Actividad de hoy',
-      message: `${patientsToday} paciente(s) atendido(s) y ${doctorsToday} doctor(es) con consultas culminadas hoy.`,
+      message: `${patientsToday} paciente(s) con consulta hoy y ${doctorsToday} doctor(es) con consultas de hoy pagadas.`,
     });
   }
 

@@ -460,7 +460,12 @@ describe('MedicalRecordsService', () => {
         status: 'PAID',
         patientId: 'patient-2',
         doctorId: 'doctor-1',
-        patient: { documentType: 'V', documentId: '456', name: 'Ana Perez' },
+        patient: {
+          documentType: 'V',
+          documentId: '456',
+          name: 'Ana Perez',
+          representatives: [],
+        },
         doctor: { name: 'Dr. Gomez', documentType: 'V', documentId: '987' },
         services: [
           {
@@ -477,7 +482,12 @@ describe('MedicalRecordsService', () => {
         status: 'SCHEDULED',
         patientId: 'patient-1',
         doctorId: 'doctor-1',
-        patient: { documentType: 'V', documentId: '123', name: 'Maria Lopez' },
+        patient: {
+          documentType: 'V',
+          documentId: '123',
+          name: 'Maria Lopez',
+          representatives: [],
+        },
         doctor: { name: 'Dr. Gomez', documentType: 'V', documentId: '987' },
         services: [
           {

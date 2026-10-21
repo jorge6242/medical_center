@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createPatient,
   deactivatePatient,
+  getPatient,
   getPatients,
   getPaginatedPatients,
   lookupRepresentative,
@@ -18,6 +19,14 @@ export function usePatients() {
   return useQuery({
     queryKey: ['patients'],
     queryFn: getPatients,
+  });
+}
+
+export function usePatient(id: string) {
+  return useQuery({
+    queryKey: ['patients', id],
+    queryFn: () => getPatient(id),
+    enabled: Boolean(id),
   });
 }
 

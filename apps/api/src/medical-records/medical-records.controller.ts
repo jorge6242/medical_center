@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
+import { ConsultationsQueryDto } from './dto/consultations-query.dto';
 import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
 import { GenerateMedicalRecordExportDto } from './dto/generate-medical-record-export.dto';
 import { MedicalRecordsService } from './medical-records.service';
@@ -20,7 +21,6 @@ import {
   type JwtPayload,
 } from '../common/decorators/current-user.decorator';
 import { RequirePermission } from '../common/decorators/require-permission.decorator';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 
 import type { Response } from 'express';
 
@@ -52,7 +52,7 @@ export class MedicalRecordsController {
   @RequirePermission('patients', 'read')
   findPaidConsultations(
     @CurrentUser() user: JwtPayload,
-    @Query() query: PaginationQueryDto,
+    @Query() query: ConsultationsQueryDto,
   ) {
     return this.medicalRecordsService.findPaidConsultations(user, query);
   }

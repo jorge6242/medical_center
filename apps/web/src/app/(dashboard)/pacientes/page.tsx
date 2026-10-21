@@ -18,11 +18,12 @@ import { Card } from '@/shared/components/ui/card';
 import { DataTable } from '@/shared/components/ui/data-table';
 import { Modal } from '@/shared/components/ui/modal';
 import { useNotification } from '@/shared/hooks/use-notification';
+import { useAuthStore } from '@/stores/auth.store';
 
 export default function PacientesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState<PatientResponse | null>(null);
+  const canRead = useAuthStore((state) => state.hasPermission('patients', 'read'));
+  const canUpdate = useAuthStore((state) => state.hasPermission('patients', 'update'));
   const [search, setSearch] = useState('');
 
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
@@ -70,7 +71,7 @@ export default function PacientesPage() {
       <Card className="p-4">
         <DataTable
           data={patients}
-          columns={getPatientColumns()}
+          columns={getPatientColumns({ canRead, canUpdate })}
           toolbar={<PatientToolbar search={search} onSearchChange={setSearch} />}
           isLoading={isLoading}
           pagination={pagination}
@@ -78,10 +79,6 @@ export default function PacientesPage() {
           pageCount={meta?.totalPages ?? 0}
           rowCount={meta?.total ?? 0}
           meta={{
-            onEdit: (patient: PatientResponse) => {
-              setSelectedPatient(patient);
-              setShowEditModal(true);
-            },
             onDeactivate: (id: string) => deactivatePatient.mutate(id),
             onPermanentDelete: handlePermanentDelete,
           }}
@@ -94,23 +91,6 @@ export default function PacientesPage() {
         title="Nuevo paciente"
       >
         <PatientForm onClose={() => setShowCreateModal(false)} />
-      </Modal>
-
-      <Modal
-        open={showEditModal}
-        onClose={() => {
-          setShowEditModal(false);
-          setSelectedPatient(null);
-        }}
-        title="Editar paciente"
-      >
-        <PatientForm
-          patient={selectedPatient ?? undefined}
-          onClose={() => {
-            setShowEditModal(false);
-            setSelectedPatient(null);
-          }}
-        />
       </Modal>
     </div>
   );

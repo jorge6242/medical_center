@@ -29,12 +29,17 @@ const CURRENCIES = [
   { value: 'VES', label: 'VES (Bs)' },
 ];
 
-const lineSchema = z.object({
-  paymentMethod: z.string().min(1),
-  currency: z.enum(['USD', 'VES']),
-  amount: z.number().positive('Monto debe ser positivo'),
-  referenceNumber: z.string().optional(),
-});
+const lineSchema = z
+  .object({
+    paymentMethod: z.string().min(1),
+    currency: z.enum(['USD', 'VES']),
+    amount: z.number().positive('Monto debe ser positivo'),
+    referenceNumber: z.string().optional(),
+  })
+  .refine((line) => line.paymentMethod !== 'PAGO_MOVIL' || !!line.referenceNumber?.trim(), {
+    path: ['referenceNumber'],
+    message: 'Referencia requerida para Pago Móvil',
+  });
 
 const schema = z.object({
   patientId: z.string().min(1, 'Selecciona un paciente'),
@@ -91,6 +96,7 @@ export function PaymentForm({
   const { fields, append, remove } = useFieldArray({ control, name: 'paymentLines' });
   const selectedDoctorId = watch('doctorId');
   const selectedServiceIds = watch('doctorServiceIds');
+  const paymentLines = watch('paymentLines');
 
   const {
     data: servicePrices = [],
@@ -273,8 +279,19 @@ export function PaymentForm({
             />
             <Input
               {...register(`paymentLines.${i}.referenceNumber`)}
-              label="Referencia"
-              placeholder="Opcional"
+              id={`referenceNumber-${i}`}
+              label={
+                paymentLines[i]?.paymentMethod === 'PAGO_MOVIL'
+                  ? 'Referencia (obligatoria)'
+                  : 'Referencia'
+              }
+              placeholder={
+                paymentLines[i]?.paymentMethod === 'PAGO_MOVIL'
+                  ? 'Referencia requerida'
+                  : 'Opcional'
+              }
+              aria-required={paymentLines[i]?.paymentMethod === 'PAGO_MOVIL'}
+              error={errors.paymentLines?.[i]?.referenceNumber?.message}
               className="flex-1"
             />
             {fields.length > 1 && (

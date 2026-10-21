@@ -38,12 +38,17 @@ const CURRENCIES = [
   { value: 'VES', label: 'VES (Bs)' },
 ];
 
-const lineSchema = z.object({
-  paymentMethod: z.string().min(1),
-  currency: z.enum(['USD', 'VES']),
-  amount: z.number().positive('Monto debe ser positivo'),
-  referenceNumber: z.string().optional(),
-});
+const lineSchema = z
+  .object({
+    paymentMethod: z.string().min(1),
+    currency: z.enum(['USD', 'VES']),
+    amount: z.number().positive('Monto debe ser positivo'),
+    referenceNumber: z.string().optional(),
+  })
+  .refine((line) => line.paymentMethod !== 'PAGO_MOVIL' || !!line.referenceNumber?.trim(), {
+    path: ['referenceNumber'],
+    message: 'Referencia requerida para Pago Móvil',
+  });
 
 const schema = z.object({
   bcvExchangeRate: z.number().positive('Tasa BCV requerida'),
@@ -140,7 +145,10 @@ export function LabPaymentForm({ order, onClose, onPendingChange }: LabPaymentFo
         description: `Laboratorio - ${testNames}`,
         labOrderId: order.id,
       },
-      paymentLines: data.paymentLines,
+      paymentLines: data.paymentLines.map((line) => ({
+        ...line,
+        referenceNumber: line.referenceNumber || undefined,
+      })),
     });
   };
 
@@ -274,6 +282,25 @@ export function LabPaymentForm({ order, onClose, onPendingChange }: LabPaymentFo
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
+              </div>
+              <div className="col-span-12">
+                <Input
+                  {...register(`paymentLines.${index}.referenceNumber`)}
+                  id={`referenceNumber-${index}`}
+                  label={
+                    paymentLines[index]?.paymentMethod === 'PAGO_MOVIL'
+                      ? 'Referencia (obligatoria)'
+                      : 'Referencia'
+                  }
+                  placeholder={
+                    paymentLines[index]?.paymentMethod === 'PAGO_MOVIL'
+                      ? 'Referencia requerida'
+                      : 'Opcional'
+                  }
+                  aria-required={paymentLines[index]?.paymentMethod === 'PAGO_MOVIL'}
+                  error={errors.paymentLines?.[index]?.referenceNumber?.message}
+                  disabled={!hasValidExchangeRate}
+                />
               </div>
             </div>
           ))}

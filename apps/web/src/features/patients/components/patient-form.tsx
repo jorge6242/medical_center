@@ -39,6 +39,13 @@ function toDefaultValues(patient?: PatientResponse): Partial<PatientFormData> {
     email: patient.email ?? '',
     birthDate: patient.birthDate ? patient.birthDate.slice(0, 10) : '',
     gender: (patient.gender as PatientFormData['gender']) ?? undefined,
+    representative: patient.representatives?.[0]
+      ? {
+          ...patient.representatives[0],
+          documentType: patient.representatives[0].documentType as 'V' | 'E' | 'P',
+          phone: patient.representatives[0].phone ?? '',
+        }
+      : undefined,
   };
 }
 
@@ -79,15 +86,15 @@ export function PatientForm({ patient, onClose }: PatientFormProps) {
     const value = e.target.value as DocumentType;
     setValue('documentType', value);
     if (value === 'M') {
-      setValue('documentId', '');
       setValue('representative', undefined);
     }
   };
 
   const onSubmit = (data: PatientFormData) => {
+    if (isPending) return;
     const payload = {
       ...data,
-      documentId: data.documentType === 'M' ? undefined : data.documentId,
+      documentId: data.documentId,
       email: data.email || undefined,
       birthDate: data.birthDate || undefined,
       gender: data.gender || undefined,
@@ -130,22 +137,22 @@ export function PatientForm({ patient, onClose }: PatientFormProps) {
         onChange={handleDocumentTypeChange}
       />
 
-      {isMinor ? (
+      <Input
+        {...register('documentId')}
+        id="documentId"
+        label="Número de documento"
+        placeholder="Ej. 18934576"
+        error={errors.documentId?.message}
+      />
+
+      {isMinor && (
         <div className="rounded-lg border border-primary-container bg-primary-container px-4 py-3 text-sm text-on-primary-container">
           <p className="font-medium">Paciente menor de edad</p>
           <p className="mt-0.5 text-xs opacity-80">
-            El sistema asignará un código único automáticamente. Para facilitar búsquedas futuras,
-            completá la fecha de nacimiento.
+            Ingresá el número de documento o código del menor manualmente. Para facilitar búsquedas
+            futuras, completá la fecha de nacimiento.
           </p>
         </div>
-      ) : (
-        <Input
-          {...register('documentId')}
-          id="documentId"
-          label="Número de documento"
-          placeholder="Ej. 18934576"
-          error={errors.documentId?.message}
-        />
       )}
 
       {isMinor && (
@@ -176,7 +183,7 @@ export function PatientForm({ patient, onClose }: PatientFormProps) {
         error={errors.email?.message}
       />
       <Select
-        {...register('gender')}
+        {...register('gender', { setValueAs: (value: string) => value || undefined })}
         id="gender"
         label="Sexo (opcional)"
         options={[
@@ -186,6 +193,13 @@ export function PatientForm({ patient, onClose }: PatientFormProps) {
           { value: 'OTHER', label: 'Otro' },
         ]}
       />
+
+      {isEditing && (
+        <p className="text-sm">
+          Vaciar email, fecha de nacimiento o sexo no elimina el dato guardado. El representante se
+          asocia por documento; los vínculos existentes se conservan.
+        </p>
+      )}
 
       {error && (
         <p className="rounded-lg bg-error-container px-3 py-2 text-sm text-on-error-container">
@@ -200,14 +214,14 @@ export function PatientForm({ patient, onClose }: PatientFormProps) {
             variant="outline"
             onClick={handleSendBirthdayEmail}
             isLoading={sendBirthdayMutation.isPending}
-            disabled={!patient?.email}
+            disabled={isPending || !patient?.email}
             title={patient?.email ? 'Enviar correo de cumpleaños' : 'El paciente no tiene correo'}
           >
             <Cake className="mr-2 h-4 w-4" />
             Cumpleaños
           </Button>
         )}
-        <Button type="button" variant="outline" onClick={onClose}>
+        <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>
           Cancelar
         </Button>
         <Button type="submit" isLoading={isPending}>

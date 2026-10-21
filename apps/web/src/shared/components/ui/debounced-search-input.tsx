@@ -22,6 +22,11 @@ export function DebouncedSearchInput({
   const lastNotifiedRef = useRef(value);
 
   useEffect(() => {
+    lastNotifiedRef.current = value;
+    setInputValue(value);
+  }, [value]);
+
+  useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
 

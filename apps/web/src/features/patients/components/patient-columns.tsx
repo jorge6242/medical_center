@@ -9,12 +9,28 @@ import { Button } from '@/shared/components/ui/button';
 import { formatDate } from '@/shared/utils/format';
 import type { PatientResponse } from '../services/patients.service';
 
-export function getPatientColumns(): ColumnDef<PatientResponse>[] {
+export function getPatientColumns({
+  canRead,
+  canUpdate,
+}: {
+  canRead: boolean;
+  canUpdate: boolean;
+}): ColumnDef<PatientResponse>[] {
   return [
     {
       accessorKey: 'name',
       header: 'Nombre',
-      cell: ({ row }) => <span className="font-medium text-on-surface">{row.original.name}</span>,
+      cell: ({ row }) =>
+        canRead ? (
+          <Link
+            href={`/pacientes/${row.original.id}`}
+            className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            {row.original.name}
+          </Link>
+        ) : (
+          <span className="font-medium text-on-surface">{row.original.name}</span>
+        ),
     },
     {
       accessorKey: 'documentId',
@@ -56,7 +72,6 @@ export function getPatientColumns(): ColumnDef<PatientResponse>[] {
       cell: ({ row, table }) => {
         const meta = table.options.meta as
           | {
-              onEdit?: (patient: PatientResponse) => void;
               onDeactivate?: (id: string) => void;
               onPermanentDelete?: (patient: PatientResponse) => void;
             }
@@ -64,15 +79,26 @@ export function getPatientColumns(): ColumnDef<PatientResponse>[] {
 
         return (
           <div className="flex items-center gap-2">
-            <Link
-              href={`/pacientes/${row.original.id}`}
-              className="inline-flex h-8 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium text-on-surface hover:bg-surface-variant"
-            >
-              <FileText className="h-4 w-4" />
-            </Link>
-            <Button variant="ghost" size="sm" onClick={() => meta?.onEdit?.(row.original)}>
-              <Pencil className="h-4 w-4" />
-            </Button>
+            {canRead && (
+              <Link
+                href={`/pacientes/${row.original.id}`}
+                aria-label={`Ver ficha de ${row.original.name}`}
+                className="inline-flex h-8 items-center gap-2 rounded-lg px-3 text-sm font-medium hover:bg-surface-variant"
+              >
+                <FileText className="h-4 w-4" />
+                Ver ficha
+              </Link>
+            )}
+            {canRead && canUpdate && (
+              <Link
+                href={`/pacientes/${row.original.id}`}
+                aria-label={`Abrir ficha para editar a ${row.original.name}`}
+                className="inline-flex h-8 items-center gap-2 rounded-lg px-3 text-sm font-medium hover:bg-surface-variant"
+              >
+                <Pencil className="h-4 w-4" />
+                Abrir ficha para editar
+              </Link>
+            )}
             {row.original.isActive && (
               <>
                 <Button

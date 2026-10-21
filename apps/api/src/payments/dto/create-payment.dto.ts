@@ -11,6 +11,7 @@ import {
   IsString,
   IsUUID,
   MinLength,
+  ValidateBy,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
@@ -26,8 +27,20 @@ export class PaymentLineDto {
   @IsPositive()
   declare amount: number;
 
-  @IsOptional()
+  @ValidateIf(
+    (line: PaymentLineDto) =>
+      line.paymentMethod === 'PAGO_MOVIL' || line.referenceNumber != null,
+  )
   @IsString()
+  @ValidateBy({
+    name: 'mobilePaymentReference',
+    validator: {
+      validate: (value: unknown, args) =>
+        (args?.object as PaymentLineDto).paymentMethod !== 'PAGO_MOVIL' ||
+        (typeof value === 'string' && value.trim().length > 0),
+      defaultMessage: () => 'Referencia requerida para Pago Móvil',
+    },
+  })
   declare referenceNumber?: string;
 }
 

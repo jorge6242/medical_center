@@ -5,6 +5,8 @@ import { homeStatsAlertFixture, homeStatsFixture } from '@/test/fixtures/home-st
 import { cardioDoctorsFixture, pediatriaDoctorsFixture } from '@/test/fixtures/specialties.fixture';
 import { renderWithClient } from '@/test/render';
 import { server } from '@/test/server';
+import { useAuthStore } from '@/stores/auth.store';
+import { formatDateInput } from '@/shared/utils/timezone';
 
 import InicioPage from './page';
 
@@ -35,10 +37,25 @@ function deferredResponse() {
 }
 
 describe('V03 Inicio: datos recibidos y selección operativa', () => {
+  it('links the patient KPI to the concrete local date only with patients read permission', async () => {
+    useAuthStore.setState({
+      permissions: [{ resource: 'patients', action: 'read' }],
+    });
+    renderWithClient(<InicioPage />);
+    await screen.findByText(homeStatsAlertFixture.message);
+    expect(screen.getByRole('link', { name: /Pacientes con consulta hoy/ })).toHaveAttribute(
+      'href',
+      `/consultas?date=${formatDateInput(new Date())}`,
+    );
+    act(() => useAuthStore.setState({ permissions: [] }));
+    expect(
+      screen.queryByRole('link', { name: /Pacientes con consulta hoy/ }),
+    ).not.toBeInTheDocument();
+  });
   it('presenta los cuatro KPIs no triviales y la alerta recibida', async () => {
     renderWithClient(<InicioPage />);
     await screen.findByText(homeStatsAlertFixture.message);
-    expect(metric('Pacientes hoy').getByText('7')).toBeVisible();
+    expect(metric('Pacientes con consulta hoy').getByText('7')).toBeVisible();
     expect(metric('Doctores hoy').getByText('3')).toBeVisible();
     expect(metric('Doctores con honorarios pendientes').getByText('2')).toBeVisible();
     expect(metric('Honorarios pendientes').getByText(/150,50/)).toHaveTextContent(/USD|US\$/);
@@ -60,14 +77,14 @@ describe('V03 Inicio: datos recibidos y selección operativa', () => {
     );
     renderWithClient(<InicioPage />);
     try {
-      expect(metric('Pacientes hoy').getByText('...')).toBeVisible();
+      expect(metric('Pacientes con consulta hoy').getByText('...')).toBeVisible();
       expect(metric('Doctores hoy').getByText('...')).toBeVisible();
       expect(metric('Doctores con honorarios pendientes').getByText('...')).toBeVisible();
       expect(metric('Honorarios pendientes').getByText('...')).toBeVisible();
     } finally {
       await act(async () => response.release());
     }
-    await waitFor(() => expect(metric('Pacientes hoy').getByText('12')).toBeVisible());
+    await waitFor(() => expect(metric('Pacientes con consulta hoy').getByText('12')).toBeVisible());
     expect(screen.getByText('Sin alertas por ahora.')).toBeVisible();
     expect(screen.queryByText(homeStatsAlertFixture.message)).not.toBeInTheDocument();
   });
@@ -178,7 +195,7 @@ describe('V03 errores operativos sin resultados ficticios', () => {
     );
     renderWithClient(<InicioPage />);
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo cargar el resumen.');
-    expect(screen.queryByText('Pacientes hoy')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pacientes con consulta hoy')).not.toBeInTheDocument();
     expect(screen.queryByText('Sin alertas por ahora.')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Consultar especialidades/ })).toBeEnabled();
   });
@@ -221,7 +238,7 @@ describe('V03 errores operativos sin resultados ficticios', () => {
   it('advierte también si falla la actualización de un resumen previamente válido', async () => {
     const { queryClient } = renderWithClient(<InicioPage />);
     await screen.findByText(homeStatsAlertFixture.message);
-    expect(metric('Pacientes hoy').getByText('7')).toBeVisible();
+    expect(metric('Pacientes con consulta hoy').getByText('7')).toBeVisible();
     server.use(
       http.get('*/stats/home', () =>
         HttpResponse.json({ message: 'No disponible' }, { status: 503 }),
@@ -231,7 +248,7 @@ describe('V03 errores operativos sin resultados ficticios', () => {
       await queryClient.invalidateQueries({ queryKey: ['home-stats'] });
     });
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo cargar el resumen.');
-    expect(screen.queryByText('Pacientes hoy')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pacientes con consulta hoy')).not.toBeInTheDocument();
     expect(screen.queryByText(homeStatsAlertFixture.message)).not.toBeInTheDocument();
   });
 });

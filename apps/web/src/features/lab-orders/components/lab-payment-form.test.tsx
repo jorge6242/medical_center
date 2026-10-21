@@ -9,10 +9,33 @@ import { server } from '@/test/server';
 import { LabPaymentForm } from './lab-payment-form';
 
 // Alta B fuera de C; cobro/página/Modal/HTTP reales.
-jest.mock('@/features/lab-orders/components/lab-order-form', () => ({ LabOrderForm: () => null }));
+jest.mock('@/features/lab-orders/components/lab-order-form', () => ({
+  LabOrderForm: () => null,
+}));
 const submit = () => screen.getByRole('button', { name: 'Completar pago' });
 const rate = () => screen.getByRole('spinbutton', { name: 'Tasa BCV (Bs/USD)' });
 const amount = () => screen.getByRole('spinbutton', { name: 'Monto' });
+it('requires a mobile payment reference before posting', async () => {
+  const bodies: unknown[] = [];
+  server.use(
+    http.post('*/payments', async ({ request }) => {
+      bodies.push(await request.json());
+      return HttpResponse.json(paymentsFixture[1]);
+    }),
+  );
+  const { user } = renderWithClient(
+    <LabPaymentForm order={labDetailFixture('lab-one')} onClose={jest.fn()} />,
+  );
+  await fill(user);
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Método' }), 'PAGO_MOVIL');
+  await user.click(screen.getByRole('button', { name: 'Max' }));
+  await user.click(submit());
+  expect(await screen.findByText('Referencia requerida para Pago Móvil')).toBeVisible();
+  expect(bodies).toEqual([]);
+  await user.type(screen.getByPlaceholderText('Referencia requerida'), 'REF-LAB');
+  await user.click(submit());
+  await waitFor(() => expect(bodies).toHaveLength(1));
+});
 async function fill(user: ReturnType<typeof renderWithClient>['user']) {
   await user.type(await screen.findByRole('spinbutton', { name: 'Tasa BCV (Bs/USD)' }), '40');
   await user.click(screen.getByRole('button', { name: 'Max' }));

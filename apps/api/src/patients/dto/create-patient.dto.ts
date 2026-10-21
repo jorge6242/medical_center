@@ -10,7 +10,6 @@ import {
   IsString,
   Length,
   MinLength,
-  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
@@ -39,14 +38,9 @@ export class CreatePatientDto {
   @IsEnum(DocumentType)
   declare documentType: DocumentType;
 
-  /**
-   * Requerido para todos los tipos excepto M (Menor).
-   * Si documentType es M, el backend autogenera el ID.
-   */
-  @ValidateIf((o: CreatePatientDto) => o.documentType !== DocumentType.M)
   @IsString()
   @MinLength(6)
-  declare documentId?: string;
+  declare documentId: string;
 
   @IsString()
   @Length(2, 100)
