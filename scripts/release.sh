@@ -10,6 +10,7 @@ readonly DEFAULT_WEB_SERVICE_ID='6b55fb00-1ccf-4933-982d-d87d990cec15'
 TAG=''
 SERVICES='api,web'
 DRY_RUN=false
+RELEASE_DIR=''
 
 usage() {
   cat <<'EOF'
@@ -22,6 +23,9 @@ Opciones:
   -s, --services  Servicios a publicar: api, web o api,web. Por defecto: api,web.
       --dry-run   Muestra las acciones sin construir, publicar ni desplegar.
   -h, --help      Muestra esta ayuda.
+
+El build usa una copia temporal del commit HEAD fijado al iniciar el release.
+Los cambios staged, unstaged y archivos sin seguimiento quedan fuera.
 
 Variables opcionales:
   RAILWAY_PROJECT_ID, RAILWAY_ENVIRONMENT_ID, RAILWAY_API_SERVICE_ID,
@@ -88,17 +92,33 @@ command -v docker >/dev/null || fail 'Docker no está instalado.'
 command -v railway >/dev/null || fail 'Railway CLI no está instalado.'
 command -v curl >/dev/null || fail 'curl no está instalado.'
 
+SOURCE_COMMIT="$(git rev-parse --verify 'HEAD^{commit}')" || fail 'No se pudo obtener el commit Git para el release.'
+readonly SOURCE_COMMIT
+
 if [[ -z "$TAG" ]]; then
-  git_sha="$(git rev-parse --short=8 HEAD)" || fail 'No se pudo obtener el commit Git para generar el tag.'
+  git_sha="$(git rev-parse --short=8 "$SOURCE_COMMIT")"
   TAG="railway-$(date +%Y%m%d-%H%M%S)-${git_sha}"
 fi
 
 [[ "$TAG" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]] || fail 'El tag contiene caracteres no permitidos.'
 
 if ! "$DRY_RUN"; then
-  [[ -z "$(git status --porcelain)" ]] || fail 'El árbol Git tiene cambios. Confirmá o guardá los cambios antes de un release.'
   railway whoami --json >/dev/null || fail 'No hay una sesión válida de Railway.'
 fi
+
+cleanup() {
+  if [[ -n "$RELEASE_DIR" ]]; then
+    rm -rf -- "$RELEASE_DIR"
+  fi
+}
+
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+RELEASE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/centro-medico-release.XXXXXX")"
+git archive --format=tar "$SOURCE_COMMIT" | tar -xf - -C "$RELEASE_DIR"
+printf 'Release desde commit %s (sin cambios locales).\n' "$SOURCE_COMMIT"
 
 update_railway_image() {
   local service_id="$1"
@@ -147,14 +167,14 @@ wait_for_health() {
 
 release_api() {
   local image="${DOCKERHUB_USER}/centro-medico-api:${TAG}"
-  run make docker-release-api "IMAGE_TAG=${TAG}"
+  run make -C "$RELEASE_DIR" docker-release-api "IMAGE_TAG=${TAG}"
   update_railway_image "$API_SERVICE_ID" "$image"
   wait_for_health "$API_HEALTH_URL" false
 }
 
 release_web() {
   local image="${DOCKERHUB_USER}/centro-medico-web:${TAG}"
-  run make docker-release-web "IMAGE_TAG=${TAG}"
+  run make -C "$RELEASE_DIR" docker-release-web "IMAGE_TAG=${TAG}"
   update_railway_image "$WEB_SERVICE_ID" "$image"
   wait_for_health "$WEB_URL" true
 }

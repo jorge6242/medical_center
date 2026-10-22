@@ -33,7 +33,9 @@ Para publicar imágenes nuevas y actualizar Railway sin editar tags manualmente,
 ./scripts/release.sh --tag railway-20260925-01
 ```
 
-El script exige un árbol Git limpio, publica API antes que web, actualiza la imagen de cada servicio con Railway CLI y verifica sus endpoints. Para inspeccionar el release sin modificar infraestructura:
+El script construye ambas imágenes desde una copia temporal del commit `HEAD` fijado al iniciar. Podés mantener cambios pendientes: los cambios staged, unstaged y archivos sin seguimiento no se publican ni se modifican. La copia temporal se elimina al finalizar, incluso si el release falla. Los comandos `make docker-release-*` directos siguen usando los archivos locales.
+
+Publica API antes que web, actualiza la imagen de cada servicio con Railway CLI y verifica sus endpoints. Para inspeccionar el release sin modificar infraestructura:
 
 ```bash
 ./scripts/release.sh --tag railway-20260925-01 --dry-run
